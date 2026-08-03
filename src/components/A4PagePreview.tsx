@@ -107,7 +107,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
   if (invoices.length === 0) {
     return (
-      <div className="w-full flex justify-center py-16 px-4">
+      <div className="w-full flex justify-center py-16 px-4 relative z-0">
         <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-[#0E1422] rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-800 max-w-xl w-full shadow-2xs">
           <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/60 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 shadow-2xs">
             <FilePlus2 className="w-8 h-8" />
@@ -130,19 +130,19 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   }
 
   return (
-    <div className="w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen">
+    <div className="w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen relative z-0">
       {/* Pages Container with Scaling Zoom */}
       <div
-        className="transition-transform origin-top flex flex-col items-center space-y-10"
+        className="transition-transform origin-top flex flex-col items-center space-y-10 relative z-0"
         style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
       >
         {pages.map((pageData, pageIdx) => {
           const pageInvoices = pageData.invoices;
           return (
-            <div key={`page-${pageIdx}`} className="relative flex flex-col items-center">
+            <div key={`page-${pageIdx}`} className="relative flex flex-col items-center z-0">
               {/* On-screen Page Badge (hidden in print) */}
               <div
-                className="no-print mb-2 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 px-1"
+                className="no-print mb-2 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 px-1 relative z-0"
                 style={{ width: pageWidth }}
               >
                 <span className="flex items-center space-x-1.5">
@@ -163,7 +163,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
               {/* Pixel-Accurate Printable Sheet */}
               <div
-                className="a4-print-page bg-white text-slate-900 shadow-xl hover:shadow-2xl border border-slate-200 dark:border-slate-700 transition-shadow relative"
+                className="a4-print-page bg-white text-slate-900 shadow-xl hover:shadow-2xl border border-slate-200 dark:border-slate-700 transition-shadow relative z-0"
                 style={{
                   width: pageWidth,
                   minHeight: pageHeight,
@@ -175,7 +175,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
               >
                 {/* Grid Layout inside Page */}
                 <div
-                  className={`w-full h-full relative ${
+                  className={`w-full h-full relative z-0 ${
                     pageInvoices.length > 4
                       ? "grid grid-cols-2 grid-rows-3 gap-3"
                       : config.gridMode === "1"

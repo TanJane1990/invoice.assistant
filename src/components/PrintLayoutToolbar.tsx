@@ -34,7 +34,7 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   onResetOrder,
 }) => {
   return (
-    <div className="no-print bg-[#0B0F19] text-slate-100 border-b border-slate-800 px-4 py-2.5 sticky top-16 z-40 shadow-lg">
+    <div className="no-print bg-[#0B0F19] text-slate-100 border-b border-slate-800 px-4 py-2.5 sticky top-16 z-[60] shadow-xl overflow-hidden">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
         {/* Left: Grid Layout Mode Buttons */}
         <div className="flex items-center space-x-1.5">
