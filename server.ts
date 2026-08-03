@@ -167,15 +167,18 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const fs = await import("fs");
+    const distPath = fs.existsSync(path.join(__dirname, "index.html"))
+      ? __dirname
+      : path.join(__dirname, "../dist");
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[发票管理助手] Server running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, "127.0.0.1", () => {
+    console.log(`[发票管理助手] Server running on http://127.0.0.1:${PORT}`);
   });
 }
 

@@ -13,26 +13,21 @@ const PORT = process.env.PORT || 3000;
 function startBackendServer() {
   const isDev = !app.isPackaged;
 
-  // 修复 #8: 开发模式下 server 已由 concurrently (npm run electron:dev) 启动，
-  // 无需再 fork，否则会导致端口 3000 EADDRINUSE 冲突
   if (isDev) {
     console.log("[Electron] Dev mode: using external dev server on port " + PORT);
     return;
   }
 
-  // 生产模式下 fork 编译后的 server.cjs
-  const serverPath = path.join(__dirname, "../dist/server.cjs");
-
+  // 生产模式下（打包为 ASAR）：直接通过 require 加载 server.cjs 模块
+  // 避免 child_process.fork 在 asar 虚拟路径中无法找到 Node 执行文件的错误
   try {
-    serverProcess = fork(serverPath, [], {
-      env: { ...process.env, NODE_ENV: "production", PORT: String(PORT) },
-    });
-
-    serverProcess.on("error", (err) => {
-      console.error("[Electron Core] Express Backend Server error:", err);
-    });
+    process.env.NODE_ENV = "production";
+    process.env.PORT = String(PORT);
+    const serverPath = path.join(__dirname, "../dist/server.cjs");
+    require(serverPath);
+    console.log("[Electron Core] Express backend server started directly via require.");
   } catch (err) {
-    console.error("[Electron Core] Failed to launch backend server process:", err);
+    console.error("[Electron Core] Failed to start backend server:", err);
   }
 }
 
@@ -97,12 +92,13 @@ function createWindow() {
     Menu.setApplicationMenu(null);
   }
 
-  const startUrl = `http://localhost:${PORT}`;
+  const startUrl = `http://127.0.0.1:${PORT}`;
 
-  // 修复 #9: 添加重试上限，防止 server 永远启动失败时无限循环
+  // 防白屏与空指针保护：添加 mainWindow 存在性判定与加载上限
   let retryCount = 0;
   const MAX_RETRIES = 30;
   const loadApp = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     if (retryCount >= MAX_RETRIES) {
       console.error("[Electron] Server failed to start after " + MAX_RETRIES + " retries, quitting.");
       app.quit();
@@ -110,7 +106,9 @@ function createWindow() {
     }
     retryCount++;
     mainWindow.loadURL(startUrl).catch(() => {
-      setTimeout(loadApp, 500);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        setTimeout(loadApp, 500);
+      }
     });
   };
 
