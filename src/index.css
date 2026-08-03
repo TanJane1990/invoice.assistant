@@ -21,7 +21,8 @@ body.theme-light {
   .header-container,
   .settings-modal,
   .batch-modal,
-  .toolbar-container {
+  .toolbar-container,
+  button {
     display: none !important;
   }
 
@@ -30,11 +31,19 @@ body.theme-light {
     margin: 0mm;
   }
 
-  html, body, body.theme-dark, body.theme-light {
+  html,
+  body,
+  #root,
+  main,
+  div,
+  body.theme-dark,
+  body.theme-light {
     background-color: #ffffff !important;
+    background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     -webkit-font-smoothing: antialiased;
@@ -49,24 +58,32 @@ body.theme-light {
   }
 
   img, canvas, svg {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     max-width: 100% !important;
+    max-height: 100% !important;
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
   }
 
   .a4-print-page {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     box-shadow: none !important;
     border: none !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
     width: 100% !important;
-    height: 100% !important;
     max-width: 100% !important;
     overflow: hidden !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
   }
 
   * {
