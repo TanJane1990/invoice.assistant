@@ -14,6 +14,7 @@ import {
   Square,
   Plus,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface InvoiceLedgerTableProps {
   invoices: InvoiceData[];
@@ -72,9 +73,8 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
     const numberCounts: Record<string, string[]> = {};
 
     invoices.forEach((inv) => {
-      // 修复 #31: 使用 invoiceCode + invoiceNumber 组合键，与 App.tsx 查重逻辑保持一致
-      const numKey = `${(inv.invoiceCode || "").trim()}_${(inv.invoiceNumber || "").trim()}`;
-      if (numKey !== "_") {
+      const numKey = (inv.invoiceNumber || "").trim();
+      if (numKey) {
         if (!numberCounts[numKey]) numberCounts[numKey] = [];
         numberCounts[numKey].push(inv.id);
       }
@@ -98,13 +98,12 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
   // Filter invoices
   const filteredInvoices = invoices.filter((inv) => {
-    const lowerSearch = searchTerm.toLowerCase();
     const matchesSearch =
-      inv.invoiceNumber.toLowerCase().includes(lowerSearch) ||
-      (inv.invoiceCode && inv.invoiceCode.toLowerCase().includes(lowerSearch)) ||
-      inv.sellerName.toLowerCase().includes(lowerSearch) ||
-      inv.buyerName.toLowerCase().includes(lowerSearch) ||
-      (inv.remarks && inv.remarks.toLowerCase().includes(lowerSearch));
+      inv.invoiceNumber.includes(searchTerm) ||
+      (inv.invoiceCode && inv.invoiceCode.includes(searchTerm)) ||
+      inv.sellerName.includes(searchTerm) ||
+      inv.buyerName.includes(searchTerm) ||
+      (inv.remarks && inv.remarks.includes(searchTerm));
 
     const matchesCategory =
       selectedCategory === "all" || inv.category === selectedCategory;
@@ -122,7 +121,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
   // Export to Excel with duplicate group tags & protection
   const handleExportToExcel = () => {
-    exportInvoicesToExcel(invoices, systemSettings, `发票查重汇总台账_${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}-${String(new Date().getDate()).padStart(2,"0")}.xlsx`);
+    exportInvoicesToExcel(invoices, systemSettings, `发票查重汇总台账_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
   return (

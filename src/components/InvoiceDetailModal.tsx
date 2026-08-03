@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { InvoiceData, InvoiceCategory } from "../types";
 import { numberToRMB } from "../utils/numberToRMB";
 import { X, Save, Plus, Trash2, Edit3 } from "lucide-react";
@@ -20,11 +20,6 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
   const [form, setForm] = useState<InvoiceData>({ ...invoice });
 
-  // 修复 #29: 当 invoice prop 变化时（切换编辑不同发票），同步更新表单状态
-  useEffect(() => {
-    if (invoice) setForm({ ...invoice });
-  }, [invoice]);
-
   const categories: InvoiceCategory[] = [
     "餐饮费",
     "交通费",
@@ -39,10 +34,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   ];
 
   const handleAmountChange = (newAmt: number) => {
-    // 修复 #28: 动态读取发票明细中的税率，而非硬编码 6%
-    const taxRateStr = form.items?.[0]?.taxRate || "6%";
-    const taxRateVal = parseFloat(taxRateStr.replace("%", "")) / 100 || 0.06;
-    const withoutTax = Math.round((newAmt / (1 + taxRateVal)) * 100) / 100;
+    const withoutTax = Math.round(newAmt * 0.94 * 100) / 100;
     const tax = Math.round((newAmt - withoutTax) * 100) / 100;
 
     setForm((prev) => ({

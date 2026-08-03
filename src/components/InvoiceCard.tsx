@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { InvoiceData, GridMode } from "../types";
 import { QrCode, Trash2, Edit3, Tag, ShieldCheck, AlertTriangle, FileText, Image as ImageIcon } from "lucide-react";
-import { convertPdfToImageDataUrl } from "../utils/pdfToImage";
 
 interface InvoiceCardProps {
   invoice: InvoiceData;
@@ -20,25 +19,8 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
   onDelete,
   index,
 }) => {
-  const [viewMode, setViewMode] = useState<"template" | "original">("original");
+  const [viewMode, setViewMode] = useState<"template" | "original">("template");
   const [fileLoadError, setFileLoadError] = useState(false);
-  const [renderedImgUrl, setRenderedImgUrl] = useState<string>(invoice.fileUrl || "");
-
-  useEffect(() => {
-    if (invoice.fileUrl) {
-      if (invoice.fileUrl.startsWith("data:application/pdf") || invoice.fileUrl.includes("pdf")) {
-        convertPdfToImageDataUrl(invoice.fileUrl)
-          .then((pngUrl) => {
-            if (pngUrl) setRenderedImgUrl(pngUrl);
-          })
-          .catch(() => {
-            setRenderedImgUrl(invoice.fileUrl);
-          });
-      } else {
-        setRenderedImgUrl(invoice.fileUrl);
-      }
-    }
-  }, [invoice.fileUrl]);
 
   const isSingle = gridMode === "1";
   const isMini = gridMode === "4";
@@ -159,21 +141,58 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
         </div>
       </div>
 
-      {/* RENDER ORIGINAL FILE IMAGE / PDF DIRECTLY FULL BLEED */}
-      {viewMode === "original" && (renderedImgUrl || invoice.fileUrl) && !fileLoadError ? (
-        <div className="w-full h-full flex-1 flex flex-col items-center justify-center bg-white overflow-hidden relative">
-          <img
-            src={renderedImgUrl || invoice.fileUrl}
-            alt={invoice.fileName || "真实发票文件原件"}
-            className="w-full h-full object-contain pointer-events-none"
-            onError={() => setFileLoadError(true)}
-          />
+      {/* RENDER ORIGINAL FILE IMAGE / PDF IF SELECTED */}
+      {viewMode === "original" && invoice.fileUrl && !fileLoadError ? (
+        <div className="border border-slate-300 p-1 relative bg-slate-50 flex-1 flex flex-col items-center justify-between overflow-hidden rounded min-h-[220px]">
+          <div className="w-full h-full flex-1 flex items-center justify-center bg-white rounded border border-slate-200 shadow-inner overflow-hidden min-h-[200px]">
+            {invoice.fileUrl.startsWith("data:application/pdf") ||
+            (invoice.fileUrl.startsWith("data:") && invoice.fileUrl.includes("pdf")) ? (
+              <iframe
+                src={`${invoice.fileUrl}#toolbar=0&navpanes=0&view=FitH`}
+                className="w-full h-full min-h-[220px] border-none pointer-events-auto"
+                title={invoice.fileName || "真实导入PDF发票"}
+                onError={() => setFileLoadError(true)}
+              />
+            ) : invoice.fileUrl.startsWith("data:image/") ||
+              invoice.fileUrl.startsWith("blob:") ||
+              invoice.fileUrl.startsWith("http") ? (
+              <img
+                src={invoice.fileUrl}
+                alt={invoice.fileName || "真实导入发票原票件"}
+                className="max-h-full max-w-full object-contain"
+                onError={() => setFileLoadError(true)}
+              />
+            ) : (
+              <div className="p-3 text-center space-y-1.5">
+                <FileText className="w-8 h-8 text-blue-600 mx-auto" />
+                <p className="font-bold text-xs text-slate-800 truncate max-w-[180px]">
+                  {invoice.fileName || "原件: " + invoice.invoiceNumber}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  票面数据已全额高精识别，已为您自动生成300DPI矢量版面
+                </p>
+                <button
+                  onClick={() => setViewMode("template")}
+                  className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded cursor-pointer transition-colors"
+                >
+                  查看300DPI矢量识别版面
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="mt-1 text-[8px] text-slate-500 flex justify-between w-full px-1 no-print print:hidden">
+            <span className="truncate max-w-[140px]">原件: {invoice.fileName || "导入真实票件"}</span>
+            <span className="text-blue-600 font-bold">真实原文件渲染</span>
+          </div>
         </div>
       ) : viewMode === "original" && fileLoadError ? (
-        <div className="border border-amber-300 p-3 bg-amber-50/60 flex-1 flex flex-col items-center justify-center text-center space-y-2 rounded min-h-[180px]">
+        <div className="border border-amber-300 p-3 bg-amber-50/60 flex-1 flex flex-col items-center justify-center text-center space-y-2 rounded min-h-[220px]">
           <AlertTriangle className="w-7 h-7 text-amber-600 mx-auto" />
           <p className="font-bold text-xs text-amber-900">
-            原发票文件获取异常
+            原发票原件未获取到二进制图片
+          </p>
+          <p className="text-[10px] text-amber-700 max-w-[200px]">
+            全票面数据已高精提取，请直接使用300DPI矢量版面打印输出
           </p>
           <button
             onClick={() => {
@@ -182,7 +201,7 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
             }}
             className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded cursor-pointer shadow-xs transition-colors"
           >
-            切换至矢量识别版面
+            切换至矢量识别版面 (最高质量)
           </button>
         </div>
       ) : isTrainTicket ? (

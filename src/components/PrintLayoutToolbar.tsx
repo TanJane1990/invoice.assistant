@@ -35,7 +35,7 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   onResetOrder,
 }) => {
   return (
-    <div className="no-print bg-slate-900 text-slate-100 border-b border-slate-800 px-4 py-3 sticky top-16 z-40 shadow-md">
+    <div className="no-print bg-slate-900 text-slate-100 border-b border-slate-800 px-4 py-3 sticky top-16 z-30 shadow-md">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* Left: Layout Selectors (1/2/4张拼页) */}
         <div className="flex items-center space-x-2">

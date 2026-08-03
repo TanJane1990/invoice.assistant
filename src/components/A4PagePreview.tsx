@@ -182,7 +182,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   }
 
   return (
-    <div className="w-full flex flex-col items-center py-8 px-4 overflow-x-auto min-h-screen z-0 relative">
+    <div className="w-full flex flex-col items-center py-8 px-4 overflow-x-auto min-h-screen">
       {/* Pages Container with Scaling Zoom */}
       <div
         className="transition-transform origin-top flex flex-col items-center space-y-12"
