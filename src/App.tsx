@@ -295,14 +295,8 @@ export default function App() {
         onOpenBatchImport={() => setIsImportModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onLoadSamples={handleLoadSamples}
-        onPrint={() => {
-          setActiveTab("layout");
-          setTimeout(() => {
-            window.print();
-          }, 120);
-        }}
+        onPrint={handleExportPdf}
         onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
         selectedCount={selectedInvoices.length}
         duplicateCount={duplicateCount}
       />

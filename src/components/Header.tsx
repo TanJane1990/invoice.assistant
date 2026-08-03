@@ -9,7 +9,6 @@ import {
   Settings,
   Sun,
   Moon,
-  Download,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -22,7 +21,6 @@ interface HeaderProps {
   onLoadSamples: () => void;
   onPrint: () => void;
   onExportExcel: () => void;
-  onExportPdf?: () => void;
   selectedCount: number;
   duplicateCount: number;
 }
@@ -36,7 +34,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   onPrint,
   onExportExcel,
-  onExportPdf,
 }) => {
   const isDark = theme === "dark";
 
@@ -136,21 +133,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span>批量导入发票</span>
             </button>
 
-            {onExportPdf && (
-              <button
-                onClick={onExportPdf}
-                title="合成生成标准 A4 发票排版 PDF 文件并保存"
-                className={`hidden xl:flex items-center space-x-1 px-3 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer border ${
-                  isDark
-                    ? "bg-blue-950/60 hover:bg-blue-900/80 text-blue-300 border-blue-800"
-                    : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                }`}
-              >
-                <Download className="w-4 h-4" />
-                <span>导出排版PDF</span>
-              </button>
-            )}
-
             <button
               onClick={onExportExcel}
               className={`hidden lg:flex items-center space-x-1 px-3 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer border ${
@@ -166,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onPrint}
               title="调出系统打印对话框或直接高清打印排版好的发票"
-              className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+              className="flex items-center space-x-1.5 px-4 py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4 text-red-500" />
               <span>一键打印</span>
