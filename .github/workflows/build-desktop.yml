@@ -1,9 +1,7 @@
-name: Build Desktop App (Windows & Mac)
+name: Build & Release Desktop App (Windows & Mac)
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
     branches: [ main, master ]
   workflow_dispatch:
     inputs:
@@ -59,19 +57,17 @@ jobs:
             dist_electron/*.exe
             dist_electron/*.dmg
 
+      # 自动创建/更新 GitHub Release (每次 push 到 main 分支或手动触发时自动上传产物)
       - name: Create / Update GitHub Release
-        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release_tag }}
-          name: ${{ inputs.release_tag }}
+          tag_name: ${{ inputs.release_tag || 'v1.0.0' }}
+          name: ${{ inputs.release_tag || '智能发票管理助手 v1.0.0 正式版' }}
           files: |
             dist_electron/*.exe
             dist_electron/*.dmg
-            dist_electron/*.zip
-            dist_electron/*.blockmap
-          draft: ${{ inputs.is_draft }}
-          prerelease: ${{ inputs.is_prerelease }}
+          draft: ${{ inputs.is_draft || false }}
+          prerelease: ${{ inputs.is_prerelease || false }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

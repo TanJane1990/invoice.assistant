@@ -6,6 +6,7 @@
   },
   "files": [
     "dist/**/*",
+    "!dist/**/*.map",
     "electron/**/*",
     "package.json"
   ],
@@ -29,7 +30,8 @@
     "createStartMenuShortcut": true,
     "shortcutName": "智能发票管理助手",
     "uninstallDisplayName": "智能发票管理助手",
-    "runAfterFinish": true
+    "runAfterFinish": true,
+    "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
   },
   "mac": {
     "target": [
@@ -40,6 +42,7 @@
     ],
     "category": "public.app-category.business",
     "icon": "assets/icon.png",
-    "identity": null
+    "identity": null,
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
   }
 }
