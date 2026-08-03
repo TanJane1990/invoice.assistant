@@ -40,7 +40,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let invoiceType = "电子发票（普通发票）";
   if (/非税收入|统一票据|财政电子|医疗收费|学杂费/.test(cleanText)) {
     const matchType = cleanText.match(/([\u4e00-\u9fa5]+非税收入[\u4e00-\u9fa5（）()]*)|\b财政电子票据\b/);
-    invoiceType = matchType ? matchType[0] : "北京市非税收入统一票据（电子）";
+    invoiceType = matchType ? matchType[0] : "非税收入统一票据（电子）";
   } else if (/铁路电子客票|火车票|铁路电子|电子客票/.test(cleanText)) {
     invoiceType = "电子发票（铁路电子客票）";
   } else if (/航空运输电子客票行程单|航空客票|行程单/.test(cleanText)) {
@@ -60,15 +60,16 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceCode = codeMatch[1];
   }
 
-  // 3. 发票号码 / 票据号码
+  // 3. 发票号码 / 票据号码 (如 26117000000921189091)
   let invoiceNumber = "";
   const numMatch =
-    cleanText.match(/(?:发票号码|票据号码|客票号|号码|流水号)[:：\s]*([A-Za-z0-9\-]{8,20})\b/) ||
-    cleanText.match(/\b(\d{8,20})\b/);
+    cleanText.match(/(?:发票号码|票据号码|客票号|号码|流水号)[:：\s]*([A-Za-z0-9\-]{8,24})\b/) ||
+    cleanText.match(/\b(\d{15,24})\b/) ||
+    cleanText.match(/\b(\d{8,14})\b/);
   if (numMatch) {
     invoiceNumber = numMatch[1];
   } else {
-    // 修复 #30: 基于文件名生成确定性的 fallback 号码，避免重复导入同一文件时无法查重
+    // 基于文件名生成确定性的 fallback 号码
     let hash = 0;
     const hashSource = fileName || rawText.slice(0, 200);
     for (let i = 0; i < hashSource.length; i++) {
@@ -77,7 +78,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceNumber = "F" + String(Math.abs(hash) % 100000000).padStart(8, "0");
   }
 
-  // 4. 开票日期
+  // 4. 开票日期 (如 2026年06月23日)
   let issueDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
   const dateMatch =
     cleanText.match(/开票日期[:：\s]*(\d{4})[年\/-](\d{1,2})[月\/-](\d{1,2})日?/) ||
@@ -93,14 +94,13 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let buyerName = "";
   let buyerTaxId = "";
 
-  const buyerNameMatch = cleanText.match(
-    /(?:购买方|交款人|抬头|购买方名称|交款人名称)[:：\s]*([\u4e00-\u9fa5A-Za-z0-9（）()]{2,30})/
-  );
+  const buyerNameMatch =
+    cleanText.match(/(?:购买方|交款人|抬头)(?:信息|\s)*(?:名称)?[:：\s]*([\u4e00-\u9fa5A-Za-z0-9（）()]{2,35})/) ||
+    cleanText.match(/名称[:：\s]*([\u4e00-\u9fa5A-Za-z0-9（）()]{2,35})/);
   if (buyerNameMatch) {
     buyerName = buyerNameMatch[1].trim();
   }
 
-  // 税号或统一社会信用代码/身份证
   const buyerTaxMatch = cleanText.match(
     /(?:统一社会信用代码|纳税人识别号|交款人统一社会信用代码|身份证号)[:：\s]*([0-9A-HJ-NP-RT-UW-Y]{15,20})/
   );
@@ -112,9 +112,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let sellerName = "";
   let sellerTaxId = "";
 
-  const sellerNameMatch = cleanText.match(
-    /(?:销售方|收款单位|出票机构|开票单位|代理人|收款单位（章）)[:：\s]*([\u4e00-\u9fa5A-Za-z0-9（）()]{2,30})/
-  );
+  const sellerNameMatch =
+    cleanText.match(/(?:销售方|收款单位|出票机构|开票单位|代理人|收款单位（章）)(?:信息|\s)*(?:名称)?[:：\s]*([\u4e00-\u9fa5A-Za-z0-9（）()]{2,35})/);
   if (sellerNameMatch) {
     sellerName = sellerNameMatch[1].trim();
   }
@@ -128,49 +127,61 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     sellerTaxId = sellerTaxMatch[0].replace(/.*[:：\s]*/, "").trim();
   }
 
-  // 7. 金额提取 (小写与大写)
+  // 7. 金额提取 (小写与大写 - 精准处理含税合计)
   let totalAmountWithTax = 0;
   let totalAmountWithTaxCN = "";
 
-  // 提取大写金额 (如: 玖元伍角贰分, 拾壹元整, 壹佰贰拾元整)
-  const cnMatch = cleanText.match(/(?:价税合计\(大写\)|大写|金额大写|金额合计\(大写\))[:：\s]*([\u4e00-\u9fa5]{2,20})/);
+  // 提取大写金额 (如: 伍元柒角贰分, 玖元伍角, 拾壹元整)
+  const cnMatch = cleanText.match(/(?:价税合计\(大写\)|价税合计（大写）|大写|金额大写|金额合计\(大写\))[:：\s\S]{0,10}?([\u4e00-\u9fa5]{2,20})/);
   if (cnMatch) {
-    totalAmountWithTaxCN = cnMatch[1].trim();
+    totalAmountWithTaxCN = cnMatch[1].replace(/[ⓧ\s]/g, "").trim();
   }
 
-  // 提取小写金额
-  const amtMatches = cleanText.matchAll(/(?:价税合计|小写|票价|合计|金额|总计|合计金额)[小写\(（\s]*[¥￥]?\s*(\d+(?:\.\d{1,2})?)/g);
-  const foundAmts: number[] = [];
-  for (const m of amtMatches) {
-    const val = parseFloat(m[1]);
-    if (!isNaN(val) && val > 0) {
-      foundAmts.push(val);
-    }
-  }
+  // 7.1 精准捕获 (小写) ¥5.72 / (小写)5.72 / 价税合计 (小写) ¥ 5.72
+  const xiaoxieMatch =
+    cleanText.match(/(?:（小写）|\(小写\)|小写)[:：\s]*[¥￥]?\s*(\d+(?:\.\d{1,2})?)/) ||
+    cleanText.match(/(?:价税合计|金额合计|票价|合计金额|总计)[:：\s\S]{0,35}?[¥￥]\s*(\d+(?:\.\d{1,2})?)/);
 
-  if (foundAmts.length > 0) {
-    totalAmountWithTax = Math.max(...foundAmts);
+  if (xiaoxieMatch) {
+    totalAmountWithTax = parseFloat(xiaoxieMatch[1]);
   } else {
-    // 降级正则提取任意 ¥123.45 格式数字
-    const rawAmtMatch = cleanText.match(/[¥￥]\s*(\d+(?:\.\d{1,2})?)/);
-    if (rawAmtMatch) {
-      totalAmountWithTax = parseFloat(rawAmtMatch[1]);
-    } else {
-      totalAmountWithTax = 100.0;
+    // 7.2 搜索所有 ¥ 符号后的浮点金额
+    const amtMatches = cleanText.matchAll(/[¥￥]\s*(\d+(?:\.\d{1,2})?)/g);
+    const foundAmts: number[] = [];
+    for (const m of amtMatches) {
+      const val = parseFloat(m[1]);
+      if (!isNaN(val) && val > 0) {
+        foundAmts.push(val);
+      }
+    }
+
+    if (foundAmts.length > 0) {
+      // 在多笔金额中（如单价、税额、合计），价税合计通常是最大的数字
+      totalAmountWithTax = Math.max(...foundAmts);
     }
   }
 
-  if (!totalAmountWithTaxCN) {
-    totalAmountWithTaxCN = numberToRMB(totalAmountWithTax);
-  }
-
+  // 7.3 不含税金额与税额提取
   let totalTaxAmount = 0;
   let totalAmountWithoutTax = totalAmountWithTax;
 
   const taxMatch = cleanText.match(/(?:合计税额|税额|税额合计)[:：\s]*[¥￥]?\s*(\d+(?:\.\d{1,2})?)/);
   if (taxMatch) {
     totalTaxAmount = parseFloat(taxMatch[1]);
-    totalAmountWithoutTax = Math.round((totalAmountWithTax - totalTaxAmount) * 100) / 100;
+    if (totalAmountWithTax > totalTaxAmount) {
+      totalAmountWithoutTax = Math.round((totalAmountWithTax - totalTaxAmount) * 100) / 100;
+    }
+  }
+
+  const withoutTaxMatch = cleanText.match(/(?:不含税金额|金额合计|合计)[:：\s]*[¥￥]?\s*(\d+(?:\.\d{1,2})?)/);
+  if (withoutTaxMatch && totalAmountWithTax === 0) {
+    totalAmountWithoutTax = parseFloat(withoutTaxMatch[1]);
+    totalAmountWithTax = Math.round((totalAmountWithoutTax + totalTaxAmount) * 100) / 100;
+  }
+
+  // 如果依然未拿到大写，自动计算标准中文大写
+  if (totalAmountWithTax > 0 && !totalAmountWithTaxCN) {
+    totalAmountWithTaxCN = numberToRMB(totalAmountWithTax);
   }
 
   // 8. 费用类别智能判断
@@ -181,7 +192,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     category = "餐饮费";
   } else if (/酒店|宾馆|客栈|民宿|住宿|希尔顿|万豪|全季|汉庭/.test(cleanText)) {
     category = "住宿费";
-  } else if (/办公|文具|纸|打印|晨光|齐心|京东|电脑|耗材/.test(cleanText)) {
+  } else if (/办公|文具|纸|打印|晨光|齐心|京东|电脑|耗材|化学/.test(cleanText) || sellerName.includes("京东")) {
     category = "办公用品";
   } else if (/电信|移动|联通|通讯|宽带|话费|电话/.test(cleanText)) {
     category = "通讯费";
@@ -195,8 +206,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     category = "租金";
   }
 
-  // 9. 火车票/特殊票据专属信息收集到 remarks
-  let remarks = fileName || "本地PDF文本解析";
+  // 9. 备注与小项目处理
+  let remarks = fileName || "发票识别";
   if (invoiceType.includes("铁路") || invoiceType.includes("火车票")) {
     const stations = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)\s*(?:[GDCZKT]\d+)?\s*([\u4e00-\u9fa5]{2,6}站)/);
     const trainNo = cleanText.match(/([GDCZKT]\d{1,4})/i);
@@ -211,14 +222,6 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     if (infoParts.length > 0) {
       remarks = infoParts.join(" ");
-    }
-  } else if (invoiceType.includes("非税收入")) {
-    const userNoMatch = cleanText.match(/用户编号[:：\s]*(\d+)/);
-    const projectMatch = cleanText.match(/(\d+\s*[\u4e00-\u9fa5]+费[\u4e00-\u9fa5（）()]*)/);
-    if (projectMatch) {
-      remarks = projectMatch[1];
-    } else if (userNoMatch) {
-      remarks = `用户编号:${userNoMatch[1]}`;
     }
   }
 
@@ -235,7 +238,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   } else {
     items.push({
       id: `item-${Date.now()}-1`,
-      name: remarks || invoiceType,
+      name: sellerName ? `*${category}*物品/服务` : invoiceType,
       amount: totalAmountWithTax,
       quantity: 1,
     });
@@ -246,8 +249,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceCode,
     invoiceNumber,
     issueDate,
-    buyerName: buyerName || "北京云里雾里科技有限公司",
-    buyerTaxId: buyerTaxId || "91110108MA0192837X",
+    buyerName: buyerName || "个人",
+    buyerTaxId: buyerTaxId || "",
     sellerName: sellerName || "出票服务单位",
     sellerTaxId: sellerTaxId || "",
     totalAmountWithoutTax,

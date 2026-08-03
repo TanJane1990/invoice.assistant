@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isDark = theme === "dark";
 
   return (
-    <header className={`no-print border-b sticky top-0 z-40 transition-colors ${
+    <header className={`no-print border-b sticky top-0 z-50 transition-colors ${
       isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 shadow-xs text-slate-900"
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
