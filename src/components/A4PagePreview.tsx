@@ -1,153 +1,99 @@
 import React from "react";
-import { InvoiceData, PaperType, PrintConfig } from "../types";
+import { InvoiceData, PrintConfig } from "../types";
 import { InvoiceCard } from "./InvoiceCard";
-import { FilePlus2, ChevronLeft, ChevronRight, FileCheck } from "lucide-react";
+import { FilePlus2 } from "lucide-react";
 
 interface A4PagePreviewProps {
   invoices: InvoiceData[];
   config: PrintConfig;
-  zoom: number;
-  onEditInvoice: (invoice: InvoiceData) => void;
-  onDeleteInvoice: (id: string) => void;
-  onOpenBatchImport: () => void;
+  showCropLines: boolean;
+  onEditInvoice?: (invoice: InvoiceData) => void;
+  onDeleteInvoice?: (id: string) => void;
+  onOpenBatchImport?: () => void;
+  zoom?: number;
 }
+
+// Paper Sizes in Millimeters (mm)
+const PAPER_SIZES: Record<string, { width: string; height: string }> = {
+  A4: { width: "210mm", height: "297mm" },
+  A5: { width: "148mm", height: "210mm" },
+  B5: { width: "176mm", height: "250mm" },
+  InvoiceSpecial240: { width: "240mm", height: "140mm" },
+  InvoiceSpecial210: { width: "210mm", height: "140mm" },
+};
+
+// Margins in Millimeters
+const MARGIN_SIZES: Record<string, string> = {
+  none: "0mm",
+  compact: "3mm",
+  normal: "5mm",
+  wide: "10mm",
+};
 
 export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   invoices,
   config,
-  zoom,
+  showCropLines,
   onEditInvoice,
   onDeleteInvoice,
   onOpenBatchImport,
+  zoom = 1.0,
 }) => {
-  // Calculate items per page based on gridMode
-  const itemsPerPage = parseInt(config.gridMode, 10);
-
-  interface PageData {
-    invoices: InvoiceData[];
-    groupTitle?: string;
-  }
-
-  const pages: PageData[] = [];
-
-  // 分类识别函数：1.电子发票(电票)  2.火车票(铁路客票)  3.行程单及其他凭证(置于最后)
-  const classifyInvoice = (inv: InvoiceData) => {
-    const typeText = `${inv.invoiceType || ""} ${inv.category || ""} ${inv.remarks || ""}`;
-
-    // 1. 火车票 / 铁路客票
-    if (/火车票|铁路|高铁|动车/.test(typeText) || /火车|铁路/.test(inv.invoiceType || "")) {
-      return {
-        rank: 2,
-        groupKey: "train",
-        groupTitle: "火车票（铁路客票）",
-        isSmallTicket: true,
-      };
-    }
-
-    // 2. 行程单、机票行程单、出租车票、定额发票、其它非标准电票
-    if (/行程单|机票|航空|出租车|定额|公交|客运/.test(typeText) && !/电子发票|增值税/.test(inv.invoiceType || "")) {
-      return {
-        rank: 3,
-        groupKey: "itinerary_other",
-        groupTitle: "行程单及其他凭证",
-        isSmallTicket: false,
-      };
-    }
-
-    // 3. 电子发票（电票）- 默认
-    return {
-      rank: 1,
-      groupKey: "elec",
-      groupTitle: "电子发票（电票）",
-      isSmallTicket: false,
-    };
-  };
-
-  if (config.sortBy === "invoice_type") {
-    // 按照【按发票种类/票种】排序逻辑：分类并独立拼页排版（1:电票 -> 2:火车票 -> 3:行程单置于最后）
-    const categoryBuckets: { [key: string]: { meta: ReturnType<typeof classifyInvoice>; invoices: InvoiceData[] } } = {
-      elec: {
-        meta: { rank: 1, groupKey: "elec", groupTitle: "电子发票（电票）", isSmallTicket: false },
-        invoices: [],
-      },
-      train: {
-        meta: { rank: 2, groupKey: "train", groupTitle: "火车票（铁路客票）", isSmallTicket: true },
-        invoices: [],
-      },
-      itinerary_other: {
-        meta: { rank: 3, groupKey: "itinerary_other", groupTitle: "行程单及其他凭证", isSmallTicket: false },
-        invoices: [],
-      },
-    };
-
-    invoices.forEach((inv) => {
-      const catMeta = classifyInvoice(inv);
-      categoryBuckets[catMeta.groupKey].invoices.push(inv);
-    });
-
-    // 依次按 rank (电票 -> 火车票 -> 行程单及其他) 处理拼页
-    const orderedKeys = ["elec", "train", "itinerary_other"];
-
-    orderedKeys.forEach((key) => {
-      const bucket = categoryBuckets[key];
-      if (bucket.invoices.length === 0) return;
-
-      const groupItemsPerPage = bucket.meta.isSmallTicket ? Math.max(itemsPerPage, 6) : itemsPerPage;
-
-      // 组内按日期旧到新排序
-      const sortedGroup = [...bucket.invoices].sort((a, b) => a.issueDate.localeCompare(b.issueDate));
-
-      for (let i = 0; i < sortedGroup.length; i += groupItemsPerPage) {
-        pages.push({
-          invoices: sortedGroup.slice(i, i + groupItemsPerPage),
-          groupTitle: bucket.meta.isSmallTicket
-            ? `${bucket.meta.groupTitle} (小票专用6张/页排版)`
-            : key === "itinerary_other"
-            ? `${bucket.meta.groupTitle} (已置于最后)`
-            : bucket.meta.groupTitle,
-        });
-      }
-    });
-  } else {
-    // 其他通用排序：全局连续拼页
-    const sortedInvoices = [...invoices].sort((a, b) => {
-      if (config.sortBy === "date_asc") return a.issueDate.localeCompare(b.issueDate);
-      if (config.sortBy === "date_desc") return b.issueDate.localeCompare(a.issueDate);
-      if (config.sortBy === "amount_desc") return b.totalAmountWithTax - a.totalAmountWithTax;
-      if (config.sortBy === "category") return a.category.localeCompare(b.category);
-      return 0;
-    });
-
-    for (let i = 0; i < sortedInvoices.length; i += itemsPerPage) {
-      pages.push({
-        invoices: sortedInvoices.slice(i, i + itemsPerPage),
-      });
-    }
-  }
-
-  // Margin CSS variable lookup
-  const marginMap = {
-    compact: "3mm",
-    normal: "5mm",
-    wide: "8mm",
-  };
-  const paddingValue = marginMap[config.marginSize] || "5mm";
-
-  // Paper Dimensions setup
-  const paperDimensions: Record<PaperType, { width: string; height: string; label: string }> = {
-    A4: { width: "210mm", height: "297mm", label: "A4 标准纸" },
-    A5: { width: "148mm", height: "210mm", label: "A5 便携纸" },
-    B5: { width: "176mm", height: "250mm", label: "B5 常用纸" },
-    InvoiceSpecial240: { width: "240mm", height: "140mm", label: "发票专用纸(240×140mm)" },
-    InvoiceSpecial210: { width: "210mm", height: "140mm", label: "发票专用纸(210×140mm)" },
-  };
+  const paperKey = config.paperType || "A4";
+  const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
+  const isLandscape = config.orientation === "landscape";
+  const paddingValue = MARGIN_SIZES[config.margin || "normal"] || "5mm";
 
   const isGrid1SingleTicket = config.gridMode === "1";
-  const paperInfo = paperDimensions[config.paperType || "A4"] || paperDimensions.A4;
-  const paperSize = { width: paperInfo.width, height: paperInfo.height };
-  const isLandscape = config.orientation === "landscape";
-  
-  // When gridMode is "1" (单张发票原规), size precisely to 210x140mm (standard e-invoice ticket size)
+
+  // Calculate pages based on gridMode
+  const itemsPerPage =
+    config.gridMode === "1"
+      ? 1
+      : config.gridMode === "2"
+      ? 2
+      : config.gridMode === "4"
+      ? 4
+      : 2;
+
+  // Group invoices if sortBy is category
+  const pages = React.useMemo(() => {
+    if (config.sortBy === "category") {
+      const grouped: Record<string, InvoiceData[]> = {};
+      invoices.forEach((inv) => {
+        const cat = inv.category || "其他";
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(inv);
+      });
+
+      const pageList: Array<{ groupTitle?: string; invoices: InvoiceData[] }> = [];
+      Object.entries(grouped).forEach(([catTitle, catInvoices]) => {
+        for (let i = 0; i < catInvoices.length; i += itemsPerPage) {
+          pageList.push({
+            groupTitle: catTitle,
+            invoices: catInvoices.slice(i, i + itemsPerPage),
+          });
+        }
+      });
+      return pageList;
+    } else {
+      const sorted = [...invoices];
+      if (config.sortBy === "date") {
+        sorted.sort((a, b) => (a.issueDate || "").localeCompare(b.issueDate || ""));
+      } else if (config.sortBy === "amount") {
+        sorted.sort((a, b) => b.totalAmountWithTax - a.totalAmountWithTax);
+      }
+
+      const pageList: Array<{ groupTitle?: string; invoices: InvoiceData[] }> = [];
+      for (let i = 0; i < sorted.length; i += itemsPerPage) {
+        pageList.push({
+          invoices: sorted.slice(i, i + itemsPerPage),
+        });
+      }
+      return pageList;
+    }
+  }, [invoices, config.sortBy, itemsPerPage]);
+
   const pageWidth = isGrid1SingleTicket
     ? "210mm"
     : isLandscape
@@ -161,14 +107,14 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
   if (invoices.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center bg-slate-100/60 rounded-2xl border-2 border-dashed border-slate-300 my-8">
-        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4 shadow-sm">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center bg-slate-100/60 dark:bg-slate-900/60 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 my-8">
+        <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/50 flex items-center justify-center text-red-600 mb-4 shadow-sm">
           <FilePlus2 className="w-8 h-8" />
         </div>
-        <h3 className="text-lg font-bold text-slate-800 mb-1">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">
           发票排版预览为空
         </h3>
-        <p className="text-sm text-slate-500 max-w-md mb-6">
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6">
           您尚未勾选或导入任何发票。请批量上传电子发票PDF/图片文件或选择本地Excel表格导入。
         </p>
         <button
@@ -182,10 +128,10 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   }
 
   return (
-    <div className="w-full flex flex-col items-center py-8 px-4 overflow-x-auto min-h-screen">
+    <div className="w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen">
       {/* Pages Container with Scaling Zoom */}
       <div
-        className="transition-transform origin-top flex flex-col items-center space-y-12"
+        className="transition-transform origin-top flex flex-col items-center space-y-10"
         style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
       >
         {pages.map((pageData, pageIdx) => {
@@ -194,7 +140,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
             <div key={`page-${pageIdx}`} className="relative flex flex-col items-center">
               {/* On-screen Page Badge (hidden in print) */}
               <div
-                className="no-print mb-2 flex items-center justify-between text-xs font-semibold text-slate-500 px-2"
+                className="no-print mb-2 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 px-1"
                 style={{ width: pageWidth }}
               >
                 <span className="flex items-center space-x-1.5">
@@ -203,94 +149,60 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                     第 {pageIdx + 1} 页 / 共 {pages.length} 页 ({config.paperType || "A4"}{isLandscape ? "横向" : "纵向"})
                   </span>
                   {pageData.groupTitle && (
-                    <span className="px-2 py-0.5 bg-red-100 text-red-700 font-bold rounded-md text-[11px] border border-red-200">
+                    <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 font-bold rounded-md text-[11px] border border-red-200 dark:border-red-800">
                       【按票种分类】{pageData.groupTitle}
                     </span>
                   )}
                 </span>
-                <span className="font-mono text-slate-400">
+                <span className="font-mono text-slate-500 dark:text-slate-400">
                   本页容纳 {pageInvoices.length} 张发票 ({config.gridMode}张/页排版)
                 </span>
               </div>
 
-            {/* Pixel-Accurate Printable Sheet */}
-            <div
-              className="a4-print-page bg-white shadow-xl hover:shadow-2xl border border-slate-200 transition-shadow relative"
-              style={{
-                width: pageWidth,
-                minHeight: pageHeight,
-                padding: paddingValue,
-                boxSizing: "border-box",
-                pageBreakAfter: "always",
-                breakAfter: "page",
-              }}
-            >
-              {/* Grid Layout inside Page */}
+              {/* Pixel-Accurate Printable Sheet */}
               <div
-                className={`w-full h-full relative ${
-                  pageInvoices.length > 4
-                    ? "grid grid-cols-2 grid-rows-3 gap-3"
-                    : config.gridMode === "1"
-                    ? "flex flex-col items-stretch justify-stretch w-full h-full"
-                    : config.gridMode === "2"
-                    ? "grid grid-cols-1 grid-rows-2 gap-4"
-                    : "grid grid-cols-2 grid-rows-2 gap-4"
-                }`}
+                className="a4-print-page bg-white shadow-xl hover:shadow-2xl border border-slate-200 dark:border-slate-700 transition-shadow relative"
                 style={{
-                  minHeight: `calc(${pageHeight} - (${paddingValue} * 2))`,
+                  width: pageWidth,
+                  minHeight: pageHeight,
+                  padding: paddingValue,
+                  boxSizing: "border-box",
+                  pageBreakAfter: "always",
+                  breakAfter: "page",
                 }}
               >
-                {pageInvoices.map((inv, idx) => (
-                  <div
-                    key={inv.id}
-                    className="w-full h-full flex flex-col flex-1"
-                  >
+                {/* Grid Layout inside Page */}
+                <div
+                  className={`w-full h-full relative ${
+                    pageInvoices.length > 4
+                      ? "grid grid-cols-2 grid-rows-3 gap-3"
+                      : config.gridMode === "1"
+                      ? "flex flex-col items-stretch justify-stretch w-full h-full"
+                      : config.gridMode === "2"
+                      ? "grid grid-cols-1 grid-rows-2 gap-4"
+                      : "grid grid-cols-2 grid-rows-2 gap-4"
+                  }`}
+                  style={{
+                    minHeight: `calc(${pageHeight} - (${paddingValue} * 2))`,
+                    height: `calc(${pageHeight} - (${paddingValue} * 2))`,
+                  }}
+                >
+                  {pageInvoices.map((invoice, idx) => (
                     <InvoiceCard
-                      invoice={inv}
-                      gridMode={pageInvoices.length > 4 ? "4" : config.gridMode}
-                      showCropLines={config.showCropLines}
+                      key={invoice.id}
+                      invoice={invoice}
+                      gridMode={config.gridMode}
+                      showCropLines={showCropLines}
                       onEdit={onEditInvoice}
                       onDelete={onDeleteInvoice}
                       index={pageIdx * itemsPerPage + idx}
                     />
-                  </div>
-                ))}
-
-                {/* Grid-Level Page Cut Guidelines */}
-                {config.showCropLines && config.gridMode === "2" && (
-                  <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 border-b-2 border-dashed border-slate-400 pointer-events-none flex items-center justify-end pr-2 z-10">
-                    <span className="no-print print:hidden text-[9px] text-slate-500 bg-white/90 px-1 font-mono">
-                      ✂ 剪裁边线
-                    </span>
-                  </div>
-                )}
-
-                {config.showCropLines && config.gridMode === "4" && (
-                  <>
-                    {/* Center Horizontal Line */}
-                    <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 border-b-2 border-dashed border-slate-400 pointer-events-none flex items-center justify-end pr-2 z-10">
-                      <span className="no-print print:hidden text-[9px] text-slate-500 bg-white/90 px-1 font-mono">
-                        ✂ 剪裁边线
-                      </span>
-                    </div>
-                    {/* Center Vertical Line */}
-                    <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 border-r-2 border-dashed border-slate-400 pointer-events-none flex items-end justify-center pb-1 z-10">
-                      <span className="no-print print:hidden text-[9px] text-slate-500 bg-white/90 px-0.5 font-mono">
-                        ✂
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Page Footer Mark for Reference */}
-              <div className="absolute bottom-2 right-4 text-[8px] text-slate-300 font-mono no-print">
-                智能发票管理助手 · 页码 {pageIdx + 1}/{pages.length}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
     </div>
   );
