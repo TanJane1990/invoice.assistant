@@ -86,7 +86,11 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         const mimeType = file.type || "image/png";
 
         // Call Express API endpoint with optional settings
-        const response = await fetch("/api/parse-invoice", {
+        const apiEndpoint = window.location.protocol.startsWith("http")
+          ? "/api/parse-invoice"
+          : "http://127.0.0.1:3000/api/parse-invoice";
+
+        const response = await fetch(apiEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

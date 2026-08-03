@@ -92,27 +92,34 @@ function createWindow() {
     Menu.setApplicationMenu(null);
   }
 
-  const startUrl = `http://127.0.0.1:${PORT}`;
+  const isDev = !app.isPackaged;
 
-  // 防白屏与空指针保护：添加 mainWindow 存在性判定与加载上限
-  let retryCount = 0;
-  const MAX_RETRIES = 30;
-  const loadApp = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (retryCount >= MAX_RETRIES) {
-      console.error("[Electron] Server failed to start after " + MAX_RETRIES + " retries, quitting.");
-      app.quit();
-      return;
-    }
-    retryCount++;
-    mainWindow.loadURL(startUrl).catch(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        setTimeout(loadApp, 500);
+  if (isDev) {
+    const startUrl = `http://127.0.0.1:${PORT}`;
+    let retryCount = 0;
+    const MAX_RETRIES = 30;
+    const loadApp = () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (retryCount >= MAX_RETRIES) {
+        console.error("[Electron] Dev server failed to start after " + MAX_RETRIES + " retries, quitting.");
+        app.quit();
+        return;
       }
+      retryCount++;
+      mainWindow.loadURL(startUrl).catch(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          setTimeout(loadApp, 500);
+        }
+      });
+    };
+    loadApp();
+  } else {
+    // 生产模式：直接使用 native loadFile 加载本地静态页面，实现 0ms 秒开、免防火墙及彻底消除白屏
+    const indexPath = path.join(__dirname, "../dist/index.html");
+    mainWindow.loadFile(indexPath).catch((err) => {
+      console.error("[Electron] Failed to load local index.html:", err);
     });
-  };
-
-  loadApp();
+  }
 
   // 核心防白屏：DOM 准备完毕、内容绘制完成后才优雅展现窗口
   mainWindow.once("ready-to-show", () => {
