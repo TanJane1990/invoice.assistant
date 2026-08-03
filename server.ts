@@ -124,8 +124,8 @@ async function startServer() {
       }
 
       // Strategy 2: Local PDF OCR & Rule Extraction Engine (No API key required)
-      let extractedText = "";
-      if (isPdf) {
+      let extractedText = req.body.extractedText || "";
+      if (isPdf && !extractedText) {
         try {
           // 优化点 1: 按需动态加载 PDF 库，缩短 30%+ 软件首屏启动时间
           const pdfParseModule = await import("pdf-parse");

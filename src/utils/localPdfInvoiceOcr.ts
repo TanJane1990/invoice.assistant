@@ -42,11 +42,11 @@ const CN_UNIT_MAP: Record<string, number> = {
 
 export function parseChineseAmount(text: string): number | null {
   if (!text) return null;
-  const m = text.match(/([零壹贰叁肆伍陆柒捌玖一二三四五六七八九拾佰仟万亿十百千]+元[零壹贰叁肆伍陆柒捌玖一二三四五六七八九角分整]*)/);
+  const m = text.match(/([零壹贰叁肆伍陆柒捌玖一二三四五六七八九拾佰仟万亿十百千]+[元圆][零壹贰叁肆伍陆柒捌玖一二三四五六七八九角分整]*)/);
   if (!m) return null;
 
   const cnStr = m[1];
-  const yuanIdx = cnStr.indexOf("元");
+  const yuanIdx = cnStr.search(/[元圆]/);
   if (yuanIdx === -1) return null;
 
   const yuanPart = cnStr.slice(0, yuanIdx);
@@ -66,7 +66,6 @@ export function parseChineseAmount(text: string): number | null {
     if (CN_NUM_MAP[fenChar]) fenVal = CN_NUM_MAP[fenChar] * 0.01;
   }
 
-  let result = 0;
   let section = 0;
   let current = 0;
 
@@ -186,11 +185,15 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     sellerName = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
   }
 
+  if (!buyerName && cleanText.includes("个人")) {
+    buyerName = "个人";
+  }
+
   if (!buyerName && companies.length >= 1) {
     buyerName = companies[0];
   }
-  if (!sellerName && companies.length >= 2) {
-    sellerName = companies[1];
+  if (!sellerName && companies.length >= 1) {
+    sellerName = companies.find(c => c !== buyerName) || companies[0];
   }
 
   // 6. 税号提取（排除 8/20 位纯数字发票号）
@@ -204,7 +207,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     buyerTaxId = validTaxIds[0];
     sellerTaxId = validTaxIds[1];
   } else if (validTaxIds.length === 1) {
-    buyerTaxId = validTaxIds[0];
+    sellerTaxId = validTaxIds[0];
   }
 
   // 7. 多重包含性含税金额提取引擎
@@ -214,10 +217,11 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const totalPatterns = [
     /(?:价税合计|价税\s*合\s*计)[^0-9¥￥]*[¥￥]?\s*[:：]?\s*([0-9,，]+\.?\d*)/,
     /[（\(]小写[）\)]\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
-    /小写[）\)]\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
+    /小写[）\)]?\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
     /[（\(]\s*小写\s*[）\)]\s*[¥￥]?\s*([0-9,，]+\.?\d*)/,
     /小写[^0-9¥￥]*[¥￥]\s*([0-9,，]+\.\d{2})/,
     /税\s*合\s*计[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d*)/,
+    /[¥￥]\s*([0-9,，]+\.\d{2})/,
   ];
 
   for (const pat of totalPatterns) {
@@ -233,7 +237,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
 
   if (totalAmountWithTax === 0) {
-    // 尝试解析中文大写金额 (如 壹佰贰拾元整 -> 120.00)
+    // 尝试解析中文大写金额 (如 伍圆柒角贰分 / 壹佰贰拾元整 -> 5.72)
     const cnAmount = parseChineseAmount(cleanText);
     if (cnAmount && cnAmount > 0) {
       totalAmountWithTax = cnAmount;
@@ -288,7 +292,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     category = "餐饮费";
   } else if (/酒店|宾馆|客栈|民宿|住宿|希尔顿|万豪|全季|汉庭/.test(cleanText)) {
     category = "住宿费";
-  } else if (/办公|文具|纸|打印|晨光|齐心|京东|电脑|耗材|化学/.test(cleanText) || sellerName.includes("京东")) {
+  } else if (/办公|文具|纸|打印|晨光|齐心|京东|杀虫剂|洗发水|超市|用品|耗材|化学/.test(cleanText) || sellerName.includes("京东")) {
     category = "办公用品";
   } else if (/电信|移动|联通|通讯|宽带|话费|电话/.test(cleanText)) {
     category = "通讯费";

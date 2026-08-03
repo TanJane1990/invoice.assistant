@@ -14,7 +14,7 @@ import {
 import { InvoiceData, SystemSettings } from "../types";
 import { numberToRMB } from "../utils/numberToRMB";
 import { parseInvoiceTextWithRules } from "../utils/localPdfInvoiceOcr";
-import { convertPdfToImageDataUrl } from "../utils/pdfToImage";
+import { convertPdfToImageDataUrl, extractTextFromPdf } from "../utils/pdfToImage";
 
 interface BatchImportModalProps {
   isOpen: boolean;
@@ -87,11 +87,13 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         const mimeType = file.type || "image/png";
 
         let previewFileUrl = fileBase64;
+        let extractedPdfText = "";
         if (mimeType.includes("pdf") || file.name.toLowerCase().endsWith(".pdf") || fileBase64.startsWith("data:application/pdf")) {
           try {
             previewFileUrl = await convertPdfToImageDataUrl(fileBase64);
+            extractedPdfText = await extractTextFromPdf(fileBase64);
           } catch (e) {
-            console.warn("PDF to image render info:", e);
+            console.warn("PDF render/text extract info:", e);
           }
         }
 
@@ -100,22 +102,28 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
           ? "/api/parse-invoice"
           : "http://127.0.0.1:3000/api/parse-invoice";
 
-        const response = await fetch(apiEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileBase64,
-            mimeType,
-            fileName: file.name,
-            aiApiKey: settings?.aiApiKey,
-            baiduApiKey: settings?.baiduApiKey,
-            baiduSecretKey: settings?.baiduSecretKey,
-          }),
-        });
+        let result: any = null;
+        try {
+          const response = await fetch(apiEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileBase64,
+              mimeType,
+              fileName: file.name,
+              extractedText: extractedPdfText,
+              aiApiKey: settings?.aiApiKey,
+              baiduApiKey: settings?.baiduApiKey,
+              baiduSecretKey: settings?.baiduSecretKey,
+            }),
+          });
+          result = await response.json();
+        } catch (fetchErr) {
+          console.warn("Fetch backend API failed, fallback to client OCR:", fetchErr);
+        }
 
-        const result = await response.json();
-
-        if (result.success && result.data) {
+        // If backend returned valid data with a positive total amount
+        if (result && result.success && result.data && result.data.totalAmountWithTax > 0) {
           const raw = result.data;
           const totalAmt = Number(raw.totalAmountWithTax || 0);
           const engineLabel = result.engine === "local_pdf_ocr" ? "【本地PDF-OCR算法】" : "【AI大模型/百度云】";
@@ -126,8 +134,8 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
             invoiceCode: raw.invoiceCode || "",
             invoiceNumber: raw.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
             issueDate: raw.issueDate || new Date().toISOString().split("T")[0],
-            buyerName: raw.buyerName || settings?.defaultCompany || "北京云里雾里科技有限公司",
-            buyerTaxId: raw.buyerTaxId || "91110108MA0192837X",
+            buyerName: raw.buyerName || settings?.defaultCompany || "个人",
+            buyerTaxId: raw.buyerTaxId || "",
             sellerName: raw.sellerName || "示例服务提供商",
             sellerTaxId: raw.sellerTaxId || "",
             totalAmountWithoutTax: Number(raw.totalAmountWithoutTax || totalAmt * 0.94),
@@ -174,57 +182,57 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
             )
           );
         } else {
-          throw new Error(result.error || "提取失败");
+          // Client-side PDF OCR algorithm with extracted PDF text
+          const clientParsed = parseInvoiceTextWithRules(extractedPdfText || file.name, file.name);
+          const totalAmt = clientParsed.totalAmountWithTax || 0;
+
+          const invFallback: InvoiceData = {
+            id: `inv-uploaded-${Date.now()}-${i}`,
+            invoiceType: clientParsed.invoiceType || "电子发票(普通发票)",
+            invoiceCode: clientParsed.invoiceCode || "",
+            invoiceNumber: clientParsed.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
+            issueDate: clientParsed.issueDate || new Date().toISOString().split("T")[0],
+            buyerName: clientParsed.buyerName || settings?.defaultCompany || "个人",
+            buyerTaxId: clientParsed.buyerTaxId || "",
+            sellerName: clientParsed.sellerName || "示例服务提供商",
+            totalAmountWithoutTax: clientParsed.totalAmountWithoutTax,
+            totalTaxAmount: clientParsed.totalTaxAmount,
+            totalAmountWithTax: totalAmt,
+            totalAmountWithTaxCN: clientParsed.totalAmountWithTaxCN,
+            category: clientParsed.category || "其他",
+            remarks: clientParsed.remarks || file.name,
+            items: clientParsed.items || [
+              {
+                id: `item-${Date.now()}-1`,
+                name: file.name,
+                amount: totalAmt,
+                quantity: 1,
+              },
+            ],
+            fileUrl: previewFileUrl,
+            fileName: file.name,
+            selectedForPrint: true,
+            importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
+          };
+
+          parsedInvoices.push(invFallback);
+
+          setUploadLogs((prev) =>
+            prev.map((log, idx) =>
+              idx === i
+                ? {
+                    ...log,
+                    status: "success",
+                    message: `【本地离线OCR引擎】已识别 (¥${totalAmt.toFixed(2)})`,
+                  }
+                : idx === i + 1
+                ? { ...log, status: "processing", message: "准备识别..." }
+                : log
+            )
+          );
         }
       } catch (err: any) {
-        // Fallback to client-side rule engine
-        const clientParsed = parseInvoiceTextWithRules(file.name, file.name);
-        const totalAmt = clientParsed.totalAmountWithTax || 100;
-
-        const invFallback: InvoiceData = {
-          id: `inv-uploaded-${Date.now()}-${i}`,
-          invoiceType: clientParsed.invoiceType || "增值税电子普通发票",
-          invoiceCode: clientParsed.invoiceCode || "",
-          invoiceNumber: clientParsed.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
-          issueDate: clientParsed.issueDate || new Date().toISOString().split("T")[0],
-          buyerName: settings?.defaultCompany || "北京云里雾里科技有限公司",
-          buyerTaxId: "91110108MA0192837X",
-          sellerName: clientParsed.sellerName || "示例服务提供商",
-          totalAmountWithoutTax: clientParsed.totalAmountWithoutTax,
-          totalTaxAmount: clientParsed.totalTaxAmount,
-          totalAmountWithTax: totalAmt,
-          totalAmountWithTaxCN: clientParsed.totalAmountWithTaxCN,
-          category: clientParsed.category || "其他",
-          remarks: clientParsed.remarks || file.name,
-          items: clientParsed.items || [
-            {
-              id: `item-${Date.now()}-1`,
-              name: file.name,
-              amount: totalAmt,
-              quantity: 1,
-            },
-          ],
-          fileUrl: fileBase64,
-          fileName: file.name,
-          selectedForPrint: true,
-          importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
-        };
-
-        parsedInvoices.push(invFallback);
-
-        setUploadLogs((prev) =>
-          prev.map((log, idx) =>
-            idx === i
-              ? {
-                  ...log,
-                  status: "success",
-                  message: `【本地离线OCR引擎】已识别 (¥${totalAmt.toFixed(2)})`,
-                }
-              : idx === i + 1
-              ? { ...log, status: "processing", message: "准备识别..." }
-              : log
-          )
-        );
+        console.warn("Error processing invoice file:", err);
       }
     }
 

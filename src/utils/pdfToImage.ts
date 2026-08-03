@@ -4,6 +4,43 @@ import * as pdfjsLib from "pdfjs-dist";
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 /**
+ * 从 PDF 文件 Base64/Uint8Array 中提取纯文本字符串
+ */
+export async function extractTextFromPdf(pdfDataUri: string): Promise<string> {
+  try {
+    let loadingTask;
+    if (pdfDataUri.startsWith("data:")) {
+      const base64Str = pdfDataUri.split(",")[1];
+      const binaryStr = atob(base64Str);
+      const len = binaryStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      loadingTask = pdfjsLib.getDocument({ data: bytes });
+    } else {
+      loadingTask = pdfjsLib.getDocument(pdfDataUri);
+    }
+
+    const pdfDoc = await loadingTask.promise;
+    let fullText = "";
+    const maxPages = Math.min(pdfDoc.numPages, 3);
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+      const page = await pdfDoc.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str || "")
+        .join(" ");
+      fullText += pageText + "\n";
+    }
+    return fullText;
+  } catch (err) {
+    console.warn("Extract text from PDF failed:", err);
+    return "";
+  }
+}
+
+/**
  * 将 PDF Base64/Uint8Array 渲染为 300DPI 超高清 PNG DataURL 图像
  */
 export async function convertPdfToImageDataUrl(pdfDataUri: string): Promise<string> {
