@@ -57,8 +57,9 @@ jobs:
             dist_electron/*.exe
             dist_electron/*.dmg
 
-      # 自动创建/更新 GitHub Release (每次 push 到 main 分支或手动触发时自动上传产物)
+      # 仅在手动触发 workflow_dispatch 时发布到 GitHub Releases
       - name: Create / Update GitHub Release
+        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release_tag || 'v1.0.0' }}
