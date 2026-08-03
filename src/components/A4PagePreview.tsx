@@ -107,22 +107,24 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
   if (invoices.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center bg-slate-100/60 dark:bg-slate-900/60 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 my-8">
-        <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/50 flex items-center justify-center text-red-600 mb-4 shadow-sm">
-          <FilePlus2 className="w-8 h-8" />
+      <div className="w-full flex justify-center py-16 px-4">
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-[#0E1422] rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-800 max-w-xl w-full shadow-2xs">
+          <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/60 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 shadow-2xs">
+            <FilePlus2 className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 mb-2">
+            发票排版预览为空
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6 leading-relaxed">
+            您尚未勾选或导入任何发票。请批量上传电子发票PDF/图片文件或选择本地Excel表格导入。
+          </p>
+          <button
+            onClick={onOpenBatchImport}
+            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md shadow-red-200 dark:shadow-none transition-all cursor-pointer"
+          >
+            立即批量导入发票
+          </button>
         </div>
-        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">
-          发票排版预览为空
-        </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6">
-          您尚未勾选或导入任何发票。请批量上传电子发票PDF/图片文件或选择本地Excel表格导入。
-        </p>
-        <button
-          onClick={onOpenBatchImport}
-          className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium text-xs rounded-xl shadow-md transition-all cursor-pointer"
-        >
-          立即批量导入发票
-        </button>
       </div>
     );
   }
@@ -161,7 +163,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
               {/* Pixel-Accurate Printable Sheet */}
               <div
-                className="a4-print-page bg-white shadow-xl hover:shadow-2xl border border-slate-200 dark:border-slate-700 transition-shadow relative"
+                className="a4-print-page bg-white text-slate-900 shadow-xl hover:shadow-2xl border border-slate-200 dark:border-slate-700 transition-shadow relative"
                 style={{
                   width: pageWidth,
                   minHeight: pageHeight,
