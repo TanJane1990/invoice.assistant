@@ -129,9 +129,16 @@ async function startServer() {
         try {
           // 优化点 1: 按需动态加载 PDF 库，缩短 30%+ 软件首屏启动时间
           const pdfParseModule = await import("pdf-parse");
-          const pdfParse = (pdfParseModule as any).default || pdfParseModule;
-          const pdfData = await pdfParse(fileBuffer);
-          extractedText = pdfData.text || "";
+          const PDFParseClass = (pdfParseModule as any).PDFParse || (pdfParseModule as any).default || pdfParseModule;
+          if (typeof PDFParseClass === "function" && PDFParseClass.prototype?.load) {
+            const parser = new PDFParseClass({ data: fileBuffer });
+            await parser.load();
+            const textData = await parser.getText();
+            extractedText = textData?.text || "";
+          } else if (typeof PDFParseClass === "function") {
+            const pdfData = await PDFParseClass(fileBuffer);
+            extractedText = pdfData?.text || "";
+          }
         } catch (pdfErr) {
           console.warn("pdfParse extraction warning:", pdfErr);
         }

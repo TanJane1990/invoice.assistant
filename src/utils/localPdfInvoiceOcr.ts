@@ -92,7 +92,7 @@ export function parseChineseAmount(text: string): number | null {
 }
 
 /**
- * 规则引擎：套用原 InvoiceMaster/Invoice-Project 高精解构算法
+ * 规则引擎：高精电子发票解构算法
  */
 export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""): ParsedInvoiceResult {
   const cleanText = rawText.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ");
@@ -114,19 +114,19 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceType = "增值税电子普通发票";
   }
 
-  // 2. 发票号码 (20位数电票, 10位财政票, 8位传统票)
+  // 2. 发票号码 (优先提取20位数电发票号、10位财政号或8位发票号)
   let invoiceNumber = "";
-  const mNum20 = cleanText.match(/(?:发票号码|发票号|号码)[:：\s]*(\d{20})/);
+  const mNum20 = cleanText.match(/\b(\d{20})\b/);
   if (mNum20) {
     invoiceNumber = mNum20[1];
   } else {
-    const mNum8 = cleanText.match(/(?:发票号码|发票号|号码)[:：\s]*(\d{8,12})\b/);
-    if (mNum8) {
-      invoiceNumber = mNum8[1];
+    const mNumLabeled = cleanText.match(/(?:发票号码|发票号|号码|票据号码)[:：\s]*(\d{8,12})\b/);
+    if (mNumLabeled) {
+      invoiceNumber = mNumLabeled[1];
     } else {
-      const mReceiptNum = cleanText.match(/(?:票据号码|票据号)[:：\s]*(\d{10})/);
-      if (mReceiptNum) {
-        invoiceNumber = mReceiptNum[1];
+      const mNum8 = cleanText.match(/\b(\d{8,12})\b/);
+      if (mNum8) {
+        invoiceNumber = mNum8[1];
       }
     }
   }
@@ -159,14 +159,22 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 5. 公司/主体名称正则抽取（套用 InvoiceMaster 专有 40+ 公司后缀模型）
-  const companyPattern = /([^\n\r]{3,50}(?:公司|单位|中心|联络处|处|局|厅|院|所|站|部|协会|基金|集团|学校|学院|大学|医院|银行|支行|分行|商会|工会|联合会|事务所|工作室|分公司|门店|超市|酒店|宾馆|研究院|幼儿园|诊所|卫生院|药房|药店|保险|证券|信托|委员会|办公室|管理局|服务中心))/g;
+  // 5. 公司/主体名称正则抽取
+  const companyPattern = /([^\n\r\t]{3,50}(?:公司|单位|中心|联络处|处|局|厅|院|所|站|部|协会|基金|集团|学校|学院|大学|医院|银行|支行|分行|商会|工会|联合会|事务所|工作室|分公司|门店|超市|酒店|宾馆|研究院|幼儿园|诊所|卫生院|药房|药店|保险|证券|信托|委员会|办公室|管理局|服务中心))/g;
   const companies: string[] = [];
   const compMatches = cleanText.matchAll(companyPattern);
   const seenComps = new Set<string>();
   for (const cm of compMatches) {
     const name = cm[1].trim();
-    if (name && name.length > 3 && !seenComps.has(name) && !name.includes("统一社会信用") && !name.includes("纳税人识别")) {
+    if (
+      name &&
+      name.length > 3 &&
+      !seenComps.has(name) &&
+      !name.includes("统一社会信用") &&
+      !name.includes("纳税人识别") &&
+      !name.includes("项目名称") &&
+      !name.includes("规格型号")
+    ) {
       seenComps.add(name);
       companies.push(name);
     }
@@ -175,37 +183,48 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let buyerName = "";
   let sellerName = "";
 
-  const mPayer = cleanText.match(/(?:购买方|交款人|抬头)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r]{2,50})/);
+  const mPayer = cleanText.match(/(?:购买方|交款人|抬头)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayer) {
     buyerName = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
-  }
-
-  const mPayee = cleanText.match(/(?:销售方|收款单位|出票机构|开票单位)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r]{2,50})/);
-  if (mPayee) {
-    sellerName = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
   }
 
   if (!buyerName && cleanText.includes("个人")) {
     buyerName = "个人";
   }
 
-  if (!buyerName && companies.length >= 1) {
-    buyerName = companies[0];
-  }
-  if (!sellerName && companies.length >= 1) {
-    sellerName = companies.find(c => c !== buyerName) || companies[0];
+  const mPayee = cleanText.match(/(?:销售方|收款单位|出票机构|开票单位)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
+  if (mPayee) {
+    const rawPayee = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
+    if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号")) {
+      sellerName = rawPayee;
+    }
   }
 
-  // 6. 税号提取（排除 8/20 位纯数字发票号）
+  if (!sellerName && companies.length > 0) {
+    sellerName = companies.find(c => c !== buyerName && c.includes("公司")) || companies[0];
+  }
+
+  if (!buyerName && companies.length >= 2) {
+    buyerName = companies.find(c => c !== sellerName) || "个人";
+  }
+
+  // 6. 税号提取
   let buyerTaxId = "";
   let sellerTaxId = "";
 
   const taxIdMatches = Array.from(cleanText.matchAll(/([A-Za-z0-9]{15,20})/g)).map(m => m[1]);
-  const validTaxIds = taxIdMatches.filter(id => !(id.length === 20 && /^\d+$/.test(id)) && !(id.length === 8 && /^\d+$/.test(id)));
+  // 排除纯数字20位发票号、8位发票号、16位订单号 (例如: 订单号:3534486011892712)
+  const validTaxIds = taxIdMatches.filter(id =>
+    id.length >= 15 &&
+    id.length <= 20 &&
+    !/^\d{20}$/.test(id) &&
+    !/^\d{8}$/.test(id) &&
+    !/^\d{16}$/.test(id)
+  );
 
   if (validTaxIds.length >= 2) {
-    buyerTaxId = validTaxIds[0];
-    sellerTaxId = validTaxIds[1];
+    sellerTaxId = validTaxIds.find(id => /[A-Z]/.test(id) || id.startsWith("91")) || validTaxIds[0];
+    buyerTaxId = validTaxIds.find(id => id !== sellerTaxId) || "";
   } else if (validTaxIds.length === 1) {
     sellerTaxId = validTaxIds[0];
   }
@@ -214,41 +233,38 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let totalAmountWithTax = 0;
   let totalAmountWithTaxCN = "";
 
-  const totalPatterns = [
-    /(?:价税合计|价税\s*合\s*计)[^0-9¥￥]*[¥￥]?\s*[:：]?\s*([0-9,，]+\.?\d*)/,
-    /[（\(]小写[）\)]\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
-    /小写[）\)]?\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
-    /[（\(]\s*小写\s*[）\)]\s*[¥￥]?\s*([0-9,，]+\.?\d*)/,
-    /小写[^0-9¥￥]*[¥￥]\s*([0-9,，]+\.\d{2})/,
-    /税\s*合\s*计[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d*)/,
-    /[¥￥]\s*([0-9,，]+\.\d{2})/,
-  ];
+  // 优先解析中文大写金额（发票上大写金额最准确且防串扰）
+  const cnAmount = parseChineseAmount(cleanText);
+  if (cnAmount && cnAmount > 0 && cnAmount < 1000000) {
+    totalAmountWithTax = cnAmount;
+  }
 
-  for (const pat of totalPatterns) {
-    const m = cleanText.match(pat);
-    if (m) {
-      const valStr = m[1].replace(/[,，]/g, "");
-      const val = parseFloat(valStr);
-      if (!isNaN(val) && val > 0) {
-        totalAmountWithTax = val;
-        break;
+  if (totalAmountWithTax === 0) {
+    const totalPatterns = [
+      /(?:价税合计|价税\s*合\s*计)[^0-9¥￥]*[¥￥]?\s*[:：]?\s*([0-9,，]+\.?\d*)/,
+      /(?:小写|（小写）|\(小写\))\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
+      /小写[）\)]?\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
+      /税\s*合\s*计[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d*)/,
+      /[¥￥]\s*([0-9,，]+\.\d{2})/,
+    ];
+
+    for (const pat of totalPatterns) {
+      const m = cleanText.match(pat);
+      if (m) {
+        const valStr = m[1].replace(/[,，]/g, "");
+        const val = parseFloat(valStr);
+        if (!isNaN(val) && val > 0 && val < 1000000) {
+          totalAmountWithTax = val;
+          break;
+        }
       }
     }
   }
 
   if (totalAmountWithTax === 0) {
-    // 尝试解析中文大写金额 (如 伍圆柒角贰分 / 壹佰贰拾元整 -> 5.72)
-    const cnAmount = parseChineseAmount(cleanText);
-    if (cnAmount && cnAmount > 0) {
-      totalAmountWithTax = cnAmount;
-    }
-  }
-
-  if (totalAmountWithTax === 0) {
-    // 回退策略：匹配所有浮点金额，取合法上限内的最大值
     const rawAmounts = Array.from(cleanText.matchAll(/[¥￥]\s*([0-9,，]+\.\d{2})/g))
       .map(m => parseFloat(m[1].replace(/[,，]/g, "")))
-      .filter(v => !isNaN(v) && v > 0 && v < 100000000);
+      .filter(v => !isNaN(v) && v > 0 && v < 1000000);
 
     if (rawAmounts.length > 0) {
       totalAmountWithTax = Math.max(...rawAmounts);
@@ -271,13 +287,13 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const mWithoutTax = cleanText.match(/(?<!价税)合\s*计[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d*)/);
   if (mWithoutTax) {
     const val = parseFloat(mWithoutTax[1].replace(/[,，]/g, ""));
-    if (!isNaN(val)) totalAmountWithoutTax = val;
+    if (!isNaN(val) && val < 1000000) totalAmountWithoutTax = val;
   }
 
   const mTax = cleanText.match(/税\s*额[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d*)/);
   if (mTax) {
     const val = parseFloat(mTax[1].replace(/[,，]/g, ""));
-    if (!isNaN(val)) totalTaxAmount = val;
+    if (!isNaN(val) && val < 1000000) totalTaxAmount = val;
   }
 
   if (totalAmountWithoutTax === totalAmountWithTax && totalTaxAmount > 0 && totalAmountWithTax > totalTaxAmount) {
@@ -347,7 +363,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     totalAmountWithoutTax,
     totalTaxAmount,
     totalAmountWithTax,
-    totalAmountWithTaxCN,
+    totalAmountWithTaxCN: totalAmountWithTaxCN || numberToRMB(totalAmountWithTax),
     category,
     remarks,
     items,
