@@ -1,0 +1,584 @@
+import React, { useState } from "react";
+import {
+  X,
+  Settings,
+  Key,
+  Building2,
+  Database,
+  Save,
+  Download,
+  Upload,
+  Trash2,
+  Check,
+  Cpu,
+  FileSpreadsheet,
+  Lock,
+  ShieldCheck,
+  ExternalLink,
+} from "lucide-react";
+import { SystemSettings, InvoiceData } from "../types";
+import { exportInvoicesToExcel } from "../utils/exportExcel";
+import * as XLSX from "xlsx";
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  settings: SystemSettings;
+  onSaveSettings: (newSettings: SystemSettings) => void;
+  invoices: InvoiceData[];
+  onImportInvoicesJson: (invoices: InvoiceData[]) => void;
+  onClearSavedInvoices: () => void;
+}
+
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+  settings,
+  onSaveSettings,
+  invoices,
+  onImportInvoicesJson,
+}) => {
+  const [formData, setFormData] = useState<SystemSettings>(settings);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Password verification states for financial security
+  const [currentPassVerification, setCurrentPassVerification] = useState("");
+  const [newPassInput, setNewPassInput] = useState("");
+  const [confirmPassInput, setConfirmPassInput] = useState("");
+  const [passError, setPassError] = useState("");
+
+  if (!isOpen) return null;
+
+  const hasExistingPassword = Boolean(settings.exportPassword && settings.exportPassword.trim() !== "");
+
+  const handleSave = () => {
+    setPassError("");
+
+    let updatedPassword = formData.exportPassword || "";
+
+    // Security check if altering an existing password
+    if (hasExistingPassword) {
+      // If attempting to change password or change protection settings
+      if (newPassInput || currentPassVerification || formData.protectExportedExcel !== settings.protectExportedExcel) {
+        if (currentPassVerification !== settings.exportPassword) {
+          setPassError("原保护密码输入错误！拒绝修改或覆写财务锁定配置。");
+          return;
+        }
+      }
+
+      if (newPassInput) {
+        if (newPassInput !== confirmPassInput) {
+          setPassError("两次输入的【新密码】不一致，请重新核对！");
+          return;
+        }
+        updatedPassword = newPassInput.trim();
+      }
+    } else {
+      // Setting password for the first time
+      if (newPassInput) {
+        if (newPassInput !== confirmPassInput) {
+          setPassError("两次输入的【密码】不一致，请重新核对！");
+          return;
+        }
+        updatedPassword = newPassInput.trim();
+      }
+    }
+
+    const finalSettings: SystemSettings = {
+      ...formData,
+      exportPassword: updatedPassword,
+    };
+
+    onSaveSettings(finalSettings);
+    setSavedSuccess(true);
+    setTimeout(() => {
+      setSavedSuccess(false);
+      onClose();
+    }, 800);
+  };
+
+  // Export as Excel Table (.xlsx)
+  const handleExportExcel = () => {
+    exportInvoicesToExcel(invoices, formData);
+  };
+
+  // Import from local computer file (.xlsx or .json)
+  const handleImportLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+
+    if (fileName.endsWith(".json")) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          if (Array.isArray(parsed)) {
+            onImportInvoicesJson(parsed);
+            alert(`成功从本地电脑文件导入了 ${parsed.length} 张发票！`);
+          } else {
+            alert("无效的备份 JSON 文件格式！");
+          }
+        } catch (err) {
+          alert("读取 JSON 备份文件失败！");
+        }
+      };
+      reader.readAsText(file);
+    } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
+
+          const importedInvoices: InvoiceData[] = jsonData.map((row, idx) => {
+            const totalAmt = parseFloat(row["价税合计(元)"] || row["金额"] || row["价税合计"]) || 100;
+            return {
+              id: `imported-excel-${Date.now()}-${idx}`,
+              invoiceType: row["发票类型"] || "电子发票(普通发票)",
+              invoiceCode: row["发票代码"] || "",
+              invoiceNumber: String(row["发票号码"] || Math.floor(Math.random() * 89999999 + 10000000)),
+              issueDate: row["开票日期"] || new Date().toISOString().split("T")[0],
+              buyerName: row["购买方名称"] || row["购买方"] || "北京云启智创科技有限公司",
+              buyerTaxId: row["购买方税号"] || "91110108MA0192837X",
+              sellerName: row["销售方名称"] || row["销售方"] || "开票单位",
+              sellerTaxId: row["销售方税号"] || "",
+              totalAmountWithoutTax: Math.round(totalAmt * 0.94 * 100) / 100,
+              totalTaxAmount: Math.round(totalAmt * 0.06 * 100) / 100,
+              totalAmountWithTax: totalAmt,
+              totalAmountWithTaxCN: row["价税合计大写"] || "",
+              category: row["费用类别"] || "其他",
+              remarks: row["备注"] || "本地Excel导入",
+              selectedForPrint: true,
+              items: [],
+            };
+          });
+
+          if (importedInvoices.length > 0) {
+            onImportInvoicesJson(importedInvoices);
+            alert(`成功从本地 Excel 文件导入了 ${importedInvoices.length} 条发票纪录！`);
+          } else {
+            alert("Excel 表格中未获取到发票有效数据！");
+          }
+        } catch (err) {
+          alert("读取本地 Excel 文件失败，请确认格式！");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
+          <div className="flex items-center space-x-2">
+            <Settings className="w-5 h-5 text-red-500" />
+            <h3 className="font-bold text-base">智能发票助手 - 系统设置</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body Form */}
+        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto text-xs">
+          {/* Section 1: Universal AI API Key Configuration (No Gemini wording) */}
+          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="flex items-center space-x-2 text-slate-800 font-bold text-sm">
+              <Key className="w-4 h-4 text-amber-500" />
+              <span>智能 AI 识别 API 密钥配置</span>
+            </div>
+            <p className="text-slate-500 text-[11px]">
+              默认使用内置OCR算法，您也可以填入自定义 AI 大模型 API Key 提升处理分析速度。
+            </p>
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">
+                通用 AI 大模型 API Key
+              </label>
+              <input
+                type="password"
+                placeholder="sk-..."
+                value={formData.aiApiKey || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, aiApiKey: e.target.value })
+                }
+                className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Section 2: Baidu Cloud OCR API Configuration */}
+          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-slate-800 font-bold text-sm">
+                <Cpu className="w-4 h-4 text-purple-600" />
+                <span>百度 OCR 增值税发票识别 API 配置</span>
+              </div>
+              <a
+                href="https://console.bce.baidu.com/ai/#/ai/ocr/overview/index"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-1.5 text-xs text-purple-700 hover:text-purple-900 font-semibold bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-md border border-purple-200 transition-colors cursor-pointer shadow-2xs"
+                title="打开百度智能云 AI 开放平台申请 API Key"
+              >
+                <span>申请百度OCR API</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+            <p className="text-slate-500 text-[11px]">
+              配置百度智能云文字识别（增值税发票识别接口）API ，实现发票全票面高精精准识别。
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  百度云 API Key (AK)
+                </label>
+                <input
+                  type="password"
+                  placeholder="填入百度云 API Key"
+                  value={formData.baiduApiKey || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, baiduApiKey: e.target.value })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  百度云 Secret Key (SK)
+                </label>
+                <input
+                  type="password"
+                  placeholder="填入百度云 Secret Key"
+                  value={formData.baiduSecretKey || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, baiduSecretKey: e.target.value })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Default Company & Approver Info */}
+          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-slate-800 font-bold text-sm">
+                <Building2 className="w-4 h-4 text-blue-500" />
+                <span>默认报销抬头与审批人员预设</span>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                (更改后自动作为报销封面预设值)
+              </span>
+            </div>
+            <p className="text-slate-500 text-[11px]">
+              设置后导入发票或生成企业报销汇总单时将自动填充以下基础信息。
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-600 mb-1">默认单位名称</label>
+                <input
+                  type="text"
+                  value={formData.defaultCompany}
+                  onChange={(e) =>
+                    setFormData({ ...formData, defaultCompany: e.target.value })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">默认报销部门</label>
+                <input
+                  type="text"
+                  value={formData.defaultDepartment}
+                  onChange={(e) =>
+                    setFormData({ ...formData, defaultDepartment: e.target.value })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">默认报销人</label>
+                <input
+                  type="text"
+                  value={formData.defaultApplicant}
+                  onChange={(e) =>
+                    setFormData({ ...formData, defaultApplicant: e.target.value })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">主管审批人</label>
+                <input
+                  type="text"
+                  value={formData.defaultApprover}
+                  onChange={(e) =>
+                    setFormData({ ...formData, defaultApprover: e.target.value })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">财务复核人</label>
+                <input
+                  type="text"
+                  value={formData.defaultFinanceAuditor}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      defaultFinanceAuditor: e.target.value,
+                    })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 mb-1">出纳或经办人</label>
+                <input
+                  type="text"
+                  value={formData.defaultCashier}
+                  onChange={(e) =>
+                    setFormData({ ...formData, defaultCashier: e.target.value })
+                  }
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Data Storage & Local Computer File Export/Import */}
+          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-slate-800 font-bold text-sm">
+                <Database className="w-4 h-4 text-emerald-600" />
+                <span>发票数据本地电脑存储与表格管理</span>
+              </div>
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                已保存在本地 {invoices.length} 张发票
+              </span>
+            </div>
+
+            <p className="text-slate-500 text-[11px]">
+              所有发票自动保存在当前电脑浏览器本地数据库中。您可随时将发票台账导出为 Excel 表格，或从本地电脑选择 Excel / 备份文件进行导入还原。
+            </p>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+              <label className="flex items-center space-x-2 cursor-pointer text-slate-700 font-medium">
+                <input
+                  type="checkbox"
+                  checked={formData.autoSaveInvoices}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      autoSaveInvoices: e.target.checked,
+                    })
+                  }
+                  className="accent-red-600 rounded cursor-pointer"
+                />
+                <span>自动实时保存发票台账至本地</span>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg cursor-pointer transition-colors shadow-2xs"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>导出 Excel 发票台账表格</span>
+              </button>
+
+              <label className="flex items-center space-x-1 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold rounded-lg cursor-pointer transition-colors">
+                <Upload className="w-3.5 h-3.5 text-blue-600" />
+                <span>从本地电脑选择文件导入 (.xlsx / .json)</span>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.json"
+                  onChange={handleImportLocalFile}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Section 5: Excel Export Password Protection & Anti-Tamper Security */}
+          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-slate-800 font-bold text-sm">
+                <Lock className="w-4 h-4 text-indigo-600" />
+                <span>导出 Excel 台账工作表密码保护与防篡改设置</span>
+              </div>
+              {hasExistingPassword ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center space-x-1">
+                  <ShieldCheck className="w-3 h-3 text-indigo-600" />
+                  <span>管理员密码已锁定保护</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                  未设定保护密码
+                </span>
+              )}
+            </div>
+
+            <p className="text-slate-500 text-[11px] leading-relaxed">
+              设置导出 Excel 台账工作表的锁表保护密码。开启后导出的表格在 Excel/WPS 中打开时将锁定所有单元格，防止未经授权的修改或篡改财务发票数据。
+            </p>
+
+            {passError && (
+              <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-semibold flex items-center space-x-1.5">
+                <X className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{passError}</span>
+              </div>
+            )}
+
+            <div className="space-y-3 pt-1">
+              <label className="flex items-center space-x-2 cursor-pointer text-slate-700 font-semibold text-xs">
+                <input
+                  type="checkbox"
+                  checked={formData.protectExportedExcel || false}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      protectExportedExcel: e.target.checked,
+                    })
+                  }
+                  className="accent-indigo-600 rounded cursor-pointer w-4 h-4"
+                />
+                <span className="flex items-center space-x-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>导出 Excel 时自动开启工作表锁定防篡改</span>
+                </span>
+              </label>
+
+              {hasExistingPassword ? (
+                <div className="space-y-2 bg-white p-3 rounded-lg border border-slate-200">
+                  <p className="text-xs font-bold text-slate-700">修改或撤销现有的财务保护密码：</p>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      1. 输入当前原保护密码 (修改必填)：
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="验证当前原密码"
+                      value={currentPassVerification}
+                      onChange={(e) => setCurrentPassVerification(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        2. 输入新保护密码：
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="输入新密码 (若清空则留空)"
+                        value={newPassInput}
+                        onChange={(e) => setNewPassInput(e.target.value)}
+                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                        3. 再次确认新密码：
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="重复确认新密码"
+                        value={confirmPassInput}
+                        onChange={(e) => setConfirmPassInput(e.target.value)}
+                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 bg-white p-3 rounded-lg border border-slate-200">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      设置防篡改工作表保护密码：
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="设置自定义密码 (例如 123456)"
+                      value={newPassInput}
+                      onChange={(e) => setNewPassInput(e.target.value)}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      再次确认密码：
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="再次确认新密码"
+                      value={confirmPassInput}
+                      onChange={(e) => setConfirmPassInput(e.target.value)}
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-xs text-slate-500">
+              设置保存后即刻生效
+            </span>
+            <span className="text-xs text-slate-400 font-medium border-l border-slate-300 pl-3">
+              软件开发：会钓鱼的猫
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-xs rounded-xl cursor-pointer transition-colors"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center space-x-1.5 px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              {savedSuccess ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>已保存设置!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>保存系统设置</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Theme Styles */
+body.theme-dark {
+  background-color: #090d16;
+  color: #f1f5f9;
+}
+
+body.theme-light {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Comprehensive CSS for Print Output */
+@media print {
+  .no-print,
+  .print\:hidden,
+  [data-no-print="true"],
+  header,
+  nav,
+  .header-container,
+  .settings-modal,
+  .batch-modal,
+  .toolbar-container {
+    display: none !important;
+  }
+
+  @page {
+    size: auto;
+    margin: 0mm;
+  }
+
+  html, body, body.theme-dark, body.theme-light {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  img, canvas, svg {
+    max-width: 100% !important;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  .a4-print-page {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

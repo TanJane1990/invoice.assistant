@@ -1,0 +1,45 @@
+{
+  "appId": "com.invoice.assistant",
+  "productName": "智能发票管理助手",
+  "directories": {
+    "output": "dist_electron"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "asar": true,
+  "compression": "maximum",
+  "electronVersion": "22.3.27",
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64", "ia32"]
+      }
+    ],
+    "requestedExecutionLevel": "asInvoker",
+    "icon": "assets/icon.png"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "智能发票管理助手",
+    "uninstallDisplayName": "智能发票管理助手",
+    "runAfterFinish": true
+  },
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "category": "public.app-category.business",
+    "icon": "assets/icon.png",
+    "identity": null
+  }
+}

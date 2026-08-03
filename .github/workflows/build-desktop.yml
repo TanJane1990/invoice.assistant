@@ -1,0 +1,77 @@
+name: Build Desktop App (Windows & Mac)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release Tag 名称 (例如: v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+      is_draft:
+        description: '是否发布为草稿 (Draft)?'
+        type: boolean
+        default: false
+      is_prerelease:
+        description: '是否标记为预发布 (Pre-release)?'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Production Distribution
+        run: npm run build
+
+      - name: Build Electron Package
+        run: npx electron-builder --config electron-builder.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Desktop Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-installer-${{ matrix.os }}
+          path: |
+            dist_electron/*.exe
+            dist_electron/*.dmg
+
+      - name: Create / Update GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: ${{ inputs.release_tag }}
+          files: |
+            dist_electron/*.exe
+            dist_electron/*.dmg
+            dist_electron/*.zip
+            dist_electron/*.blockmap
+          draft: ${{ inputs.is_draft }}
+          prerelease: ${{ inputs.is_prerelease }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

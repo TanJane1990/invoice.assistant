@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能发票管理助手</title>
+    <style>
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+        body {
+          background-color: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .no-print {
+          display: none !important;
+        }
+        .a4-print-page {
+          box-shadow: none !important;
+          border: none !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          margin: 0 auto !important;
+          page-break-after: always !important;
+          break-after: page !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
