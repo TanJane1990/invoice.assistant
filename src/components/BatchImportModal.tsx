@@ -33,7 +33,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Process uploaded files
+  // Process uploaded files silently with clean status
   const handleFileUpload = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
 
@@ -44,7 +44,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
     const newLogs = fileList.map((f, idx) => ({
       name: f.name,
       status: (idx === 0 ? "processing" : "waiting") as "waiting" | "processing" | "success" | "error",
-      message: idx === 0 ? "正在提取..." : "排队等待",
+      message: idx === 0 ? "正在识别..." : "排队等待",
     }));
     setUploadLogs(newLogs);
 
@@ -57,7 +57,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
       setUploadLogs((prev) =>
         prev.map((log, idx) =>
           idx === i
-            ? { ...log, status: "processing", message: `正在解构 (第 ${i + 1}/${fileList.length} 张)...` }
+            ? { ...log, status: "processing", message: `正在识别 (第 ${i + 1}/${fileList.length} 张)...` }
             : log
         )
       );
@@ -73,8 +73,8 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         const fileBase64 = await fileBase64Promise;
         const mimeType = file.type || "image/png";
 
-        // 调用统一四层降级识别管线
-        const { invoice, engineUsed } = await processInvoiceFileUnified(
+        // 静默调用统一管线识别
+        const { invoice } = await processInvoiceFileUnified(
           fileBase64,
           mimeType,
           file.name,
@@ -90,7 +90,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
               ? {
                   ...log,
                   status: "success",
-                  message: `${engineUsed} 已识别 (¥${invoice.totalAmountWithTax.toFixed(2)})`,
+                  message: `已识别 (¥${invoice.totalAmountWithTax.toFixed(2)})`,
                 }
               : idx === i + 1
               ? { ...log, status: "processing", message: "准备识别..." }
@@ -135,7 +135,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
             <span>批量导入发票文件 (支持 PDF / JPG / PNG / WEBP / OFD)</span>
           </span>
           <span className="text-[11px] text-slate-400 font-normal">
-            智能 AI 全票面字段识别与查重
+            智能全票面字段识别与查重
           </span>
         </div>
 
@@ -167,7 +167,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                 点击或拖拽发票文件 (PDF、JPG、PNG、OFD) 到此处
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                支持多选批量上传，系统自动调用智能AI进行全票面字段提取与自动防重预警
+                支持多选批量上传，系统自动智能识别全票面字段与自动查重
               </p>
             </div>
 
@@ -236,7 +236,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                         {log.status === "processing" && (
                           <span className="flex items-center space-x-1 text-amber-700 dark:text-amber-300 font-bold">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>{log.message || "提取中..."}</span>
+                            <span>{log.message || "识别中..."}</span>
                           </span>
                         )}
                         {log.status === "success" && (
