@@ -42,6 +42,12 @@ body.theme-light {
     text-rendering: optimizeLegibility;
   }
 
+  /* Reset zoom transforms during physical printing */
+  .origin-top,
+  .transition-transform {
+    transform: none !important;
+  }
+
   img, canvas, svg {
     max-width: 100% !important;
     image-rendering: -webkit-optimize-contrast;
@@ -53,6 +59,8 @@ body.theme-light {
     border: none !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100% !important;
     max-width: 100% !important;
     overflow: hidden !important;
     page-break-after: always !important;

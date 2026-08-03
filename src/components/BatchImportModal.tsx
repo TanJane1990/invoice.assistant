@@ -14,6 +14,7 @@ import {
 import { InvoiceData, SystemSettings } from "../types";
 import { numberToRMB } from "../utils/numberToRMB";
 import { parseInvoiceTextWithRules } from "../utils/localPdfInvoiceOcr";
+import { convertPdfToImageDataUrl } from "../utils/pdfToImage";
 
 interface BatchImportModalProps {
   isOpen: boolean;
@@ -85,6 +86,16 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         fileBase64 = await fileBase64Promise;
         const mimeType = file.type || "image/png";
 
+        // 将 PDF 渲染为 300DPI 超高清 PNG 图像 DataURL（完美解决排版显示截断与 window.print 打印空白问题）
+        let previewFileUrl = fileBase64;
+        if (mimeType.includes("pdf") || file.name.toLowerCase().endsWith(".pdf") || fileBase64.startsWith("data:application/pdf")) {
+          try {
+            previewFileUrl = await convertPdfToImageDataUrl(fileBase64);
+          } catch (e) {
+            console.warn("PDF 转化为 PNG 图像提示:", e);
+          }
+        }
+
         // Call Express API endpoint with optional settings
         const apiEndpoint = window.location.protocol.startsWith("http")
           ? "/api/parse-invoice"
@@ -116,12 +127,12 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
             invoiceCode: raw.invoiceCode || "",
             invoiceNumber: raw.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
             issueDate: raw.issueDate || new Date().toISOString().split("T")[0],
-            buyerName: raw.buyerName || settings?.defaultCompany || "北京云里雾里科技有限公司",
-            buyerTaxId: raw.buyerTaxId || "91110108MA0192837X",
-            sellerName: raw.sellerName || "示例服务提供商",
+            buyerName: raw.buyerName || settings?.defaultCompany || "个人",
+            buyerTaxId: raw.buyerTaxId || "",
+            sellerName: raw.sellerName || "开票单位",
             sellerTaxId: raw.sellerTaxId || "",
-            totalAmountWithoutTax: Number(raw.totalAmountWithoutTax || totalAmt * 0.94),
-            totalTaxAmount: Number(raw.totalTaxAmount || totalAmt * 0.06),
+            totalAmountWithoutTax: Number(raw.totalAmountWithoutTax || totalAmt),
+            totalTaxAmount: Number(raw.totalTaxAmount || 0),
             totalAmountWithTax: totalAmt,
             totalAmountWithTaxCN: raw.totalAmountWithTaxCN || numberToRMB(totalAmt),
             category: (raw.category as any) || "其他",
@@ -146,7 +157,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                     quantity: 1,
                   },
                 ],
-            fileUrl: fileBase64,
+            fileUrl: previewFileUrl,
             fileName: file.name,
             selectedForPrint: true,
             importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
