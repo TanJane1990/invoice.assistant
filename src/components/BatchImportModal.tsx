@@ -10,11 +10,13 @@ import {
   FileSpreadsheet,
   Plus,
   Cpu,
+  QrCode,
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
 import { numberToRMB } from "../utils/numberToRMB";
 import { parseInvoiceTextWithRules } from "../utils/localPdfInvoiceOcr";
 import { convertPdfToImageDataUrl, extractTextFromPdf } from "../utils/pdfToImage";
+import { scanInvoiceQrCodeFromBase64 } from "../utils/qrInvoiceOcr";
 
 interface BatchImportModalProps {
   isOpen: boolean;
@@ -97,6 +99,14 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
           }
         }
 
+        // 1. 尝试扫描票面二维码 (包含防伪校验码、开票日期、含税与不含税金额)
+        let qrData: any = null;
+        try {
+          qrData = await scanInvoiceQrCodeFromBase64(previewFileUrl);
+        } catch (qrErr) {
+          console.warn("QR code scan info:", qrErr);
+        }
+
         // Call Express API endpoint with optional settings
         const apiEndpoint = window.location.protocol.startsWith("http")
           ? "/api/parse-invoice"
@@ -123,23 +133,32 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         }
 
         // If backend returned valid data with a positive total amount
-        if (result && result.success && result.data && result.data.totalAmountWithTax > 0) {
-          const raw = result.data;
-          const totalAmt = Number(raw.totalAmountWithTax || 0);
-          const engineLabel = result.engine === "local_pdf_ocr" ? "【本地PDF-OCR算法】" : "【AI大模型/百度云】";
+        if (result && result.success && result.data && (result.data.totalAmountWithTax > 0 || qrData?.totalAmountWithTax > 0)) {
+          const raw = result.data || {};
+          let totalAmt = Number(raw.totalAmountWithTax || 0);
+
+          if (qrData && qrData.totalAmountWithTax > 0) {
+            totalAmt = qrData.totalAmountWithTax;
+          }
+
+          const engineLabel = qrData?.totalAmountWithTax
+            ? "【二维码扫码解构】"
+            : result.engine === "local_pdf_ocr"
+            ? "【本地PDF-OCR算法】"
+            : "【AI大模型/百度云】";
 
           const inv: InvoiceData = {
             id: `inv-uploaded-${Date.now()}-${i}`,
             invoiceType: raw.invoiceType || "电子发票(普通发票)",
-            invoiceCode: raw.invoiceCode || "",
-            invoiceNumber: raw.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
-            issueDate: raw.issueDate || new Date().toISOString().split("T")[0],
+            invoiceCode: qrData?.invoiceCode || raw.invoiceCode || "",
+            invoiceNumber: qrData?.invoiceNumber || raw.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
+            issueDate: qrData?.issueDate || raw.issueDate || new Date().toISOString().split("T")[0],
             buyerName: raw.buyerName || settings?.defaultCompany || "个人",
             buyerTaxId: raw.buyerTaxId || "",
             sellerName: raw.sellerName || "示例服务提供商",
             sellerTaxId: raw.sellerTaxId || "",
-            totalAmountWithoutTax: Number(raw.totalAmountWithoutTax || totalAmt * 0.94),
-            totalTaxAmount: Number(raw.totalTaxAmount || totalAmt * 0.06),
+            totalAmountWithoutTax: Number(qrData?.totalAmountWithoutTax || raw.totalAmountWithoutTax || totalAmt * 0.94),
+            totalTaxAmount: Number(qrData?.totalTaxAmount || raw.totalTaxAmount || totalAmt * 0.06),
             totalAmountWithTax: totalAmt,
             totalAmountWithTaxCN: raw.totalAmountWithTaxCN || numberToRMB(totalAmt),
             category: (raw.category as any) || "其他",
@@ -182,23 +201,23 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
             )
           );
         } else {
-          // Client-side PDF OCR algorithm with extracted PDF text
+          // Client-side PDF OCR algorithm with extracted PDF text & QR code fallback
           const clientParsed = parseInvoiceTextWithRules(extractedPdfText || file.name, file.name);
-          const totalAmt = clientParsed.totalAmountWithTax || 0;
+          let totalAmt = qrData?.totalAmountWithTax || clientParsed.totalAmountWithTax || 0;
 
           const invFallback: InvoiceData = {
             id: `inv-uploaded-${Date.now()}-${i}`,
             invoiceType: clientParsed.invoiceType || "电子发票(普通发票)",
-            invoiceCode: clientParsed.invoiceCode || "",
-            invoiceNumber: clientParsed.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
-            issueDate: clientParsed.issueDate || new Date().toISOString().split("T")[0],
+            invoiceCode: qrData?.invoiceCode || clientParsed.invoiceCode || "",
+            invoiceNumber: qrData?.invoiceNumber || clientParsed.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
+            issueDate: qrData?.issueDate || clientParsed.issueDate || new Date().toISOString().split("T")[0],
             buyerName: clientParsed.buyerName || settings?.defaultCompany || "个人",
             buyerTaxId: clientParsed.buyerTaxId || "",
             sellerName: clientParsed.sellerName || "示例服务提供商",
-            totalAmountWithoutTax: clientParsed.totalAmountWithoutTax,
-            totalTaxAmount: clientParsed.totalTaxAmount,
+            totalAmountWithoutTax: qrData?.totalAmountWithoutTax || clientParsed.totalAmountWithoutTax,
+            totalTaxAmount: qrData?.totalTaxAmount || clientParsed.totalTaxAmount,
             totalAmountWithTax: totalAmt,
-            totalAmountWithTaxCN: clientParsed.totalAmountWithTaxCN,
+            totalAmountWithTaxCN: clientParsed.totalAmountWithTaxCN || numberToRMB(totalAmt),
             category: clientParsed.category || "其他",
             remarks: clientParsed.remarks || file.name,
             items: clientParsed.items || [
@@ -217,13 +236,15 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
 
           parsedInvoices.push(invFallback);
 
+          const engineName = qrData?.totalAmountWithTax ? "【发票二维码扫码引擎】" : "【本地离线OCR引擎】";
+
           setUploadLogs((prev) =>
             prev.map((log, idx) =>
               idx === i
                 ? {
                     ...log,
                     status: "success",
-                    message: `【本地离线OCR引擎】已识别 (¥${totalAmt.toFixed(2)})`,
+                    message: `${engineName} 已识别 (¥${totalAmt.toFixed(2)})`,
                   }
                 : idx === i + 1
                 ? { ...log, status: "processing", message: "准备识别..." }
@@ -311,10 +332,10 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         <div className="bg-slate-50 px-6 py-2.5 border-b border-slate-200 text-xs font-semibold text-slate-700 flex items-center justify-between">
           <span className="flex items-center space-x-1.5 text-red-700 font-bold">
             <FileText className="w-4 h-4 text-red-600" />
-            <span>批量导入发票文件 (支持 PDF / JPG / PNG / WEBP / OFD)</span>
+            <span>批量导入发票文件 (支持二维码扫码 / PDF / 照片 / OFD)</span>
           </span>
           <span className="text-[11px] text-slate-400 font-normal">
-            智能 AI 全票面字段识别与查重
+            支持防伪二维码毫秒级直接解析
           </span>
         </div>
 
@@ -346,7 +367,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                 点击或拖拽发票文件 (PDF、JPG、PNG、OFD) 到此处
               </p>
               <p className="text-xs text-slate-500">
-                支持多选批量上传，系统自动调用智能AI进行全票面字段提取与自动防重预警
+                支持二维码毫秒级自动解构与智能AI全票面字段提取
               </p>
             </div>
 
@@ -443,7 +464,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
 
         {/* Footer */}
         <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <span>支持多页PDF与格式防错补全</span>
+          <span>支持发票二维码防伪识别 & 多页PDF解析</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-lg cursor-pointer"
