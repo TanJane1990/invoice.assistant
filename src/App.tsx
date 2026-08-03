@@ -72,7 +72,7 @@ export default function App() {
     showCategoryBadge: true,
     marginSize: "normal",
     includeCoverPage: false,
-    sortBy: "invoice_type",
+    sortBy: "category",
   });
 
   const [zoom, setZoom] = useState(1.0);
@@ -96,11 +96,13 @@ export default function App() {
       localStorage.setItem("app_theme_v1", theme);
     } catch {}
     if (theme === "dark") {
-      document.body.classList.add("theme-dark");
+      document.documentElement.classList.add("dark");
+      document.body.classList.add("theme-dark", "dark");
       document.body.classList.remove("theme-light");
     } else {
+      document.documentElement.classList.remove("dark");
       document.body.classList.add("theme-light");
-      document.body.classList.remove("theme-dark");
+      document.body.classList.remove("theme-dark", "dark");
     }
   }, [theme]);
 
@@ -108,110 +110,32 @@ export default function App() {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
   };
 
-  // Requirement 6: 自动保存台账表格（追加模式），加入导入发票的时间
+  // 自动保存台账表格（追加模式），加入导入发票的时间
   useEffect(() => {
     const handleBeforeUnload = () => {
       try {
-        const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
-        const invoicesWithImportTime = invoices.map((inv) => ({
-          ...inv,
-          importTime: inv.importTime || nowStr,
-        }));
-
-        // Read existing append history
-        const existingStr = localStorage.getItem("invoice_ledger_history_v1");
-        let existing: InvoiceData[] = [];
-        if (existingStr) {
-          try {
-            existing = JSON.parse(existingStr);
-          } catch {}
+        if (systemSettings.autoSaveInvoices && invoices.length > 0) {
+          localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(invoices));
         }
-
-        // Merge without duplicating IDs
-        const existingIds = new Set(existing.map((item) => item.id));
-        const newItems = invoicesWithImportTime.filter((item) => !existingIds.has(item.id));
-        const mergedHistory = [...newItems, ...existing];
-
-        localStorage.setItem("invoice_ledger_history_v1", JSON.stringify(mergedHistory));
-        localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(invoicesWithImportTime));
-      } catch (err) {
-        console.warn("Failed to auto-save ledger on unload", err);
+      } catch (e) {
+        console.warn("Failed to write localStorage on unload:", e);
       }
     };
-
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [invoices]);
-
-  // Persist invoices to localStorage when updated
-  useEffect(() => {
-    if (systemSettings.autoSaveInvoices) {
-      try {
-        const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
-        const invoicesWithTime = invoices.map((inv) => ({
-          ...inv,
-          importTime: inv.importTime || nowStr,
-        }));
-        localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(invoicesWithTime));
-      } catch (err) {
-        console.warn("Failed to persist invoices to localStorage", err);
-      }
-    }
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [invoices, systemSettings.autoSaveInvoices]);
 
-  // Persist settings
+  // Save settings change
   const handleSaveSettings = (newSettings: SystemSettings) => {
     setSystemSettings(newSettings);
     try {
       localStorage.setItem("system_settings_v1", JSON.stringify(newSettings));
     } catch (e) {
-      console.warn("Failed to save settings", e);
+      console.warn("Failed to save system settings:", e);
     }
   };
 
-  // 优化 #10: 查重逻辑改为 useMemo，避免 useEffect+setInvoices 的潜在循环
-  const invoicesWithDuplicateCheck = useMemo(() => {
-    const counts: Record<string, number> = {};
-    invoices.forEach((inv) => {
-      const key = `${inv.invoiceCode || ""}_${inv.invoiceNumber}`;
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    return invoices.map((inv) => ({
-      ...inv,
-      duplicateWarning: (counts[`${inv.invoiceCode || ""}_${inv.invoiceNumber}`] || 0) > 1,
-    }));
-  }, [invoices]);
-
-  const handleConfigChange = (newConfig: Partial<PrintConfig>) => {
-    setPrintConfig((prev) => ({ ...prev, ...newConfig }));
-  };
-
-  const handleAddInvoices = (newInvoices: InvoiceData[]) => {
-    const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
-    const formatted = newInvoices.map((inv) => ({
-      ...inv,
-      importTime: inv.importTime || nowStr,
-      selectedForPrint: true,
-    }));
-    setInvoices((prev) => [...formatted, ...prev]);
-  };
-
-  const handleLoadSamples = () => {
-    const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
-    const samples = SAMPLE_INVOICES.map((inv) => ({
-      ...inv,
-      importTime: inv.importTime || nowStr,
-      selectedForPrint: true,
-    }));
-    setInvoices((prev) => [...samples, ...prev]);
-  };
-
-  const handleDeleteInvoice = (id: string) => {
-    setInvoices((prev) => prev.filter((i) => i.id !== id));
-  };
-
+  // Toggle selection for single invoice
   const handleToggleSelectForPrint = (id: string) => {
     setInvoices((prev) =>
       prev.map((inv) =>
@@ -220,66 +144,138 @@ export default function App() {
     );
   };
 
+  // Toggle selection for ALL invoices
   const handleToggleSelectAll = (select: boolean) => {
     setInvoices((prev) =>
       prev.map((inv) => ({ ...inv, selectedForPrint: select }))
     );
   };
 
-  const handleSaveInvoice = (updated: InvoiceData) => {
-    setInvoices((prev) =>
-      prev.map((inv) => (inv.id === updated.id ? updated : inv))
-    );
+  // Add new parsed invoices
+  const handleAddInvoices = (newInvoices: InvoiceData[]) => {
+    setInvoices((prev) => {
+      const updated = [...newInvoices, ...prev];
+      if (systemSettings.autoSaveInvoices) {
+        try {
+          localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
   };
 
+  // Add custom manual blank invoice
   const handleAddCustomInvoice = () => {
     const newInv: InvoiceData = {
-      id: `inv-custom-${Date.now()}`,
-      invoiceType: "增值税电子普通发票",
-      invoiceCode: "011002300" + Math.floor(Math.random() * 899 + 100),
+      id: `manual-invoice-${Date.now()}`,
+      invoiceType: "增值税普通发票（纸质）",
+      invoiceCode: "",
       invoiceNumber: String(Math.floor(Math.random() * 89999999 + 10000000)),
       issueDate: new Date().toISOString().split("T")[0],
-      buyerName: "北京云启智创科技有限公司",
-      buyerTaxId: "91110108MA0192837X",
-      sellerName: "新增销售商户",
+      buyerName: systemSettings.defaultCompany || "个人",
+      buyerTaxId: "",
+      sellerName: "新建销售商户",
+      sellerTaxId: "",
       totalAmountWithoutTax: 94.34,
       totalTaxAmount: 5.66,
       totalAmountWithTax: 100.0,
-      totalAmountWithTaxCN: numberToRMB(100.0),
+      totalAmountWithTaxCN: "壹佰圆整",
       category: "办公用品",
-      remarks: "手动新建发票",
+      items: [],
+      remarks: "手动新建补录发票",
       selectedForPrint: true,
-      items: [
-        {
-          id: `item-custom-${Date.now()}`,
-          name: "*办公用品*物品报销",
-          amount: 100.0,
-          quantity: 1,
-        },
-      ],
     };
-
     setInvoices((prev) => [newInv, ...prev]);
     setEditingInvoice(newInv);
   };
 
+  // Update existing invoice
+  const handleSaveInvoice = (updated: InvoiceData) => {
+    setInvoices((prev) =>
+      prev.map((inv) => (inv.id === updated.id ? updated : inv))
+    );
+    setEditingInvoice(null);
+  };
+
+  // Delete invoice
+  const handleDeleteInvoice = (id: string) => {
+    setInvoices((prev) => {
+      const filtered = prev.filter((inv) => inv.id !== id);
+      if (systemSettings.autoSaveInvoices) {
+        try {
+          localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(filtered));
+        } catch {}
+      }
+      return filtered;
+    });
+  };
+
+  // Load sample invoices
+  const handleLoadSamples = () => {
+    setInvoices(SAMPLE_INVOICES);
+  };
+
+  // Config change handler
+  const handleConfigChange = (newPartial: Partial<PrintConfig>) => {
+    setPrintConfig((prev) => {
+      const nextConfig = { ...prev, ...newPartial };
+
+      if (newPartial.gridMode === "4" && !newPartial.orientation) {
+        nextConfig.orientation = "landscape";
+      } else if (
+        (newPartial.gridMode === "1" || newPartial.gridMode === "2") &&
+        !newPartial.orientation
+      ) {
+        nextConfig.orientation = "portrait";
+      }
+
+      return nextConfig;
+    });
+  };
+
+  // Selected invoices array for preview & cover
+  const selectedInvoices = useMemo(
+    () => invoices.filter((inv) => inv.selectedForPrint),
+    [invoices]
+  );
+
+  // Stats calculation
+  const totalAmount = useMemo(
+    () => selectedInvoices.reduce((sum, inv) => sum + inv.totalAmountWithTax, 0),
+    [selectedInvoices]
+  );
+
+  const duplicateCount = useMemo(() => {
+    const numCounts: Record<string, number> = {};
+    invoices.forEach((i) => {
+      const numStr = (i.invoiceNumber || "").trim();
+      if (numStr) numCounts[numStr] = (numCounts[numStr] || 0) + 1;
+    });
+    return Object.values(numCounts).filter((c) => c > 1).length;
+  }, [invoices]);
+
+  const itemsPerPage =
+    printConfig.gridMode === "1"
+      ? 1
+      : printConfig.gridMode === "2"
+      ? 2
+      : printConfig.gridMode === "4"
+      ? 4
+      : 2;
+
+  const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
+
+  // Export Excel
   const handleExportExcel = () => {
     exportInvoicesToExcel(invoices, systemSettings);
   };
 
-  const selectedInvoices = invoicesWithDuplicateCheck.filter((i) => i.selectedForPrint);
-  const itemsPerPage = parseInt(printConfig.gridMode, 10);
-  const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage);
-  const totalAmount = selectedInvoices.reduce(
-    (sum, i) => sum + i.totalAmountWithTax,
-    0
-  );
-  const duplicateCount = invoicesWithDuplicateCheck.filter((i) => i.duplicateWarning).length;
-
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 selection:bg-red-100 selection:text-red-900 ${
-      theme === "dark" ? "bg-slate-950 text-slate-100" : "bg-slate-100/80 text-slate-900"
-    }`}>
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors duration-200 selection:bg-red-100 selection:text-red-900 ${
+        theme === "dark" ? "bg-slate-950 text-slate-100 dark" : "bg-slate-100/80 text-slate-900"
+      }`}
+    >
       {/* Header */}
       <Header
         activeTab={activeTab}
@@ -307,7 +303,7 @@ export default function App() {
             totalPages={totalPages}
             totalAmount={totalAmount}
             onResetOrder={() =>
-              setPrintConfig((p) => ({ ...p, sortBy: "date_asc" }))
+              setPrintConfig((p) => ({ ...p, sortBy: "category" }))
             }
           />
 
@@ -328,6 +324,7 @@ export default function App() {
             invoices={selectedInvoices}
             config={printConfig}
             zoom={zoom}
+            showCropLines={printConfig.showCropLines}
             onEditInvoice={(inv) => setEditingInvoice(inv)}
             onDeleteInvoice={handleDeleteInvoice}
             onOpenBatchImport={() => setIsImportModalOpen(true)}

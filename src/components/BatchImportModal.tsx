@@ -3,17 +3,11 @@ import {
   Upload,
   X,
   FileText,
-  Sparkles,
   AlertCircle,
   CheckCircle2,
   Loader2,
-  FileSpreadsheet,
-  Plus,
-  Cpu,
-  QrCode,
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
-import { numberToRMB } from "../utils/numberToRMB";
 import { processInvoiceFileUnified } from "../utils/unifiedInvoiceOcrPipeline";
 
 interface BatchImportModalProps {
@@ -28,16 +22,13 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
   isOpen,
   onClose,
   onAddInvoices,
-  onLoadSamples,
   settings,
 }) => {
-  const [activeTab, setActiveTab] = useState<"file" | "excel" | "quick">("file");
   const [isUploading, setIsUploading] = useState(false);
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState(0);
   const [uploadLogs, setUploadLogs] = useState<
     { name: string; status: "waiting" | "processing" | "success" | "error"; message?: string }[]
   >([]);
-  const [excelText, setExcelText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -120,55 +111,11 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
     }
   };
 
-  // Handle Excel TSV/CSV text parse
-  const handleParseExcelText = () => {
-    if (!excelText.trim()) return;
-
-    const lines = excelText.trim().split("\n");
-    const parsedInvoices: InvoiceData[] = [];
-
-    lines.forEach((line, idx) => {
-      const parts = line.split(/[\t,,]/).map((p) => p.trim());
-      if (parts.length >= 3) {
-        const amt = parseFloat(parts[2]) || 100;
-        const inv: InvoiceData = {
-          id: `excel-inv-${Date.now()}-${idx}`,
-          invoiceType: parts[0] || "电子发票(普通发票)",
-          invoiceNumber: parts[1] || String(Math.floor(Math.random() * 89999999 + 10000000)),
-          issueDate: parts[3] || new Date().toISOString().split("T")[0],
-          buyerName: parts[4] || "北京云启智创科技有限公司",
-          sellerName: parts[5] || "批量交易单位",
-          totalAmountWithoutTax: Math.round(amt * 0.94 * 100) / 100,
-          totalTaxAmount: Math.round(amt * 0.06 * 100) / 100,
-          totalAmountWithTax: amt,
-          totalAmountWithTaxCN: numberToRMB(amt),
-          category: (parts[6] as any) || "办公用品",
-          remarks: "Excel批量导入",
-          selectedForPrint: true,
-          items: [
-            {
-              id: `item-excel-${idx}`,
-              name: parts[6] || "货物/服务项目",
-              amount: amt,
-              quantity: 1,
-            },
-          ],
-        };
-        parsedInvoices.push(inv);
-      }
-    });
-
-    if (parsedInvoices.length > 0) {
-      onAddInvoices(parsedInvoices);
-      onClose();
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
           <div className="flex items-center space-x-2">
             <Upload className="w-5 h-5 text-red-500" />
             <h3 className="font-bold text-base">批量导入发票文件</h3>
@@ -182,9 +129,9 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         </div>
 
         {/* Subtitle Bar */}
-        <div className="bg-slate-50 px-6 py-2.5 border-b border-slate-200 text-xs font-semibold text-slate-700 flex items-center justify-between">
-          <span className="flex items-center space-x-1.5 text-red-700 font-bold">
-            <FileText className="w-4 h-4 text-red-600" />
+        <div className="bg-slate-50 dark:bg-slate-800/80 px-6 py-2.5 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+          <span className="flex items-center space-x-1.5 text-red-700 dark:text-red-400 font-bold">
+            <FileText className="w-4 h-4 text-red-600 dark:text-red-400" />
             <span>批量导入发票文件 (支持二维码扫码 / PDF / 照片 / OFD)</span>
           </span>
           <span className="text-[11px] text-slate-400 font-normal">
@@ -203,7 +150,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                 e.preventDefault();
                 if (e.dataTransfer.files) handleFileUpload(e.dataTransfer.files);
               }}
-              className="border-2 border-dashed border-slate-300 hover:border-red-500 bg-slate-50 hover:bg-red-50/20 rounded-2xl p-10 text-center cursor-pointer transition-all group"
+              className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-red-500 dark:hover:border-red-500 bg-slate-50 dark:bg-slate-800/50 hover:bg-red-50/20 dark:hover:bg-red-950/20 rounded-2xl p-10 text-center cursor-pointer transition-all group"
             >
               <input
                 type="file"
@@ -213,21 +160,21 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                 className="hidden"
               />
-              <div className="w-14 h-14 rounded-full bg-red-100 group-hover:bg-red-200 text-red-600 flex items-center justify-center mx-auto mb-3 transition-colors">
+              <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-950/70 group-hover:bg-red-200 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-3 transition-colors">
                 <Upload className="w-7 h-7" />
               </div>
-              <p className="font-bold text-slate-800 text-sm mb-1">
+              <p className="font-bold text-slate-800 dark:text-slate-100 text-sm mb-1">
                 点击或拖拽发票文件 (PDF、JPG、PNG、OFD) 到此处
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 支持二维码毫秒级自动解构与智能AI全票面字段提取
               </p>
             </div>
 
             {/* Upload Progress & Logs */}
             {uploadLogs.length > 0 && (
-              <div className="mt-4 border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+              <div className="mt-4 border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-800/60 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
                   <span className="flex items-center space-x-1.5">
                     {isUploading ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-red-600" />
@@ -240,7 +187,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                         : `批量识别完成 (已处理 ${uploadLogs.filter((l) => l.status === "success").length} / ${uploadLogs.length} 张)`}
                     </span>
                   </span>
-                  <span className="font-mono text-slate-500">
+                  <span className="font-mono text-slate-500 dark:text-slate-400">
                     {Math.round(
                       (uploadLogs.filter((l) => l.status === "success" || l.status === "error").length /
                         uploadLogs.length) *
@@ -251,7 +198,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                 </div>
 
                 {/* Progress Bar */}
-                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
                   <div
                     className="bg-red-600 h-full transition-all duration-300"
                     style={{
@@ -271,15 +218,15 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                       key={idx}
                       className={`flex items-center justify-between text-xs p-2 rounded-lg border transition-colors ${
                         log.status === "processing"
-                          ? "bg-amber-50 border-amber-300 shadow-2xs"
+                          ? "bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200"
                           : log.status === "success"
-                          ? "bg-white border-slate-200"
+                          ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                           : log.status === "error"
-                          ? "bg-red-50 border-red-200"
-                          : "bg-slate-100/70 border-slate-200 text-slate-400"
+                          ? "bg-red-50 dark:bg-red-950/60 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200"
+                          : "bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-400"
                       }`}
                     >
-                      <span className="truncate max-w-[240px] font-medium text-slate-700">
+                      <span className="truncate max-w-[240px] font-medium text-slate-700 dark:text-slate-300">
                         {idx + 1}. {log.name}
                       </span>
                       <div className="flex items-center space-x-1">
@@ -289,19 +236,19 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                           </span>
                         )}
                         {log.status === "processing" && (
-                          <span className="flex items-center space-x-1 text-amber-700 font-bold">
+                          <span className="flex items-center space-x-1 text-amber-700 dark:text-amber-300 font-bold">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             <span>{log.message || "智能提取中..."}</span>
                           </span>
                         )}
                         {log.status === "success" && (
-                          <span className="flex items-center space-x-1 text-emerald-600 font-semibold">
+                          <span className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400 font-semibold">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>{log.message}</span>
                           </span>
                         )}
                         {log.status === "error" && (
-                          <span className="flex items-center space-x-1 text-red-600 font-semibold">
+                          <span className="flex items-center space-x-1 text-red-600 dark:text-red-400 font-semibold">
                             <AlertCircle className="w-3.5 h-3.5" />
                             <span>识别失败</span>
                           </span>
@@ -316,11 +263,11 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <div className="bg-slate-50 dark:bg-slate-900 px-6 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
           <span>支持发票二维码防伪识别 & 多页PDF解析</span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-lg cursor-pointer"
+            className="px-4 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg cursor-pointer"
           >
             关闭窗口
           </button>

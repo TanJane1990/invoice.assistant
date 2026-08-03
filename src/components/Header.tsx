@@ -3,11 +3,9 @@ import {
   Printer,
   FileSpreadsheet,
   Upload,
-  Sparkles,
   FileText,
   Grid,
   ClipboardList,
-  ShieldAlert,
   Settings,
   Sun,
   Moon,
@@ -43,9 +41,13 @@ export const Header: React.FC<HeaderProps> = ({
   const isDark = theme === "dark";
 
   return (
-    <header className={`no-print border-b sticky top-0 z-40 transition-colors ${
-      isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 shadow-xs text-slate-900"
-    }`}>
+    <header
+      className={`no-print border-b sticky top-0 z-50 transition-colors ${
+        isDark
+          ? "bg-slate-900 border-slate-800 text-slate-100"
+          : "bg-white border-slate-200 shadow-xs text-slate-900"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & App Title */}
@@ -64,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Tab Navigation */}
           <nav className={`hidden md:flex items-center p-1 rounded-xl border ${
-            isDark ? "bg-slate-800/80 border-slate-700" : "bg-slate-100 border-slate-200/80"
+            isDark ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200/80"
           }`}>
             <button
               onClick={() => setActiveTab("layout")}
@@ -127,6 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </>
               )}
             </button>
+
             <button
               onClick={onOpenBatchImport}
               className="flex items-center space-x-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg shadow-sm transition-all hover:shadow cursor-pointer"
@@ -137,7 +140,11 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={onExportExcel}
-              className="hidden lg:flex items-center space-x-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+              className={`hidden lg:flex items-center space-x-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer border ${
+                isDark
+                  ? "bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-emerald-800"
+                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+              }`}
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>导出台账Excel</span>
@@ -146,31 +153,37 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onPrint}
               title="调出系统打印对话框设置打印机并打印"
-              className="flex items-center space-x-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg shadow-sm transition-all cursor-pointer"
+              className="flex items-center space-x-1.5 px-4 py-2 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
             >
-              <Printer className="w-4 h-4 text-red-400" />
+              <Printer className="w-4 h-4 text-red-500" />
               <span>一键打印</span>
             </button>
 
             <button
               onClick={onOpenSettings}
               title="设置（AI API Key、企业抬头与数据保存）"
-              className="flex items-center space-x-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+              className={`flex items-center space-x-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer border ${
+                isDark
+                  ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+              }`}
             >
-              <Settings className="w-4 h-4 text-slate-600" />
+              <Settings className="w-4 h-4 text-slate-400" />
               <span className="hidden sm:inline">设置</span>
             </button>
           </div>
         </div>
 
         {/* Mobile Tab bar */}
-        <div className="flex md:hidden border-t border-slate-100 py-2 justify-around">
+        <div className={`flex md:hidden border-t py-2 justify-around ${
+          isDark ? "border-slate-800" : "border-slate-100"
+        }`}>
           <button
             onClick={() => setActiveTab("layout")}
             className={`flex items-center space-x-1 text-xs py-1 px-2 rounded ${
               activeTab === "layout"
-                ? "bg-red-50 text-red-600 font-bold"
-                : "text-slate-600"
+                ? "bg-red-600 text-white font-bold"
+                : isDark ? "text-slate-300" : "text-slate-600"
             }`}
           >
             <Grid className="w-3.5 h-3.5" />
@@ -180,8 +193,8 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab("ledger")}
             className={`flex items-center space-x-1 text-xs py-1 px-2 rounded ${
               activeTab === "ledger"
-                ? "bg-red-50 text-red-600 font-bold"
-                : "text-slate-600"
+                ? "bg-red-600 text-white font-bold"
+                : isDark ? "text-slate-300" : "text-slate-600"
             }`}
           >
             <ClipboardList className="w-3.5 h-3.5" />
@@ -191,8 +204,8 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab("cover")}
             className={`flex items-center space-x-1 text-xs py-1 px-2 rounded ${
               activeTab === "cover"
-                ? "bg-red-50 text-red-600 font-bold"
-                : "text-slate-600"
+                ? "bg-red-600 text-white font-bold"
+                : isDark ? "text-slate-300" : "text-slate-600"
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
