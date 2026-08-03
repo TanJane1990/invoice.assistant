@@ -6,7 +6,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { InvoiceData, PrintConfig, SystemSettings } from "./types";
 import { SAMPLE_INVOICES } from "./data/sampleInvoices";
-import { numberToRMB } from "./utils/numberToRMB";
 import { Header } from "./components/Header";
 import { PrintLayoutToolbar } from "./components/PrintLayoutToolbar";
 import { A4PagePreview } from "./components/A4PagePreview";
@@ -16,6 +15,7 @@ import { BatchImportModal } from "./components/BatchImportModal";
 import { InvoiceDetailModal } from "./components/InvoiceDetailModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { exportInvoicesToExcel } from "./utils/exportExcel";
+import { generateAndPrintPdf } from "./utils/exportPdf";
 
 const DEFAULT_SETTINGS: SystemSettings = {
   aiApiKey: "",
@@ -50,7 +50,6 @@ export default function App() {
       if (savedInvoices) {
         const parsed = JSON.parse(savedInvoices);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Keep historical records, but start clean (selectedForPrint = false) on new session
           return parsed.map((inv) => ({ ...inv, selectedForPrint: false }));
         }
       }
@@ -110,7 +109,7 @@ export default function App() {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
   };
 
-  // 自动保存台账表格（追加模式），加入导入发票的时间
+  // 自动保存台账表格
   useEffect(() => {
     const handleBeforeUnload = () => {
       try {
@@ -270,6 +269,17 @@ export default function App() {
     exportInvoicesToExcel(invoices, systemSettings);
   };
 
+  // Export & Print High-Precision Vector PDF Engine
+  const handleExportPdf = async () => {
+    setActiveTab("layout");
+    setTimeout(async () => {
+      const mainEl = document.querySelector<HTMLElement>("main");
+      if (mainEl) {
+        await generateAndPrintPdf(mainEl);
+      }
+    }, 200);
+  };
+
   return (
     <div
       className={`min-h-screen flex flex-col font-sans transition-colors duration-200 selection:bg-red-100 selection:text-red-900 ${
@@ -292,6 +302,7 @@ export default function App() {
           }, 120);
         }}
         onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
         selectedCount={selectedInvoices.length}
         duplicateCount={duplicateCount}
       />

@@ -20,6 +20,8 @@
     "@google/genai": "^2.4.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.546.0",
     "pdf-parse": "^2.4.5",
