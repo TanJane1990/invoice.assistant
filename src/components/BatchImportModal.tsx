@@ -14,9 +14,7 @@ import {
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
 import { numberToRMB } from "../utils/numberToRMB";
-import { parseInvoiceTextWithRules } from "../utils/localPdfInvoiceOcr";
-import { convertPdfToImageDataUrl, extractTextFromPdf } from "../utils/pdfToImage";
-import { scanInvoiceQrCodeFromBase64 } from "../utils/qrInvoiceOcr";
+import { processInvoiceFileUnified } from "../utils/unifiedInvoiceOcrPipeline";
 
 interface BatchImportModalProps {
   isOpen: boolean;
@@ -44,7 +42,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Process uploaded files with server Gemini AI OCR (Sequential 1-by-1 processing to avoid lag)
+  // Process uploaded files with unified master pipeline
   const handleFileUpload = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
 
@@ -52,7 +50,6 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
     setCurrentProcessingIndex(0);
 
     const fileList = Array.from(files);
-    // Initialize logs: first file is "processing", rest are "waiting"
     const newLogs = fileList.map((f, idx) => ({
       name: f.name,
       status: (idx === 0 ? "processing" : "waiting") as "waiting" | "processing" | "success" | "error",
@@ -66,18 +63,15 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
       const file = fileList[i];
       setCurrentProcessingIndex(i);
 
-      // Update current log to processing
       setUploadLogs((prev) =>
         prev.map((log, idx) =>
           idx === i
-            ? { ...log, status: "processing", message: `正在一张张顺次识别 (第 ${i + 1}/${fileList.length} 张)...` }
+            ? { ...log, status: "processing", message: `正在多重引擎智能解构 (第 ${i + 1}/${fileList.length} 张)...` }
             : log
         )
       );
 
-      let fileBase64 = "";
       try {
-        // Convert file to Base64
         const reader = new FileReader();
         const fileBase64Promise = new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
@@ -85,173 +79,33 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
           reader.readAsDataURL(file);
         });
 
-        fileBase64 = await fileBase64Promise;
+        const fileBase64 = await fileBase64Promise;
         const mimeType = file.type || "image/png";
 
-        let previewFileUrl = fileBase64;
-        let extractedPdfText = "";
-        if (mimeType.includes("pdf") || file.name.toLowerCase().endsWith(".pdf") || fileBase64.startsWith("data:application/pdf")) {
-          try {
-            previewFileUrl = await convertPdfToImageDataUrl(fileBase64);
-            extractedPdfText = await extractTextFromPdf(fileBase64);
-          } catch (e) {
-            console.warn("PDF render/text extract info:", e);
-          }
-        }
+        // 调用统一四层降级识别管线
+        const { invoice, engineUsed } = await processInvoiceFileUnified(
+          fileBase64,
+          mimeType,
+          file.name,
+          i,
+          settings
+        );
 
-        // 1. 尝试扫描票面二维码 (包含防伪校验码、开票日期、含税与不含税金额)
-        let qrData: any = null;
-        try {
-          qrData = await scanInvoiceQrCodeFromBase64(previewFileUrl);
-        } catch (qrErr) {
-          console.warn("QR code scan info:", qrErr);
-        }
+        parsedInvoices.push(invoice);
 
-        // Call Express API endpoint with optional settings
-        const apiEndpoint = window.location.protocol.startsWith("http")
-          ? "/api/parse-invoice"
-          : "http://127.0.0.1:3000/api/parse-invoice";
-
-        let result: any = null;
-        try {
-          const response = await fetch(apiEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fileBase64,
-              mimeType,
-              fileName: file.name,
-              extractedText: extractedPdfText,
-              aiApiKey: settings?.aiApiKey,
-              baiduApiKey: settings?.baiduApiKey,
-              baiduSecretKey: settings?.baiduSecretKey,
-            }),
-          });
-          result = await response.json();
-        } catch (fetchErr) {
-          console.warn("Fetch backend API failed, fallback to client OCR:", fetchErr);
-        }
-
-        // If backend returned valid data with a positive total amount
-        if (result && result.success && result.data && (result.data.totalAmountWithTax > 0 || qrData?.totalAmountWithTax > 0)) {
-          const raw = result.data || {};
-          let totalAmt = Number(raw.totalAmountWithTax || 0);
-
-          if (qrData && qrData.totalAmountWithTax > 0) {
-            totalAmt = qrData.totalAmountWithTax;
-          }
-
-          const engineLabel = qrData?.totalAmountWithTax
-            ? "【二维码扫码解构】"
-            : result.engine === "local_pdf_ocr"
-            ? "【本地PDF-OCR算法】"
-            : "【AI大模型/百度云】";
-
-          const inv: InvoiceData = {
-            id: `inv-uploaded-${Date.now()}-${i}`,
-            invoiceType: raw.invoiceType || "电子发票(普通发票)",
-            invoiceCode: qrData?.invoiceCode || raw.invoiceCode || "",
-            invoiceNumber: qrData?.invoiceNumber || raw.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
-            issueDate: qrData?.issueDate || raw.issueDate || new Date().toISOString().split("T")[0],
-            buyerName: raw.buyerName || settings?.defaultCompany || "个人",
-            buyerTaxId: raw.buyerTaxId || "",
-            sellerName: raw.sellerName || "示例服务提供商",
-            sellerTaxId: raw.sellerTaxId || "",
-            totalAmountWithoutTax: Number(qrData?.totalAmountWithoutTax || raw.totalAmountWithoutTax || totalAmt * 0.94),
-            totalTaxAmount: Number(qrData?.totalTaxAmount || raw.totalTaxAmount || totalAmt * 0.06),
-            totalAmountWithTax: totalAmt,
-            totalAmountWithTaxCN: raw.totalAmountWithTaxCN || numberToRMB(totalAmt),
-            category: (raw.category as any) || "其他",
-            remarks: raw.remarks || file.name,
-            items: Array.isArray(raw.items) && raw.items.length > 0
-              ? raw.items.map((it: any, idx: number) => ({
-                  id: it.id || `item-${Date.now()}-${idx + 1}`,
-                  name: it.name || raw.remarks || file.name,
-                  amount: Number(it.amount || totalAmt),
-                  quantity: Number(it.quantity || 1),
-                  spec: it.spec,
-                  unit: it.unit,
-                  price: it.price ? Number(it.price) : undefined,
-                  taxRate: it.taxRate,
-                  taxAmount: it.taxAmount ? Number(it.taxAmount) : undefined,
-                }))
-              : [
-                  {
-                    id: `item-${Date.now()}-1`,
-                    name: raw.remarks || file.name,
-                    amount: totalAmt,
-                    quantity: 1,
-                  },
-                ],
-            fileUrl: previewFileUrl,
-            fileName: file.name,
-            selectedForPrint: true,
-            importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
-          };
-
-          parsedInvoices.push(inv);
-
-          setUploadLogs((prev) =>
-            prev.map((log, idx) =>
-              idx === i
-                ? { ...log, status: "success", message: `${engineLabel} 识别成功 (¥${totalAmt.toFixed(2)})` }
-                : idx === i + 1
-                ? { ...log, status: "processing", message: "准备识别..." }
-                : log
-            )
-          );
-        } else {
-          // Client-side PDF OCR algorithm with extracted PDF text & QR code fallback
-          const clientParsed = parseInvoiceTextWithRules(extractedPdfText || file.name, file.name);
-          let totalAmt = qrData?.totalAmountWithTax || clientParsed.totalAmountWithTax || 0;
-
-          const invFallback: InvoiceData = {
-            id: `inv-uploaded-${Date.now()}-${i}`,
-            invoiceType: clientParsed.invoiceType || "电子发票(普通发票)",
-            invoiceCode: qrData?.invoiceCode || clientParsed.invoiceCode || "",
-            invoiceNumber: qrData?.invoiceNumber || clientParsed.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
-            issueDate: qrData?.issueDate || clientParsed.issueDate || new Date().toISOString().split("T")[0],
-            buyerName: clientParsed.buyerName || settings?.defaultCompany || "个人",
-            buyerTaxId: clientParsed.buyerTaxId || "",
-            sellerName: clientParsed.sellerName || "示例服务提供商",
-            totalAmountWithoutTax: qrData?.totalAmountWithoutTax || clientParsed.totalAmountWithoutTax,
-            totalTaxAmount: qrData?.totalTaxAmount || clientParsed.totalTaxAmount,
-            totalAmountWithTax: totalAmt,
-            totalAmountWithTaxCN: clientParsed.totalAmountWithTaxCN || numberToRMB(totalAmt),
-            category: clientParsed.category || "其他",
-            remarks: clientParsed.remarks || file.name,
-            items: clientParsed.items || [
-              {
-                id: `item-${Date.now()}-1`,
-                name: file.name,
-                amount: totalAmt,
-                quantity: 1,
-              },
-            ],
-            fileUrl: previewFileUrl,
-            fileName: file.name,
-            selectedForPrint: true,
-            importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
-          };
-
-          parsedInvoices.push(invFallback);
-
-          const engineName = qrData?.totalAmountWithTax ? "【发票二维码扫码引擎】" : "【本地离线OCR引擎】";
-
-          setUploadLogs((prev) =>
-            prev.map((log, idx) =>
-              idx === i
-                ? {
-                    ...log,
-                    status: "success",
-                    message: `${engineName} 已识别 (¥${totalAmt.toFixed(2)})`,
-                  }
-                : idx === i + 1
-                ? { ...log, status: "processing", message: "准备识别..." }
-                : log
-            )
-          );
-        }
+        setUploadLogs((prev) =>
+          prev.map((log, idx) =>
+            idx === i
+              ? {
+                  ...log,
+                  status: "success",
+                  message: `${engineUsed} 已识别 (¥${invoice.totalAmountWithTax.toFixed(2)})`,
+                }
+              : idx === i + 1
+              ? { ...log, status: "processing", message: "准备识别..." }
+              : log
+          )
+        );
       } catch (err: any) {
         console.warn("Error processing invoice file:", err);
       }
@@ -260,7 +114,6 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
     setIsUploading(false);
     if (parsedInvoices.length > 0) {
       onAddInvoices(parsedInvoices);
-      // Requirement 1: 批导入 识别完成后 自动关掉对话框
       setTimeout(() => {
         onClose();
       }, 700);
