@@ -204,6 +204,7 @@ export const App: React.FC = () => {
         <>
           <PrintLayoutToolbar
             config={printConfig}
+            theme={theme}
             onChangeConfig={handleUpdateConfig}
             zoom={zoom}
             setZoom={setZoom}
