@@ -55,7 +55,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className={`rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border my-8 ${isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-900"}`}>
         <div className={`flex items-center justify-between px-6 py-4 border-b ${isDark ? "bg-slate-950 text-white border-slate-800" : "bg-slate-50/50 text-slate-900 border-slate-100"}`}>
           <div className="flex items-center space-x-2">
