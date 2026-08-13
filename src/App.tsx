@@ -21,20 +21,42 @@ const DEFAULT_SETTINGS: SystemSettings = {
   aiApiKey: "",
   baiduApiKey: "",
   baiduSecretKey: "",
-  defaultCompany: "会钓鱼的猫",
-  defaultDepartment: "猫粮研发部",
-  defaultApplicant: "张喵喵",
-  defaultApprover: "李喵喵",
-  defaultFinanceAuditor: "陈喵喵",
-  defaultCashier: "王喵喵",
+  defaultCompany: "北京云启智创科技有限公司",
+  defaultDepartment: "研发部",
+  defaultApplicant: "张三",
+  defaultApprover: "李四",
+  defaultFinanceAuditor: "王五",
+  defaultCashier: "赵六",
   autoSaveInvoices: true,
-  exportPassword: "",
   protectExportedExcel: false,
+  exportPassword: "",
 };
 
-export default function App() {
-  // Load initial settings
-  const [systemSettings, setSystemSettings] = useState<SystemSettings>(() => {
+export const App: React.FC = () => {
+  // 1. 核心状态：当前 Tab、皮肤主题、打印/排版配置
+  const [activeTab, setActiveTab] = useState<"layout" | "ledger" | "cover">("layout");
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      return (localStorage.getItem("app_theme_v1") as "light" | "dark") || "light";
+    } catch {
+      return "light";
+    }
+  });
+  const [zoom, setZoom] = useState<number>(0.9);
+
+  const [printConfig, setPrintConfig] = useState<PrintConfig>({
+    gridMode: "4",
+    paperType: "A4",
+    orientation: "landscape",
+    showCropLines: true,
+    showCategoryBadge: true,
+    marginSize: "normal",
+    sortBy: "category",
+    includeCoverPage: false,
+  });
+
+  // 2. 核心状态：系统设置 & 发票台账列表
+  const [settings, setSettings] = useState<SystemSettings>(() => {
     try {
       const saved = localStorage.getItem("system_settings_v1");
       return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
@@ -43,53 +65,27 @@ export default function App() {
     }
   });
 
-  // Load initial invoices from localStorage if autoSave is on, starting with clean selection on session open
   const [invoices, setInvoices] = useState<InvoiceData[]>(() => {
-    try {
-      const savedInvoices = localStorage.getItem("invoice_ledger_data_v1");
-      if (savedInvoices) {
-        const parsed = JSON.parse(savedInvoices);
+    const saved = localStorage.getItem("invoice_app_data");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((inv) => ({ ...inv, selectedForPrint: false }));
+          return parsed;
         }
+      } catch (e) {
+        /* ignore */
       }
-    } catch (e) {
-      console.warn("Failed to read localStorage invoices:", e);
     }
     return [];
   });
 
-  const [activeTab, setActiveTab] = useState<"layout" | "ledger" | "cover">(
-    "layout"
-  );
+  // 3. 模态框/弹窗控制状态
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(null);
 
-  const [printConfig, setPrintConfig] = useState<PrintConfig>({
-    gridMode: "4", // Default 4张/页 2x2 grid
-    paperType: "A4",
-    orientation: "landscape", // Auto set landscape for 2x2 grid
-    showCropLines: true,
-    showCategoryBadge: true,
-    marginSize: "normal",
-    includeCoverPage: false,
-    sortBy: "category",
-  });
-
-  const [zoom, setZoom] = useState(1.0);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(
-    null
-  );
-
-  // Theme skin state ("light" | "dark")
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    try {
-      return (localStorage.getItem("app_theme_v1") as "light" | "dark") || "light";
-    } catch {
-      return "light";
-    }
-  });
-
+  // 自动将皮肤与发票数据持久化到本地
   useEffect(() => {
     try {
       localStorage.setItem("app_theme_v1", theme);
@@ -105,142 +101,55 @@ export default function App() {
     }
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
-  };
-
-  // 自动保存台账表格
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    if (settings.autoSaveInvoices) {
       try {
-        if (systemSettings.autoSaveInvoices && invoices.length > 0) {
-          localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(invoices));
-        }
+        localStorage.setItem("invoice_app_data", JSON.stringify(invoices));
+        localStorage.setItem("system_settings_v1", JSON.stringify(settings));
       } catch (e) {
-        console.warn("Failed to write localStorage on unload:", e);
+        console.warn("Save failed:", e);
       }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [invoices, systemSettings.autoSaveInvoices]);
-
-  // Save settings change
-  const handleSaveSettings = (newSettings: SystemSettings) => {
-    setSystemSettings(newSettings);
-    try {
-      localStorage.setItem("system_settings_v1", JSON.stringify(newSettings));
-    } catch (e) {
-      console.warn("Failed to save system settings:", e);
     }
+  }, [invoices, settings]);
+
+  // 更新排版参数
+  const handleUpdateConfig = (newCfg: Partial<PrintConfig>) => {
+    setPrintConfig((prev) => ({ ...prev, ...newCfg }));
   };
 
-  // Toggle selection for single invoice
+  // 切换暗黑/白天模式
+  const handleToggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+  };
+
+  // 批量导入与台账操作
+  const handleAddInvoices = (newInvs: InvoiceData[]) => {
+    setInvoices((prev) => [...newInvs, ...prev]);
+  };
+
+  const handleDeleteInvoice = (id: string) => {
+    setInvoices((prev) => prev.filter((i) => i.id !== id));
+  };
+
   const handleToggleSelectForPrint = (id: string) => {
     setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === id ? { ...inv, selectedForPrint: !inv.selectedForPrint } : inv
-      )
+      prev.map((inv) => (inv.id === id ? { ...inv, selectedForPrint: !inv.selectedForPrint } : inv))
     );
   };
 
-  // Toggle selection for ALL invoices
   const handleToggleSelectAll = (select: boolean) => {
-    setInvoices((prev) =>
-      prev.map((inv) => ({ ...inv, selectedForPrint: select }))
-    );
+    setInvoices((prev) => prev.map((inv) => ({ ...inv, selectedForPrint: select })));
   };
 
-  // Add new parsed invoices
-  const handleAddInvoices = (newInvoices: InvoiceData[]) => {
-    setInvoices((prev) => {
-      const updated = [...newInvoices, ...prev];
-      if (systemSettings.autoSaveInvoices) {
-        try {
-          localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(updated));
-        } catch {}
-      }
-      return updated;
-    });
-  };
-
-  // Add custom manual blank invoice
-  const handleAddCustomInvoice = () => {
-    const newInv: InvoiceData = {
-      id: `manual-invoice-${Date.now()}`,
-      invoiceType: "增值税普通发票（纸质）",
-      invoiceCode: "",
-      invoiceNumber: String(Math.floor(Math.random() * 89999999 + 10000000)),
-      issueDate: new Date().toISOString().split("T")[0],
-      buyerName: systemSettings.defaultCompany || "个人",
-      buyerTaxId: "",
-      sellerName: "新建销售商户",
-      sellerTaxId: "",
-      totalAmountWithoutTax: 94.34,
-      totalTaxAmount: 5.66,
-      totalAmountWithTax: 100.0,
-      totalAmountWithTaxCN: "壹佰圆整",
-      category: "办公用品",
-      items: [],
-      remarks: "手动新建补录发票",
-      selectedForPrint: true,
-    };
-    setInvoices((prev) => [newInv, ...prev]);
-    setEditingInvoice(newInv);
-  };
-
-  // Update existing invoice
-  const handleSaveInvoice = (updated: InvoiceData) => {
-    setInvoices((prev) =>
-      prev.map((inv) => (inv.id === updated.id ? updated : inv))
-    );
-    setEditingInvoice(null);
-  };
-
-  // Delete invoice
-  const handleDeleteInvoice = (id: string) => {
-    setInvoices((prev) => {
-      const filtered = prev.filter((inv) => inv.id !== id);
-      if (systemSettings.autoSaveInvoices) {
-        try {
-          localStorage.setItem("invoice_ledger_data_v1", JSON.stringify(filtered));
-        } catch {}
-      }
-      return filtered;
-    });
-  };
-
-  // Load sample invoices
-  const handleLoadSamples = () => {
-    setInvoices(SAMPLE_INVOICES);
-  };
-
-  // Config change handler
-  const handleConfigChange = (newPartial: Partial<PrintConfig>) => {
-    setPrintConfig((prev) => {
-      const nextConfig = { ...prev, ...newPartial };
-
-      if (newPartial.gridMode === "4" && !newPartial.orientation) {
-        nextConfig.orientation = "landscape";
-      } else if (
-        (newPartial.gridMode === "1" || newPartial.gridMode === "2") &&
-        !newPartial.orientation
-      ) {
-        nextConfig.orientation = "portrait";
-      }
-
-      return nextConfig;
-    });
-  };
-
-  // Selected invoices array for preview & cover
+  // 计算排版所需的全局选中发票与合计
   const selectedInvoices = useMemo(
-    () => invoices.filter((inv) => inv.selectedForPrint),
+    () => invoices.filter((i) => i.selectedForPrint),
     [invoices]
   );
 
-  // Stats calculation
   const totalAmount = useMemo(
-    () => selectedInvoices.reduce((sum, inv) => sum + inv.totalAmountWithTax, 0),
+    () => selectedInvoices.reduce((sum, i) => sum + i.totalAmountWithTax, 0),
     [selectedInvoices]
   );
 
@@ -253,147 +162,156 @@ export default function App() {
     return Object.values(numCounts).filter((c) => c > 1).length;
   }, [invoices]);
 
-  const itemsPerPage =
-    printConfig.gridMode === "1"
-      ? 1
-      : printConfig.gridMode === "2"
-      ? 2
-      : printConfig.gridMode === "4"
-      ? 4
-      : 2;
-
+  const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
   const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
 
-  // Export Excel
-  const handleExportExcel = () => {
-    exportInvoicesToExcel(invoices, systemSettings);
-  };
-
-  // Export & Print High-Precision Vector PDF Engine
-  const handleExportPdf = async () => {
+  // 高精矢量防错打印
+  const handlePrint = async () => {
     setActiveTab("layout");
     setTimeout(async () => {
       const mainEl = document.querySelector<HTMLElement>("main");
       if (mainEl) {
         await generateAndPrintPdf(mainEl);
+      } else {
+        window.print();
       }
     }, 200);
   };
 
   return (
     <div
-      className={`min-h-screen flex flex-col font-sans transition-colors duration-200 selection:bg-red-100 selection:text-red-900 ${
-        theme === "dark" ? "bg-slate-950 text-slate-100 dark" : "bg-slate-100/80 text-slate-900"
+      className={`min-h-screen flex flex-col font-sans transition-colors ${
+        theme === "dark" ? "dark bg-slate-950 text-slate-100" : "bg-slate-100 text-slate-900"
       }`}
     >
-      {/* Header */}
+      {/* 1. 顶部主导航栏 */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         theme={theme}
-        onToggleTheme={toggleTheme}
-        onOpenBatchImport={() => setIsImportModalOpen(true)}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
-        onLoadSamples={handleLoadSamples}
-        onPrint={handleExportPdf}
-        onExportExcel={handleExportExcel}
+        onToggleTheme={handleToggleTheme}
+        onOpenBatchImport={() => setIsImportOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onLoadSamples={() => setInvoices(SAMPLE_INVOICES)}
+        onPrint={handlePrint}
+        onExportExcel={() => exportInvoicesToExcel(invoices, settings)}
         selectedCount={selectedInvoices.length}
         duplicateCount={duplicateCount}
       />
 
-      {/* Main View Area */}
+      {/* 2. 主排版/台账/报销单视图区域 */}
       {activeTab === "layout" && (
-        <main className="flex-1 flex flex-col">
+        <>
           <PrintLayoutToolbar
             config={printConfig}
-            onChangeConfig={handleConfigChange}
+            onChangeConfig={handleUpdateConfig}
             zoom={zoom}
             setZoom={setZoom}
             totalInvoices={selectedInvoices.length}
             totalPages={totalPages}
             totalAmount={totalAmount}
-            onResetOrder={() =>
-              setPrintConfig((p) => ({ ...p, sortBy: "category" }))
-            }
+            onResetOrder={() => handleUpdateConfig({ sortBy: "category" })}
           />
-
-          {/* Optional Reimbursement Cover included before A4 invoices */}
-          {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
-            <div className="pt-8">
-              <ReimbursementCover
-                invoices={invoices}
-                defaultSettings={systemSettings}
-                config={printConfig}
-                onOpenBatchImport={() => setIsImportModalOpen(true)}
-              />
-            </div>
-          )}
-
-          {/* A4 Live Layout Preview */}
-          <A4PagePreview
-            invoices={selectedInvoices}
-            config={printConfig}
-            zoom={zoom}
-            showCropLines={printConfig.showCropLines}
-            onEditInvoice={(inv) => setEditingInvoice(inv)}
-            onDeleteInvoice={handleDeleteInvoice}
-            onOpenBatchImport={() => setIsImportModalOpen(true)}
-          />
-        </main>
+          <main className="flex-1 overflow-auto bg-[#0b0e14]">
+            {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
+              <div className="pt-6">
+                <ReimbursementCover
+                  invoices={invoices}
+                  defaultSettings={settings}
+                  config={printConfig}
+                  onOpenBatchImport={() => setIsImportOpen(true)}
+                />
+              </div>
+            )}
+            <A4PagePreview
+              invoices={selectedInvoices}
+              config={printConfig}
+              zoom={zoom}
+              showCropLines={printConfig.showCropLines}
+              onEditInvoice={(inv) => setEditingInvoice(inv)}
+              onDeleteInvoice={handleDeleteInvoice}
+              onOpenBatchImport={() => setIsImportOpen(true)}
+            />
+          </main>
+        </>
       )}
 
       {activeTab === "ledger" && (
-        <main className="flex-1 py-4">
+        <main className="flex-1 overflow-auto bg-[#0b0e14] py-4">
           <InvoiceLedgerTable
             invoices={invoices}
-            systemSettings={systemSettings}
+            systemSettings={settings}
             onToggleSelectForPrint={handleToggleSelectForPrint}
             onToggleSelectAll={handleToggleSelectAll}
             onDeleteInvoice={handleDeleteInvoice}
             onEditInvoice={(inv) => setEditingInvoice(inv)}
-            onAddCustomInvoice={handleAddCustomInvoice}
+            onAddCustomInvoice={() => {
+              const newInv: InvoiceData = {
+                id: `custom-${Date.now()}`,
+                invoiceType: "电子发票(普通发票)",
+                invoiceNumber: String(Math.floor(Math.random() * 89999999 + 10000000)),
+                issueDate: new Date().toISOString().split("T")[0],
+                buyerName: settings.defaultCompany || "北京云启智创科技有限公司",
+                sellerName: "新建手工发票商户",
+                totalAmountWithoutTax: 94.34,
+                totalTaxAmount: 5.66,
+                totalAmountWithTax: 100,
+                totalAmountWithTaxCN: "壹佰元整",
+                category: "其他",
+                selectedForPrint: true,
+                items: [],
+              };
+              setInvoices([newInv, ...invoices]);
+              setEditingInvoice(newInv);
+            }}
           />
         </main>
       )}
 
       {activeTab === "cover" && (
-        <main className="flex-1 py-4">
+        <main className="flex-1 overflow-auto bg-[#0b0e14] py-4">
           <ReimbursementCover
             invoices={invoices}
-            defaultSettings={systemSettings}
-            onOpenBatchImport={() => setIsImportModalOpen(true)}
+            defaultSettings={settings}
+            config={printConfig}
+            onOpenBatchImport={() => setIsImportOpen(true)}
           />
         </main>
       )}
 
-      {/* Modals */}
+      {/* 3. 弹窗组件群 */}
       <BatchImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
         onAddInvoices={handleAddInvoices}
-        onLoadSamples={handleLoadSamples}
-        settings={systemSettings}
+        onLoadSamples={() => setInvoices(SAMPLE_INVOICES)}
+        settings={settings}
       />
 
       <InvoiceDetailModal
-        isOpen={!!editingInvoice}
+        isOpen={Boolean(editingInvoice)}
         invoice={editingInvoice}
         onClose={() => setEditingInvoice(null)}
-        onSave={handleSaveInvoice}
+        onSave={(updated) => {
+          setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+          setEditingInvoice(null);
+        }}
       />
 
       <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        settings={systemSettings}
-        onSaveSettings={handleSaveSettings}
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onSaveSettings={(newSettings) => setSettings(newSettings)}
         invoices={invoices}
         onImportInvoicesJson={(imported) => setInvoices(imported)}
         onClearSavedInvoices={() => {
           setInvoices([]);
-          localStorage.removeItem("invoice_ledger_data_v1");
+          localStorage.removeItem("invoice_app_data");
         }}
       />
     </div>
   );
-}
+};
+
+export default App;
