@@ -213,7 +213,7 @@ export const App: React.FC = () => {
             totalAmount={totalAmount}
             onResetOrder={() => handleUpdateConfig({ sortBy: "category" })}
           />
-          <main className={`flex-1 overflow-auto transition-colors ${theme === "dark" ? "bg-slate-950" : "bg-slate-100"}`}>
+          <main className="flex-1 overflow-auto bg-[#f1f5f9]">
             {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
               <div className="pt-6">
                 <ReimbursementCover
