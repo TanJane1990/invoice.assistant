@@ -33,7 +33,10 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   totalPages,
   totalAmount,
   onResetOrder,
+  theme = "dark",
 }) => {
+  const isDark = theme === "dark";
+
   const gridModes = [
     { id: "1", label: "1张/页 (单张原票 210×140mm)" },
     { id: "2", label: "2张/页 (上下 纵向)" },
@@ -41,10 +44,16 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   ];
 
   return (
-    <div className="no-print border-b border-slate-800 bg-[#0B0F19] text-white sticky top-14 z-[60] px-4 py-2 flex items-center justify-between text-xs shrink-0 flex-wrap gap-y-2 transition-colors shadow-md">
+    <div className={`no-print border-b sticky top-14 z-[60] px-4 py-2 flex items-center justify-between text-xs shrink-0 flex-wrap gap-y-2 transition-colors shadow-md ${
+      isDark
+        ? "bg-[#0E172B] border-[#1E293B] text-[#F8FAFC]"
+        : "bg-white border-slate-200 text-slate-800"
+    }`}>
       {/* 1. 拼页模式切换胶囊组 */}
       <div className="flex items-center space-x-2">
-        <div className="p-1 rounded-xl flex items-center border bg-slate-900/90 border-slate-800">
+        <div className={`p-1 rounded-xl flex items-center border transition-colors ${
+          isDark ? "bg-[#020617]/80 border-[#1E293B]" : "bg-[#F3F5F9] border-slate-200"
+        }`}>
           {gridModes.map((mode) => {
             const active = config.gridMode === mode.id;
             return (
@@ -53,8 +62,12 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
                 onClick={() => onChangeConfig({ gridMode: mode.id as any })}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   active
-                    ? "bg-[#e60023] text-white shadow-xs font-bold"
-                    : "text-slate-400 hover:text-white"
+                    ? isDark
+                      ? "bg-[#E8000A] text-white shadow-xs font-bold"
+                      : "bg-white text-[#E8000A] border border-[#E8000A] shadow-xs font-bold"
+                    : isDark
+                    ? "text-[#93959F] hover:text-[#F8FAFC]"
+                    : "text-slate-500 hover:text-[#E8000A]"
                 }`}
               >
                 {mode.label}
@@ -69,15 +82,19 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             onClick={() => onChangeConfig({ showCropLines: !config.showCropLines })}
             className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
               config.showCropLines
-                ? "bg-slate-800 border-slate-700 text-white"
-                : "bg-slate-950/60 border-slate-800 text-slate-400"
+                ? isDark
+                  ? "bg-[#1E293B] border-[#334155] text-white"
+                  : "bg-white border-[#E8000A] text-[#E8000A]"
+                : isDark
+                ? "bg-[#020617]/60 border-[#1E293B] text-[#93959F]"
+                : "bg-[#F3F5F9] border-slate-200 text-slate-500"
             }`}
           >
             <input
               type="checkbox"
               checked={config.showCropLines}
               onChange={() => {}}
-              className="accent-[#e60023] rounded cursor-pointer"
+              className="accent-[#E8000A] rounded cursor-pointer"
             />
             <Scissors className="w-3.5 h-3.5 text-red-500" />
             <span>剪裁线</span>
@@ -87,15 +104,19 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             onClick={() => onChangeConfig({ includeCoverPage: !config.includeCoverPage })}
             className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
               config.includeCoverPage
-                ? "bg-slate-800 border-slate-700 text-white"
-                : "bg-slate-950/60 border-slate-800 text-slate-400"
+                ? isDark
+                  ? "bg-[#1E293B] border-[#334155] text-white"
+                  : "bg-white border-[#E8000A] text-[#E8000A]"
+                : isDark
+                ? "bg-[#020617]/60 border-[#1E293B] text-[#93959F]"
+                : "bg-[#F3F5F9] border-slate-200 text-slate-500"
             }`}
           >
             <input
               type="checkbox"
               checked={config.includeCoverPage}
               onChange={() => {}}
-              className="accent-[#e60023] rounded cursor-pointer"
+              className="accent-[#E8000A] rounded cursor-pointer"
             />
             <FileCheck2 className="w-3.5 h-3.5 text-amber-500" />
             <span>带报销封面</span>
@@ -103,39 +124,47 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
         </div>
 
         {/* 3. 页边距选择 */}
-        <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 font-semibold">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
+        <div className={`flex items-center space-x-1 rounded-lg px-2.5 py-1 font-semibold border transition-colors ${
+          isDark ? "bg-[#020617] border-[#1E293B] text-[#93959F]" : "bg-[#F3F5F9] border-slate-200 text-slate-600"
+        }`}>
+          <SlidersHorizontal className={`w-3.5 h-3.5 ${isDark ? "text-[#93959F]" : "text-slate-400"}`} />
           <span>页边距:</span>
           <select
             value={config.marginSize || config.margin || "normal"}
             onChange={(e) => onChangeConfig({ marginSize: e.target.value as any })}
-            className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+            className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer ${isDark ? "text-[#F8FAFC]" : "text-slate-900"}`}
           >
-            <option value="none" className="bg-slate-900">无边距 (0mm)</option>
-            <option value="compact" className="bg-slate-900">紧凑 (3mm)</option>
-            <option value="normal" className="bg-slate-900">适中 (5mm)</option>
-            <option value="wide" className="bg-slate-900">宽距 (10mm)</option>
+            <option value="none" className={isDark ? "bg-[#0E172B]" : "bg-white"}>无边距 (0mm)</option>
+            <option value="compact" className={isDark ? "bg-[#0E172B]" : "bg-white"}>紧凑 (3mm)</option>
+            <option value="normal" className={isDark ? "bg-[#0E172B]" : "bg-white"}>适中 (5mm)</option>
+            <option value="wide" className={isDark ? "bg-[#0E172B]" : "bg-white"}>宽距 (10mm)</option>
           </select>
         </div>
 
         {/* 4. 排序方式选择 */}
-        <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 font-semibold">
+        <div className={`flex items-center space-x-1 rounded-lg px-2.5 py-1 font-semibold border transition-colors ${
+          isDark ? "bg-[#020617] border-[#1E293B] text-[#93959F]" : "bg-[#F3F5F9] border-slate-200 text-slate-600"
+        }`}>
           <span>排序:</span>
           <select
             value={config.sortBy}
             onChange={(e) => onChangeConfig({ sortBy: e.target.value as any })}
-            className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+            className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer ${isDark ? "text-[#F8FAFC]" : "text-slate-900"}`}
           >
-            <option value="category" className="bg-slate-900">按发票种类/票种</option>
-            <option value="date_asc" className="bg-slate-900">按开票时间 (升序)</option>
-            <option value="amount_desc" className="bg-slate-900">按金额大小 (降序)</option>
+            <option value="category" className={isDark ? "bg-[#0E172B]" : "bg-white"}>按发票种类/票种</option>
+            <option value="date_asc" className={isDark ? "bg-[#0E172B]" : "bg-white"}>按开票时间 (升序)</option>
+            <option value="amount_desc" className={isDark ? "bg-[#0E172B]" : "bg-white"}>按金额大小 (降序)</option>
           </select>
         </div>
 
         <button
           onClick={onResetOrder}
           title="重置默认排序"
-          className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+          className={`p-1.5 rounded-lg border transition cursor-pointer ${
+            isDark
+              ? "bg-[#020617] hover:bg-[#1E293B] border-[#1E293B] text-[#93959F] hover:text-white"
+              : "bg-[#F3F5F9] hover:bg-slate-200 border-slate-200 text-slate-400 hover:text-slate-700"
+          }`}
         >
           <RotateCcw className="w-3.5 h-3.5" />
         </button>
@@ -144,64 +173,70 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
       {/* 5. 纸张类型/方向与视图缩放统计 */}
       <div className="flex items-center space-x-3">
         {/* 纸张规格 */}
-        <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 font-semibold">
-          <File className="w-3.5 h-3.5 text-slate-400" />
+        <div className={`flex items-center space-x-1 rounded-lg px-2.5 py-1 font-semibold border transition-colors ${
+          isDark ? "bg-[#020617] border-[#1E293B] text-[#93959F]" : "bg-[#F3F5F9] border-slate-200 text-slate-600"
+        }`}>
+          <File className={`w-3.5 h-3.5 ${isDark ? "text-[#93959F]" : "text-slate-400"}`} />
           <span>纸张类型:</span>
           <select
             value={config.paperType || "A4"}
             onChange={(e) => onChangeConfig({ paperType: e.target.value as PaperType })}
-            className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+            className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer ${isDark ? "text-[#F8FAFC]" : "text-slate-900"}`}
           >
-            <option value="A4" className="bg-slate-900">A4 标准纸 (210×297mm)</option>
-            <option value="A5" className="bg-slate-900">A5 纸张 (148×210mm)</option>
-            <option value="B5" className="bg-slate-900">B5 纸张 (176×250mm)</option>
-            <option value="InvoiceSpecial240" className="bg-slate-900">发票专用平铺纸 (240×140mm)</option>
+            <option value="A4" className={isDark ? "bg-[#0E172B]" : "bg-white"}>A4 标准纸 (210×297mm)</option>
+            <option value="A5" className={isDark ? "bg-[#0E172B]" : "bg-white"}>A5 纸张 (148×210mm)</option>
+            <option value="B5" className={isDark ? "bg-[#0E172B]" : "bg-white"}>B5 纸张 (176×250mm)</option>
+            <option value="InvoiceSpecial240" className={isDark ? "bg-[#0E172B]" : "bg-white"}>发票专用平铺纸 (240×140mm)</option>
           </select>
         </div>
 
         {/* 纸张方向 */}
-        <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-300 font-semibold">
-          <Compass className="w-3.5 h-3.5 text-slate-400" />
+        <div className={`flex items-center space-x-1 rounded-lg px-2.5 py-1 font-semibold border transition-colors ${
+          isDark ? "bg-[#020617] border-[#1E293B] text-[#93959F]" : "bg-[#F3F5F9] border-slate-200 text-slate-600"
+        }`}>
+          <Compass className={`w-3.5 h-3.5 ${isDark ? "text-[#93959F]" : "text-slate-400"}`} />
           <span>纸张方向:</span>
           <select
             value={config.orientation}
             onChange={(e) => onChangeConfig({ orientation: e.target.value as any })}
-            className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+            className={`bg-transparent text-xs font-bold focus:outline-none cursor-pointer ${isDark ? "text-[#F8FAFC]" : "text-slate-900"}`}
           >
-            <option value="landscape" className="bg-slate-900">横向 (Landscape)</option>
-            <option value="portrait" className="bg-slate-900">纵向 (Portrait)</option>
+            <option value="landscape" className={isDark ? "bg-[#0E172B]" : "bg-white"}>横向 (Landscape)</option>
+            <option value="portrait" className={isDark ? "bg-[#0E172B]" : "bg-white"}>纵向 (Portrait)</option>
           </select>
         </div>
 
         {/* 统计数字 */}
-        <div className="font-mono text-slate-400 font-semibold">
-          共 <span className="text-white font-bold">{totalInvoices}</span> 张发票 · 排{" "}
-          <span className="text-white font-bold">{totalPages}</span> 页 {config.paperType || "A4"} · 合计:{" "}
-          <span className="text-emerald-400 font-bold font-mono">
+        <div className={`font-mono font-semibold ${isDark ? "text-[#93959F]" : "text-slate-500"}`}>
+          共 <span className={`font-bold ${isDark ? "text-[#F8FAFC]" : "text-slate-900"}`}>{totalInvoices}</span> 张发票 · 排{" "}
+          <span className={`font-bold ${isDark ? "text-[#F8FAFC]" : "text-slate-900"}`}>{totalPages}</span> 页 {config.paperType || "A4"} · 合计:{" "}
+          <span className={`font-bold font-mono ${isDark ? "text-emerald-400" : "text-[#009966]"}`}>
             ¥{totalAmount.toFixed(2)}
           </span>
         </div>
 
         {/* 视图缩放 */}
-        <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-slate-300">
+        <div className={`flex items-center space-x-1 rounded-lg px-2 py-1 border transition-colors ${
+          isDark ? "bg-[#020617] border-[#1E293B] text-[#93959F]" : "bg-[#F3F5F9] border-slate-200 text-slate-500"
+        }`}>
           <button
             onClick={() => setZoom((z) => Math.max(0.4, Math.round((z - 0.1) * 10) / 10))}
-            className="p-1 hover:text-white cursor-pointer"
+            className={`p-1 cursor-pointer ${isDark ? "hover:text-white" : "hover:text-slate-900"}`}
             title="缩小"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="font-mono text-xs px-1 font-bold">{Math.round(zoom * 100)}%</span>
+          <span className={`font-mono text-xs px-1 font-bold ${isDark ? "text-[#F8FAFC]" : "text-slate-900"}`}>{Math.round(zoom * 100)}%</span>
           <button
             onClick={() => setZoom((z) => Math.min(2.0, Math.round((z + 0.1) * 10) / 10))}
-            className="p-1 hover:text-white cursor-pointer"
+            className={`p-1 cursor-pointer ${isDark ? "hover:text-white" : "hover:text-slate-900"}`}
             title="放大"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setZoom(1.0)}
-            className="p-1 hover:text-white cursor-pointer"
+            className={`p-1 cursor-pointer ${isDark ? "hover:text-white" : "hover:text-slate-900"}`}
             title="重置100%"
           >
             <Maximize2 className="w-3 h-3" />

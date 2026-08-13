@@ -110,7 +110,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
   if (invoices.length === 0) {
     return (
-      <main className="flex-1 p-6 flex items-center justify-center overflow-auto relative min-h-[calc(100vh-7.5rem)] bg-[#f1f5f9]">
+      <main className="flex-1 p-6 flex items-center justify-center overflow-auto relative min-h-[calc(100vh-7.5rem)] bg-[#F3F5F9]">
         <div className="p-12 text-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/90 shadow-2xs max-w-xl w-full">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 text-red-500 flex items-center justify-center shadow-xs">
             <FilePlus2 className="w-8 h-8" />
@@ -123,7 +123,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
           </p>
           <button
             onClick={onOpenBatchImport}
-            className="px-6 py-2.5 bg-[#e60023] hover:bg-[#cc001f] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center space-x-1.5"
+            className="px-6 py-2.5 bg-[#E8000A] hover:bg-[#C80009] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center space-x-1.5"
           >
             <span>立即批量导入发票</span>
           </button>
@@ -135,7 +135,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   return (
     <div
       className={`w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen relative z-0 transition-colors ${
-        isDark ? "bg-slate-950" : "bg-slate-100"
+        isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
       {/* Pages Container with Scaling Zoom */}

@@ -38,25 +38,37 @@ export const Header: React.FC<HeaderProps> = ({
   const isDark = theme === "dark";
 
   return (
-    <header className="no-print border-b border-slate-800 bg-[#0B0F19] text-white px-4 py-2 flex items-center justify-between shrink-0 sticky top-0 z-[70] shadow-md">
+    <header className={`no-print border-b px-4 py-2 flex items-center justify-between shrink-0 sticky top-0 z-[70] shadow-md transition-colors ${
+      isDark
+        ? "bg-[#0E172B] border-[#1E293B] text-[#F8FAFC]"
+        : "bg-white border-slate-200 text-slate-800"
+    }`}>
       {/* 左侧 Logo 与应用名 */}
       <div className="flex items-center space-x-3">
-        <div className="bg-[#e60023] p-2 rounded-xl flex items-center justify-center shadow-md">
+        <div className="bg-[#E8000A] p-2 rounded-xl flex items-center justify-center shadow-md">
           <Printer className="w-5 h-5 text-white" />
         </div>
-        <span className="font-extrabold text-lg tracking-wide text-white">
+        <span className={`font-extrabold text-lg tracking-wide transition-colors ${
+          isDark ? "text-[#F8FAFC]" : "text-slate-900"
+        }`}>
           智能发票管理助手
         </span>
       </div>
 
       {/* 中间功能 Tab 切换 */}
-      <div className="hidden md:flex items-center p-1 rounded-xl bg-slate-900/90 border border-slate-800 space-x-1">
+      <div className={`hidden md:flex items-center p-1 rounded-xl border space-x-1 transition-colors ${
+        isDark ? "bg-[#020617]/80 border-[#1E293B]" : "bg-[#F3F5F9] border-slate-200"
+      }`}>
         <button
           onClick={() => setActiveTab("layout")}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "layout"
-              ? "bg-[#e60023] text-white shadow-sm"
-              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              ? isDark
+                ? "bg-[#E8000A] text-white shadow-sm"
+                : "bg-white text-[#E8000A] border border-[#E8000A] shadow-xs"
+              : isDark
+              ? "text-[#93959F] hover:text-[#F8FAFC] hover:bg-[#1E293B]/60"
+              : "text-slate-600 hover:text-[#E8000A] hover:bg-slate-200/50"
           }`}
         >
           <LayoutGrid className="w-3.5 h-3.5" />
@@ -67,8 +79,12 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab("ledger")}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "ledger"
-              ? "bg-[#e60023] text-white shadow-sm"
-              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              ? isDark
+                ? "bg-[#E8000A] text-white shadow-sm"
+                : "bg-white text-[#E8000A] border border-[#E8000A] shadow-xs"
+              : isDark
+              ? "text-[#93959F] hover:text-[#F8FAFC] hover:bg-[#1E293B]/60"
+              : "text-slate-600 hover:text-[#E8000A] hover:bg-slate-200/50"
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
@@ -79,8 +95,12 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab("cover")}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "cover"
-              ? "bg-[#e60023] text-white shadow-sm"
-              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              ? isDark
+                ? "bg-[#E8000A] text-white shadow-sm"
+                : "bg-white text-[#E8000A] border border-[#E8000A] shadow-xs"
+              : isDark
+              ? "text-[#93959F] hover:text-[#F8FAFC] hover:bg-[#1E293B]/60"
+              : "text-slate-600 hover:text-[#E8000A] hover:bg-slate-200/50"
           }`}
         >
           <ClipboardList className="w-3.5 h-3.5" />
@@ -94,7 +114,11 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onToggleTheme}
           title={isDark ? "切换为白天模式" : "切换为暗系模式"}
-          className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer font-bold"
+          className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl border transition cursor-pointer font-bold ${
+            isDark
+              ? "bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] border-[#334155]"
+              : "bg-[#F3F5F9] hover:bg-slate-200 text-slate-700 border-slate-200"
+          }`}
         >
           {isDark ? (
             <>
@@ -112,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* 批量导入发票 */}
         <button
           onClick={onOpenBatchImport}
-          className="flex items-center space-x-1 bg-[#e60023] hover:bg-[#cc001f] px-3.5 py-1.5 rounded-xl font-bold text-white shadow-sm transition cursor-pointer"
+          className="flex items-center space-x-1 bg-[#E8000A] hover:bg-[#C80009] px-3.5 py-1.5 rounded-xl font-bold text-white shadow-sm transition cursor-pointer"
         >
           <Upload className="w-3.5 h-3.5" />
           <span>批量导入发票</span>
@@ -121,9 +145,13 @@ export const Header: React.FC<HeaderProps> = ({
         {/* 导出台账Excel */}
         <button
           onClick={onExportExcel}
-          className="hidden lg:flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-400 border border-emerald-800 font-bold transition cursor-pointer"
+          className={`hidden lg:flex items-center space-x-1 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer border ${
+            isDark
+              ? "bg-[#0E172B] hover:bg-[#1E293B] text-[#009966] border-[#009966]/40"
+              : "bg-[#F3F5F9] hover:bg-emerald-50 text-[#009966] border-emerald-300"
+          }`}
         >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
+          <FileSpreadsheet className="w-3.5 h-3.5 text-[#009966]" />
           <span>导出台账Excel</span>
         </button>
 
@@ -131,9 +159,13 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onPrint}
           title="调出系统打印对话框或直接高清打印排版好的发票"
-          className="flex items-center space-x-1 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold transition cursor-pointer"
+          className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer border ${
+            isDark
+              ? "bg-[#020617] hover:bg-[#1E293B] text-[#F8FAFC] border-[#1E293B]"
+              : "bg-[#0E172B] hover:bg-[#1E293B] text-white border-[#0E172B]"
+          }`}
         >
-          <Printer className="w-3.5 h-3.5 text-red-400" />
+          <Printer className="w-3.5 h-3.5 text-[#E8000A]" />
           <span>一键打印</span>
         </button>
 
@@ -141,9 +173,13 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenSettings}
           title="设置（AI API Key、企业抬头与数据保存）"
-          className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold transition cursor-pointer"
+          className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl font-bold transition cursor-pointer border ${
+            isDark
+              ? "bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] border-[#334155]"
+              : "bg-[#F3F5F9] hover:bg-slate-200 text-slate-800 border-slate-200"
+          }`}
         >
-          <Settings className="w-3.5 h-3.5 text-slate-400" />
+          <Settings className={`w-3.5 h-3.5 ${isDark ? "text-[#93959F]" : "text-slate-600"}`} />
           <span>设置</span>
         </button>
       </div>

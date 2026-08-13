@@ -1,13 +1,24 @@
 @import "tailwindcss";
 
+@theme {
+  --color-red-500: #E8000A;
+  --color-red-600: #E8000A;
+  --color-red-700: #C80009;
+  --color-emerald-500: #009966;
+  --color-emerald-600: #009966;
+  --color-emerald-700: #007A52;
+  --color-slate-950: #0E172B;
+  --color-slate-100: #F3F5F9;
+}
+
 /* Theme Styles */
 body.theme-dark {
-  background-color: #090d16;
+  background-color: #0E172B;
   color: #f1f5f9;
 }
 
 body.theme-light {
-  background-color: #f8fafc;
+  background-color: #F3F5F9;
   color: #0f172a;
 }
 

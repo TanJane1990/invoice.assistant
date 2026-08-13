@@ -181,7 +181,7 @@ export const App: React.FC = () => {
   return (
     <div
       className={`min-h-screen flex flex-col font-sans transition-colors ${
-        theme === "dark" ? "dark bg-slate-950 text-slate-100" : "bg-slate-100 text-slate-900"
+        theme === "dark" ? "dark bg-[#0E172B] text-slate-100" : "bg-[#F3F5F9] text-slate-900"
       }`}
     >
       {/* 1. 顶部主导航栏 */}
@@ -213,7 +213,7 @@ export const App: React.FC = () => {
             totalAmount={totalAmount}
             onResetOrder={() => handleUpdateConfig({ sortBy: "category" })}
           />
-          <main className="flex-1 overflow-auto bg-[#f1f5f9]">
+          <main className="flex-1 overflow-auto bg-[#F3F5F9]">
             {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
               <div className="pt-6">
                 <ReimbursementCover
@@ -240,7 +240,7 @@ export const App: React.FC = () => {
       )}
 
       {activeTab === "ledger" && (
-        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-slate-950" : "bg-slate-100"}`}>
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0E172B]" : "bg-[#F3F5F9]"}`}>
           <InvoiceLedgerTable
             invoices={invoices}
             systemSettings={settings}
@@ -273,7 +273,7 @@ export const App: React.FC = () => {
       )}
 
       {activeTab === "cover" && (
-        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-slate-950" : "bg-slate-100"}`}>
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0E172B]" : "bg-[#F3F5F9]"}`}>
           <ReimbursementCover
             invoices={invoices}
             defaultSettings={settings}

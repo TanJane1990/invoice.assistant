@@ -46,7 +46,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 my-8 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#0B0F19] text-white border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800">
           <div className="flex items-center space-x-2">
             <Settings className="w-5 h-5 text-red-500" />
             <h3 className="font-extrabold text-base tracking-wide">智能发票助手 - 系统设置</h3>
@@ -249,7 +249,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center space-x-1.5 px-5 py-2 bg-[#e60023] hover:bg-[#cc001f] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer min-w-[130px] justify-center"
+              className="flex items-center space-x-1.5 px-5 py-2 bg-[#E8000A] hover:bg-[#C80009] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer min-w-[130px] justify-center"
             >
               {savedSuccess ? (
                 <>
