@@ -298,6 +298,7 @@ export const App: React.FC = () => {
         isOpen={Boolean(editingInvoice)}
         invoice={editingInvoice}
         onClose={() => setEditingInvoice(null)}
+        theme={theme}
         onSave={(updated) => {
           setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
           setEditingInvoice(null);
@@ -311,6 +312,7 @@ export const App: React.FC = () => {
         onSaveSettings={(newSettings) => setSettings(newSettings)}
         invoices={invoices}
         onImportInvoicesJson={(imported) => setInvoices(imported)}
+        theme={theme}
         onClearSavedInvoices={() => {
           setInvoices([]);
           localStorage.removeItem("invoice_app_data");
