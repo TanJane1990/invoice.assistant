@@ -11,6 +11,7 @@ interface A4PagePreviewProps {
   onDeleteInvoice?: (id: string) => void;
   onOpenBatchImport?: () => void;
   zoom?: number;
+  theme?: "light" | "dark";
 }
 
 // Paper Sizes in Millimeters (mm)
@@ -38,11 +39,13 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   onDeleteInvoice,
   onOpenBatchImport,
   zoom = 1.0,
+  theme = "dark",
 }) => {
+  const isDark = theme === "dark";
   const paperKey = config.paperType || "A4";
   const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
   const isLandscape = config.orientation === "landscape";
-  const paddingValue = MARGIN_SIZES[config.margin || "normal"] || "5mm";
+  const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
 
   const isGrid1SingleTicket = config.gridMode === "1";
 
@@ -78,9 +81,9 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
       return pageList;
     } else {
       const sorted = [...invoices];
-      if (config.sortBy === "date") {
+      if (config.sortBy === "date_asc") {
         sorted.sort((a, b) => (a.issueDate || "").localeCompare(b.issueDate || ""));
-      } else if (config.sortBy === "amount") {
+      } else if (config.sortBy === "amount_desc") {
         sorted.sort((a, b) => b.totalAmountWithTax - a.totalAmountWithTax);
       }
 
@@ -107,32 +110,44 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
   if (invoices.length === 0) {
     return (
-      <main className="flex-1 bg-[#0b0e14] p-4 flex items-center justify-center overflow-auto relative min-h-[calc(100vh-7rem)]">
-        <div className="w-full h-full bg-[#8a909e]/80 dark:bg-[#8a909e]/30 rounded-xl border-2 border-dashed border-gray-400/50 flex flex-col items-center justify-center relative shadow-inner p-12 min-h-[480px]">
-          <div className="flex flex-col items-center text-center max-w-md px-6">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg mb-4">
-              <div className="relative">
-                <FilePlus2 className="w-8 h-8 text-[#e60023]" />
-              </div>
-            </div>
-            <h3 className="text-gray-900 font-bold text-lg mb-2">发票排版预览为空</h3>
-            <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed mb-6">
-              您尚未勾选或导入任何发票。请批量上传电子发票 PDF/图片文件或选择本地 Excel 表格导入。
-            </p>
-            <button
-              onClick={onOpenBatchImport}
-              className="bg-[#e60023] hover:bg-[#cc001f] text-white text-xs font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition transform active:scale-95 flex items-center space-x-1.5 cursor-pointer"
-            >
-              <span>立即批量导入发票</span>
-            </button>
+      <main
+        className={`flex-1 p-6 flex items-center justify-center overflow-auto relative min-h-[calc(100vh-7.5rem)] transition-colors ${
+          isDark ? "bg-slate-950" : "bg-slate-100"
+        }`}
+      >
+        <div
+          className={`p-12 text-center rounded-2xl border-2 border-dashed transition-all max-w-xl w-full ${
+            isDark
+              ? "bg-slate-900/50 border-slate-800 text-slate-400"
+              : "bg-white/80 border-slate-200 text-slate-500 shadow-2xs"
+          }`}
+        >
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 text-red-500 flex items-center justify-center shadow-xs">
+            <FilePlus2 className="w-8 h-8" />
           </div>
+          <h3 className={`text-lg font-bold ${isDark ? "text-slate-200" : "text-slate-800"}`}>
+            发票排版预览为空
+          </h3>
+          <p className="text-xs mt-1 mb-6 text-slate-400">
+            您尚未勾选或导入任何发票。请批量上传电子发票 PDF/图片文件或选择本地 Excel 表格导入。
+          </p>
+          <button
+            onClick={onOpenBatchImport}
+            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md shadow-red-200 dark:shadow-none transition-all cursor-pointer inline-flex items-center space-x-1.5"
+          >
+            <span>立即批量导入发票</span>
+          </button>
         </div>
       </main>
     );
   }
 
   return (
-    <div className="w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen relative z-0 bg-[#0b0e14]">
+    <div
+      className={`w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen relative z-0 transition-colors ${
+        isDark ? "bg-slate-950" : "bg-slate-100"
+      }`}
+    >
       {/* Pages Container with Scaling Zoom */}
       <div
         className="transition-transform origin-top flex flex-col items-center space-y-10 relative z-0"
@@ -144,28 +159,35 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
             <div key={`page-${pageIdx}`} className="relative flex flex-col items-center z-0">
               {/* On-screen Page Badge (hidden in print) */}
               <div
-                className="no-print mb-2 flex items-center justify-between text-xs font-bold text-gray-300 px-1 relative z-0"
+                className={`no-print mb-2 flex items-center justify-between text-xs font-semibold px-2 py-1 rounded-md ${
+                  isDark ? "bg-slate-800 text-slate-300" : "bg-slate-200 text-slate-700"
+                }`}
                 style={{ width: pageWidth }}
               >
                 <span className="flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#e60023] inline-block"></span>
+                  <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
                   <span>
-                    第 {pageIdx + 1} 页 / 共 {pages.length} 页 ({config.paperType || "A4"}{isLandscape ? "横向" : "纵向"})
+                    第 {pageIdx + 1} 页 / 共 {pages.length} 页 ({config.paperType || "A4"}
+                    {isLandscape ? "横向" : "纵向"})
                   </span>
                   {pageData.groupTitle && (
-                    <span className="px-2 py-0.5 bg-[#e60023]/20 text-red-400 font-bold rounded text-[11px] border border-[#e60023]/40">
+                    <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 font-bold rounded text-[11px] border border-red-200 dark:border-red-800">
                       【按票种分类】{pageData.groupTitle}
                     </span>
                   )}
                 </span>
-                <span className="font-mono text-gray-400">
+                <span className="font-mono">
                   本页容纳 {pageInvoices.length} 张发票 ({config.gridMode}张/页排版)
                 </span>
               </div>
 
               {/* Pixel-Accurate Printable Sheet */}
               <div
-                className="a4-print-page bg-white text-slate-900 shadow-2xl border border-slate-300 transition-shadow relative z-0 rounded-sm"
+                className={`mx-auto bg-white transition-all print:shadow-none a4-print-page relative z-0 ${
+                  isDark
+                    ? "shadow-[0_10px_30px_rgba(0,0,0,0.6)] ring-1 ring-slate-800"
+                    : "shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-slate-200"
+                }`}
                 style={{
                   width: pageWidth,
                   minHeight: pageHeight,

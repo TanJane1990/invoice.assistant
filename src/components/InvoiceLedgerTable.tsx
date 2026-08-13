@@ -23,6 +23,7 @@ interface InvoiceLedgerTableProps {
   onDeleteInvoice: (id: string) => void;
   onEditInvoice: (invoice: InvoiceData) => void;
   onAddCustomInvoice: () => void;
+  theme?: "light" | "dark";
 }
 
 // Distinct matching color styles for duplicate invoice groups
@@ -62,7 +63,9 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   onDeleteInvoice,
   onEditInvoice,
   onAddCustomInvoice,
+  theme = "dark",
 }) => {
+  const isDark = theme === "dark";
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [filterDuplicateOnly, setFilterDuplicateOnly] = useState(false);
@@ -124,27 +127,27 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 space-y-4">
+    <div className={`max-w-7xl mx-auto py-6 px-4 space-y-4 transition-colors ${isDark ? "" : ""}`}>
       {/* Top Banner & Audit Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#0E1422] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-bold">台账总发票数</div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mt-1">
-            {invoices.length} <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">张</span>
+        <div className={`p-5 rounded-2xl border shadow-2xs ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200/90"}`}>
+          <div className={`text-xs font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>台账总发票数</div>
+          <div className={`text-2xl font-extrabold mt-1 ${isDark ? "text-slate-100" : "text-slate-900"}`}>
+            {invoices.length} <span className={`text-xs font-normal ${isDark ? "text-slate-400" : "text-slate-500"}`}>张</span>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#0E1422] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-bold">拟排版打印数</div>
-          <div className="text-2xl font-extrabold text-red-600 dark:text-red-400 mt-1">
+        <div className={`p-5 rounded-2xl border shadow-2xs ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200/90"}`}>
+          <div className={`text-xs font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>拟排版打印数</div>
+          <div className={`text-2xl font-extrabold mt-1 ${isDark ? "text-red-400" : "text-red-600"}`}>
             {selectedForPrintCount}{" "}
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">/ {invoices.length}</span>
+            <span className={`text-xs font-normal ${isDark ? "text-slate-400" : "text-slate-500"}`}>/ {invoices.length}</span>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#0E1422] p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
-          <div className="text-xs text-slate-500 dark:text-slate-400 font-bold">总金额合计</div>
-          <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
+        <div className={`p-5 rounded-2xl border shadow-2xs ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200/90"}`}>
+          <div className={`text-xs font-bold ${isDark ? "text-slate-400" : "text-slate-500"}`}>总金额合计</div>
+          <div className={`text-2xl font-extrabold mt-1 font-mono ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
             ¥
             {invoices
               .reduce((sum, i) => sum + i.totalAmountWithTax, 0)
@@ -156,13 +159,13 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           onClick={() => setFilterDuplicateOnly((prev) => !prev)}
           className={`p-5 rounded-2xl border cursor-pointer transition-all ${
             duplicateCount > 0
-              ? "bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200"
-              : "bg-white dark:bg-[#0E1422] border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+              ? isDark ? "bg-amber-950/60 border-amber-800 text-amber-200" : "bg-amber-50 border-amber-300 text-amber-900"
+              : isDark ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-white border-slate-200/90 text-slate-700"
           }`}
         >
           <div className="flex items-center justify-between text-xs font-bold">
             <span>相同发票号查重预警</span>
-            {duplicateCount > 0 && <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-pulse" />}
+            {duplicateCount > 0 && <ShieldAlert className={`w-4 h-4 animate-pulse ${isDark ? "text-amber-400" : "text-amber-600"}`} />}
           </div>
           <div className="text-2xl font-extrabold mt-1">
             {duplicateCount}{" "}
@@ -174,7 +177,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       </div>
 
       {/* Control Bar: Search & Filter */}
-      <div className="bg-white dark:bg-[#0E1422] p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className={`p-4 rounded-2xl border shadow-2xs flex flex-wrap items-center justify-between gap-3 ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200/90"}`}>
         {/* Left: Search & Category */}
         <div className="flex flex-wrap items-center space-x-3 gap-y-2">
           {/* Search Box */}
@@ -185,7 +188,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
               placeholder="搜索发票号、商户、销货方..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-[#131B2E] text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
+              className={`w-full pl-9 pr-3 py-1.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-medium ${isDark ? "bg-slate-950/80 text-slate-100 border-slate-700" : "bg-slate-50 text-slate-900 border-slate-300"}`}
             />
           </div>
 
@@ -195,7 +198,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-slate-50 dark:bg-[#131B2E] text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer font-bold"
+              className={`border text-xs rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer font-bold ${isDark ? "bg-slate-950/80 text-slate-200 border-slate-700" : "bg-slate-50 text-slate-700 border-slate-300"}`}
             >
               <option value="all">全部分类</option>
               <option value="餐饮费">餐饮费</option>
@@ -210,7 +213,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           </div>
 
           {/* Duplicate filter check */}
-          <label className="flex items-center space-x-1.5 text-xs text-amber-900 dark:text-amber-200 cursor-pointer bg-amber-50 dark:bg-amber-950/60 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800 font-bold">
+          <label className={`flex items-center space-x-1.5 text-xs cursor-pointer px-3 py-1.5 rounded-xl border font-bold ${isDark ? "text-amber-200 bg-amber-950/60 border-amber-800" : "text-amber-900 bg-amber-50 border-amber-200"}`}>
             <input
               type="checkbox"
               checked={filterDuplicateOnly}
@@ -225,9 +228,9 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={onAddCustomInvoice}
-            className="flex items-center space-x-1 px-3.5 py-2 bg-slate-100 dark:bg-[#131B2E] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-slate-200 dark:border-slate-800"
+            className={`flex items-center space-x-1 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer border ${isDark ? "bg-slate-950/80 hover:bg-slate-800 text-slate-200 border-slate-800" : "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200"}`}
           >
-            <Plus className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <Plus className={`w-4 h-4 ${isDark ? "text-slate-400" : "text-slate-600"}`} />
             <span>手动新建发票</span>
           </button>
 
@@ -242,11 +245,11 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       </div>
 
       {/* Table Section */}
-      <div className="bg-white dark:bg-[#0E1422] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+      <div className={`rounded-2xl border shadow-2xs overflow-hidden ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200/90"}`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 dark:bg-[#131B2E] text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 font-extrabold">
+              <tr className={`border-b font-extrabold ${isDark ? "bg-slate-950/80 border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-600"}`}>
                 <th className="p-3.5 w-10 text-center">
                   <button
                     onClick={() => onToggleSelectAll(!allSelected)}
@@ -270,7 +273,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                 <th className="p-3.5 text-right">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-mono text-slate-800 dark:text-slate-200">
+            <tbody className={`divide-y font-mono ${isDark ? "divide-slate-800/60 text-slate-200" : "divide-slate-100 text-slate-800"}`}>
               {filteredInvoices.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="p-12 text-center text-slate-400 dark:text-slate-500 font-sans font-medium">
@@ -291,8 +294,8 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                         palette
                           ? palette.rowBg
                           : inv.selectedForPrint
-                          ? "bg-white dark:bg-[#0E1422] hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
-                          : "bg-slate-50/50 dark:bg-slate-950/50 text-slate-400 dark:text-slate-500"
+                          ? isDark ? "hover:bg-slate-800/50" : "bg-white hover:bg-slate-50/80"
+                          : isDark ? "bg-slate-950/50 text-slate-500" : "bg-slate-50/50 text-slate-400"
                       }`}
                     >
                       <td className="p-3.5 text-center">
@@ -303,15 +306,15 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                           {inv.selectedForPrint ? (
                             <CheckSquare className="w-4 h-4 text-red-600" />
                           ) : (
-                            <Square className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                            <Square className={`w-4 h-4 ${isDark ? "text-slate-600" : "text-slate-300"}`} />
                           )}
                         </button>
                       </td>
 
                       {/* Invoice Type & Code */}
                       <td className="p-3.5 font-sans">
-                        <div className="font-extrabold text-slate-900 dark:text-slate-100">{inv.invoiceType}</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                        <div className={`font-extrabold ${isDark ? "text-slate-100" : "text-slate-900"}`}>{inv.invoiceType}</div>
+                        <div className={`text-[10px] font-mono mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                           {inv.invoiceCode ? `代码: ${inv.invoiceCode}` : "电子发票(无代码)"}
                         </div>
                       </td>
@@ -319,7 +322,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       {/* Invoice Number */}
                       <td className="p-3.5 font-bold">
                         <div className="flex items-center space-x-1.5">
-                          <span className="text-slate-900 dark:text-slate-100 font-extrabold">{inv.invoiceNumber}</span>
+                          <span className={`font-extrabold ${isDark ? "text-slate-100" : "text-red-600"}`}>{inv.invoiceNumber}</span>
                           {palette && (
                             <span
                               className={`px-2 py-0.5 text-[9px] rounded-md border ${palette.badgeBg}`}
@@ -332,36 +335,36 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       </td>
 
                       {/* Date */}
-                      <td className="p-3.5 text-slate-600 dark:text-slate-300 font-medium">{inv.issueDate}</td>
+                      <td className={`p-3.5 font-medium ${isDark ? "text-slate-300" : "text-slate-700"}`}>{inv.issueDate}</td>
 
                       {/* Seller */}
-                      <td className="p-3.5 font-sans text-slate-800 dark:text-slate-200 truncate max-w-[170px] font-medium">
+                      <td className={`p-3.5 font-sans truncate max-w-[170px] font-semibold ${isDark ? "text-slate-200" : "text-slate-800"}`}>
                         {inv.sellerName}
                       </td>
 
                       {/* Category Badge */}
                       <td className="p-3.5 font-sans">
-                        <span className="inline-block px-2.5 py-0.5 bg-slate-100 dark:bg-[#131B2E] text-slate-700 dark:text-slate-300 rounded-md text-[10px] font-bold border border-slate-200 dark:border-slate-800">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${isDark ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-slate-100 text-slate-700 border-slate-200"}`}>
                           {inv.category}
                         </span>
                       </td>
 
                       {/* Amount */}
-                      <td className="p-3.5 text-right font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                      <td className={`p-3.5 text-right font-mono font-bold text-sm ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
                         ¥{inv.totalAmountWithTax.toFixed(2)}
                       </td>
 
                       {/* Status */}
                       <td className="p-3.5 text-center font-sans">
                         {dupInfo ? (
-                          <span className="inline-flex items-center space-x-1 text-amber-800 dark:text-amber-200 font-bold bg-amber-100 dark:bg-amber-950/80 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-800 text-[10px]">
-                            <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                            <span>号相同({dupInfo.totalInGroup}张)</span>
+                          <span className={`inline-flex items-center space-x-1 font-bold px-2 py-0.5 rounded-full border text-[10px] ${isDark ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : "bg-amber-500/10 text-amber-500 border-amber-500/30"}`}>
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>⚠️ 发票重复 ({dupInfo.totalInGroup}张)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center space-x-1 text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 text-[10px]">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span>唯一正常</span>
+                          <span className={`inline-flex items-center space-x-1 font-bold px-2 py-0.5 rounded-full border text-[10px] ${isDark ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"}`}>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>✓ 已核验</span>
                           </span>
                         )}
                       </td>
@@ -370,7 +373,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       <td className="p-3.5 text-right font-sans space-x-1.5">
                         <button
                           onClick={() => onEditInvoice(inv)}
-                          className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
+                          className={`px-2.5 py-1 border rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer ${isDark ? "bg-blue-950/60 hover:bg-blue-900/60 text-blue-300 border-blue-800" : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"}`}
                         >
                           <Edit3 className="w-3 h-3" />
                           <span>编辑</span>
@@ -378,7 +381,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
                         <button
                           onClick={() => onDeleteInvoice(inv.id)}
-                          className="px-2.5 py-1 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
+                          className={`px-2.5 py-1 border rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer ${isDark ? "bg-red-950/60 hover:bg-red-900/60 text-red-300 border-red-800" : "bg-red-50 hover:bg-red-100 text-red-700 border-red-200"}`}
                         >
                           <Trash2 className="w-3 h-3" />
                           <span>删除</span>

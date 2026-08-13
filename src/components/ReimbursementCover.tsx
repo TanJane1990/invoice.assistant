@@ -8,13 +8,16 @@ interface ReimbursementCoverProps {
   defaultSettings?: SystemSettings;
   config?: PrintConfig;
   onOpenBatchImport?: () => void;
+  theme?: "light" | "dark";
 }
 
 export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   invoices,
   defaultSettings,
   onOpenBatchImport,
+  theme = "dark",
 }) => {
+  const isDark = theme === "dark";
   const selectedInvoices = invoices.filter((i) => i.selectedForPrint);
 
   const [formData, setFormData] = useState<ReimbursementCoverData>({
@@ -59,14 +62,18 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   if (selectedInvoices.length === 0) {
     return (
       <div className="max-w-4xl mx-auto py-8 px-4">
-        <div className="flex flex-col items-center justify-center min-h-[55vh] p-8 text-center bg-slate-100/60 dark:bg-slate-900/60 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 my-4">
-          <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/60 flex items-center justify-center text-red-600 mb-4 shadow-2xs">
+        <div className={`flex flex-col items-center justify-center min-h-[55vh] p-8 text-center rounded-2xl border-2 border-dashed my-4 transition-all ${
+          isDark
+            ? "bg-slate-900/50 border-slate-800 text-slate-400"
+            : "bg-white/80 border-slate-200 text-slate-500 shadow-2xs"
+        }`}>
+          <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-4 shadow-xs">
             <FileText className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">
+          <h3 className={`text-lg font-bold mb-1 ${isDark ? "text-slate-200" : "text-slate-800"}`}>
             报销汇总封面单为空
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6">
+          <p className="text-sm text-slate-400 max-w-md mb-6">
             尚无勾选或识别的发票。请批量上传电子发票文件或在发票台账勾选发票，系统将自动汇总并生成专业报销封面。
           </p>
           {onOpenBatchImport && (
@@ -85,12 +92,12 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
       {/* Top Controls (hidden in print) */}
-      <div className="no-print bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs mb-6 flex items-center justify-between">
+      <div className={`no-print p-4 rounded-xl border shadow-2xs mb-6 flex items-center justify-between ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
         <div>
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <h3 className={`font-bold text-sm ${isDark ? "text-slate-100" : "text-slate-800"}`}>
             企业费用报销凭证汇总单
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-400">
             可作为发票贴单最上层的报销封面单，已选包含 {selectedInvoices.length}{" "}
             张发票，总金额 ¥{grandTotal.toFixed(2)}
           </p>
@@ -98,11 +105,11 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-lg transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+            className={`flex items-center space-x-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer border ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"}`}
           >
             {isEditing ? (
               <>
-                <Save className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <Save className={`w-3.5 h-3.5 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
                 <span>保存信息</span>
               </>
             ) : (
@@ -124,82 +131,82 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
 
       {/* Editable Form Modal / Drawer if isEditing */}
       {isEditing && (
-        <div className="no-print bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+        <div className={`no-print p-4 rounded-xl border mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs ${isDark ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
           <div>
-            <label className="text-slate-600 dark:text-slate-300 block mb-1 font-semibold">公司/单位名称</label>
+            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>公司/单位名称</label>
             <input
               type="text"
               value={formData.companyName}
               onChange={(e) =>
                 setFormData({ ...formData, companyName: e.target.value })
               }
-              className="w-full p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg"
+              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
             />
           </div>
           <div>
-            <label className="text-slate-600 dark:text-slate-300 block mb-1 font-semibold">报销部门</label>
+            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>报销部门</label>
             <input
               type="text"
               value={formData.department}
               onChange={(e) =>
                 setFormData({ ...formData, department: e.target.value })
               }
-              className="w-full p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg"
+              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
             />
           </div>
           <div>
-            <label className="text-slate-600 dark:text-slate-300 block mb-1 font-semibold">报销人</label>
+            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>报销人</label>
             <input
               type="text"
               value={formData.applicant}
               onChange={(e) =>
                 setFormData({ ...formData, applicant: e.target.value })
               }
-              className="w-full p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg"
+              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
             />
           </div>
           <div>
-            <label className="text-slate-600 dark:text-slate-300 block mb-1 font-semibold">报销单号</label>
+            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>报销单号</label>
             <input
               type="text"
               value={formData.reimbursementNo}
               onChange={(e) =>
                 setFormData({ ...formData, reimbursementNo: e.target.value })
               }
-              className="w-full p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg font-mono"
+              className={`w-full p-2 border rounded-lg font-mono ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
             />
           </div>
           <div>
-            <label className="text-slate-600 dark:text-slate-300 block mb-1 font-semibold">主管审批人</label>
+            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>主管审批人</label>
             <input
               type="text"
               value={formData.approver}
               onChange={(e) =>
                 setFormData({ ...formData, approver: e.target.value })
               }
-              className="w-full p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg"
+              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
             />
           </div>
           <div>
-            <label className="text-slate-600 dark:text-slate-300 block mb-1 font-semibold">财务复核人</label>
+            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>财务复核人</label>
             <input
               type="text"
               value={formData.financeAuditor}
               onChange={(e) =>
                 setFormData({ ...formData, financeAuditor: e.target.value })
               }
-              className="w-full p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg"
+              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
             />
           </div>
           <div>
-            <label className="text-slate-600 dark:text-slate-300 block mb-1 font-semibold">出纳或经办人</label>
+            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>出纳或经办人</label>
             <input
               type="text"
               value={formData.cashier}
               onChange={(e) =>
                 setFormData({ ...formData, cashier: e.target.value })
               }
-              className="w-full p-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-lg"
+              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
             />
           </div>
         </div>

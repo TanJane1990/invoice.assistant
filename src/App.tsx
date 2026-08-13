@@ -213,13 +213,14 @@ export const App: React.FC = () => {
             totalAmount={totalAmount}
             onResetOrder={() => handleUpdateConfig({ sortBy: "category" })}
           />
-          <main className="flex-1 overflow-auto bg-[#0b0e14]">
+          <main className={`flex-1 overflow-auto transition-colors ${theme === "dark" ? "bg-slate-950" : "bg-slate-100"}`}>
             {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
               <div className="pt-6">
                 <ReimbursementCover
                   invoices={invoices}
                   defaultSettings={settings}
                   config={printConfig}
+                  theme={theme}
                   onOpenBatchImport={() => setIsImportOpen(true)}
                 />
               </div>
@@ -228,6 +229,7 @@ export const App: React.FC = () => {
               invoices={selectedInvoices}
               config={printConfig}
               zoom={zoom}
+              theme={theme}
               showCropLines={printConfig.showCropLines}
               onEditInvoice={(inv) => setEditingInvoice(inv)}
               onDeleteInvoice={handleDeleteInvoice}
@@ -238,10 +240,11 @@ export const App: React.FC = () => {
       )}
 
       {activeTab === "ledger" && (
-        <main className="flex-1 overflow-auto bg-[#0b0e14] py-4">
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-slate-950" : "bg-slate-100"}`}>
           <InvoiceLedgerTable
             invoices={invoices}
             systemSettings={settings}
+            theme={theme}
             onToggleSelectForPrint={handleToggleSelectForPrint}
             onToggleSelectAll={handleToggleSelectAll}
             onDeleteInvoice={handleDeleteInvoice}
@@ -270,11 +273,12 @@ export const App: React.FC = () => {
       )}
 
       {activeTab === "cover" && (
-        <main className="flex-1 overflow-auto bg-[#0b0e14] py-4">
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-slate-950" : "bg-slate-100"}`}>
           <ReimbursementCover
             invoices={invoices}
             defaultSettings={settings}
             config={printConfig}
+            theme={theme}
             onOpenBatchImport={() => setIsImportOpen(true)}
           />
         </main>
@@ -287,6 +291,7 @@ export const App: React.FC = () => {
         onAddInvoices={handleAddInvoices}
         onLoadSamples={() => setInvoices(SAMPLE_INVOICES)}
         settings={settings}
+        theme={theme}
       />
 
       <InvoiceDetailModal
