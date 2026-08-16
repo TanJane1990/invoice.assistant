@@ -243,30 +243,30 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         </div>
 
         {/* Category breakdown table */}
-        <table className="w-full text-xs border-collapse border border-slate-300 mb-6">
+        <table className="w-full text-xs border-collapse border border-slate-400 mb-6" style={{ borderColor: '#94a3b8' }}>
           <thead>
-            <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
-              <th className="border border-slate-300 p-2 text-center w-12">序号</th>
-              <th className="border border-slate-300 p-2 text-left">费用大类</th>
-              <th className="border border-slate-300 p-2 text-right">包含发票张数</th>
-              <th className="border border-slate-300 p-2 text-right">小计金额 (元)</th>
+            <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-400" style={{ borderColor: '#94a3b8' }}>
+              <th className="border border-slate-400 p-2 text-center w-12" style={{ borderColor: '#94a3b8' }}>序号</th>
+              <th className="border border-slate-400 p-2 text-left" style={{ borderColor: '#94a3b8' }}>费用大类</th>
+              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8' }}>包含发票张数</th>
+              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8' }}>小计金额 (元)</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(categorySummary).map(([cat, amt], idx) => {
               const count = selectedInvoices.filter((i) => i.category === cat).length;
               return (
-                <tr key={cat} className="border-b border-slate-200">
-                  <td className="border border-slate-300 p-2 text-center font-mono">
+                <tr key={cat} className="border-b border-slate-400" style={{ borderColor: '#94a3b8' }}>
+                  <td className="border border-slate-400 p-2 text-center font-mono text-slate-800" style={{ borderColor: '#94a3b8' }}>
                     {idx + 1}
                   </td>
-                  <td className="border border-slate-300 p-2 font-bold text-slate-800">
+                  <td className="border border-slate-400 p-2 font-bold text-slate-900" style={{ borderColor: '#94a3b8' }}>
                     {cat}
                   </td>
-                  <td className="border border-slate-300 p-2 text-right font-mono">
+                  <td className="border border-slate-400 p-2 text-right font-mono text-slate-800" style={{ borderColor: '#94a3b8' }}>
                     {count} 张
                   </td>
-                  <td className="border border-slate-300 p-2 text-right font-mono font-bold">
+                  <td className="border border-slate-400 p-2 text-right font-mono font-bold text-slate-900" style={{ borderColor: '#94a3b8' }}>
                     ¥{(amt as number).toFixed(2)}
                   </td>
                 </tr>
@@ -274,19 +274,19 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-slate-50 font-bold border-t-2 border-slate-400">
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-center text-slate-800">
+            <tr className="bg-slate-50 font-bold border-t-2 border-slate-400" style={{ borderColor: '#94a3b8' }}>
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8' }}>
                 报销金额合计 (大写)
               </td>
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-right font-serif text-sm text-[#E8000A]">
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-serif text-sm text-[#E8000A]" style={{ borderColor: '#94a3b8' }}>
                 {numberToRMB(grandTotal)}
               </td>
             </tr>
-            <tr className="bg-slate-50 font-bold">
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-center text-slate-800">
+            <tr className="bg-slate-50 font-bold" style={{ borderColor: '#94a3b8' }}>
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8' }}>
                 报销金额合计 (小写)
               </td>
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-right font-mono text-base text-[#E8000A] font-extrabold">
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-mono text-base text-[#E8000A] font-extrabold" style={{ borderColor: '#94a3b8' }}>
                 ¥{grandTotal.toFixed(2)}
               </td>
             </tr>
