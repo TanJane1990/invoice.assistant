@@ -213,7 +213,10 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
       )}
 
       {/* Printable Paper Voucher */}
-      <div className="a4-print-page bg-white text-slate-900 p-8 rounded-xl shadow-xl border border-slate-200">
+      <div
+        className="a4-print-page bg-white text-slate-900 p-8 rounded-xl shadow-xl border border-slate-200 mx-auto"
+        style={{ width: "210mm", boxSizing: "border-box" }}
+      >
         {/* Paper Voucher Title */}
         <div className="border-b-2 border-slate-900 pb-4 mb-6 text-center">
           <h2 className="text-2xl font-extrabold tracking-widest font-serif text-slate-900">
