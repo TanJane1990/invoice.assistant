@@ -110,20 +110,20 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
   if (invoices.length === 0) {
     return (
-      <main className="flex-1 p-6 flex items-center justify-center overflow-auto relative min-h-[calc(100vh-7.5rem)] bg-[#F3F5F9]">
-        <div className="p-12 text-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/90 shadow-2xs max-w-xl w-full">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 text-red-500 flex items-center justify-center shadow-xs">
+      <main className="flex-1 p-6 flex items-center justify-center overflow-auto relative min-h-[calc(100vh-7.5rem)] bg-[#0E172B]">
+        <div className="p-12 text-center rounded-2xl border border-[#1E293B] bg-[#121827] shadow-xl max-w-xl w-full">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-950/60 text-[#E8000A] flex items-center justify-center shadow-xs">
             <FilePlus2 className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-extrabold !text-slate-900">
+          <h3 className="text-lg font-extrabold !text-white">
             发票排版预览为空
           </h3>
-          <p className="text-xs mt-1 mb-6 !text-slate-600 max-w-md mx-auto leading-relaxed font-medium">
+          <p className="text-xs mt-1 mb-6 !text-[#94A3B8] max-w-md mx-auto leading-relaxed font-medium">
             您尚未勾选或导入任何发票。请批量上传电子发票 PDF/图片文件或选择本地 Excel 表格导入。
           </p>
           <button
             onClick={onOpenBatchImport}
-            className="px-6 py-2.5 bg-[#E8000A] hover:bg-[#C80009] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center space-x-1.5"
+            className="px-6 py-2.5 bg-[#E8000A] hover:bg-[#C80009] !text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center space-x-1.5"
           >
             <span>立即批量导入发票</span>
           </button>

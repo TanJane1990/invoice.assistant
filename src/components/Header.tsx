@@ -141,10 +141,10 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenSettings}
           title="设置（AI API Key、企业抬头与数据保存）"
-          className="flex items-center space-x-1 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 border border-slate-200 font-bold transition cursor-pointer shadow-xs"
+          className="flex items-center space-x-1 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 !text-slate-900 border border-slate-200 font-bold transition cursor-pointer shadow-xs"
         >
-          <Settings className="w-3.5 h-3.5 text-slate-700" />
-          <span>设置</span>
+          <Settings className="w-3.5 h-3.5 !text-slate-700" />
+          <span className="!text-slate-900">设置</span>
         </button>
       </div>
     </header>
