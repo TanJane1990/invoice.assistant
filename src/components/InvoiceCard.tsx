@@ -60,9 +60,7 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
 
   return (
     <div
-      className={`relative bg-white text-slate-800 transition-all duration-150 group overflow-hidden w-full h-full flex flex-col justify-between ${
-        showCropLines ? "border border-dashed border-slate-400" : ""
-      }`}
+      className="relative bg-white text-slate-800 transition-all duration-150 group overflow-hidden w-full h-full flex flex-col justify-between"
       style={{
         boxSizing: "border-box",
         height: "100%",

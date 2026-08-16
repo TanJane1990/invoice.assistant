@@ -187,6 +187,20 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                   breakAfter: "page",
                 }}
               >
+                {/* 1:1 剪裁线：居中穿过页面中轴线的分割红线 */}
+                {showCropLines && (
+                  <>
+                    {/* 上下 2 张/页 或 4 张/页 时：横向中轴裁剪红线 */}
+                    {(config.gridMode === "2" || config.gridMode === "4") && (
+                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1px] bg-[#E8000A] pointer-events-none z-20" />
+                    )}
+                    {/* 4 张/页 时：纵向中轴裁剪红线 */}
+                    {config.gridMode === "4" && (
+                      <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1px] bg-[#E8000A] pointer-events-none z-20" />
+                    )}
+                  </>
+                )}
+
                 {/* Grid Layout inside Page */}
                 <div
                   className={`w-full h-full relative z-0 ${
