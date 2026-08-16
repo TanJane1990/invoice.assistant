@@ -24,9 +24,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
   onClose,
   onAddInvoices,
   settings,
-  theme = "dark",
 }) => {
-  const isDark = theme === "dark";
   const [isUploading, setIsUploading] = useState(false);
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState(0);
   const [uploadLogs, setUploadLogs] = useState<
@@ -116,33 +114,34 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div
-        className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col transition-all ${
-          isDark ? "bg-slate-900 border-slate-800 text-slate-100" : "bg-white border-slate-200 text-slate-900"
-        }`}
-      >
-        {/* 弹窗 Header */}
-        <div
-          className={`px-6 py-4 border-b flex items-center justify-between ${
-            isDark ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"
-          }`}
-        >
-          <h3 className="font-bold text-base flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span>
-            <span>批量导入电子发票</span>
+      <div className="w-full max-w-2xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col bg-white my-8">
+        {/* 1. 顶部 Header (深黑背景，1:1 匹配图 1) */}
+        <div className="px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800 flex items-center justify-between">
+          <h3 className="font-extrabold text-base tracking-wide flex items-center space-x-2 text-white">
+            <Upload className="w-5 h-5 text-[#E8000A]" />
+            <span>批量导入发票文件</span>
           </h3>
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-              isDark ? "hover:bg-slate-800 text-slate-400" : "hover:bg-slate-100 text-slate-500"
-            }`}
+            className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer hover:bg-slate-800"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* 拖拽文件上传区域 (Dropzone) */}
-        <div className="p-6">
+        {/* 2. 规则提示 Sub-Header (白底+红色高亮提示) */}
+        <div className="px-6 py-3 bg-white border-b border-slate-200 flex items-center justify-between text-xs">
+          <div className="flex items-center space-x-1.5 font-bold text-[#E8000A]">
+            <FileText className="w-4 h-4 text-[#E8000A]" />
+            <span>批量导入发票文件 (支持 PDF / JPG / PNG / WEBP / OFD)</span>
+          </div>
+          <span className="text-slate-400 text-xs font-medium">
+            智能 AI 全票面字段识别与查重
+          </span>
+        </div>
+
+        {/* 3. 拖拽文件上传区域 Dropzone (红虚线框+红图标) */}
+        <div className="p-6 bg-white">
           <div
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => e.preventDefault()}
@@ -150,11 +149,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
               e.preventDefault();
               if (e.dataTransfer.files) handleFileUpload(e.dataTransfer.files);
             }}
-            className={`p-8 rounded-xl border-2 border-dashed text-center cursor-pointer transition-all ${
-              isDark
-                ? "border-slate-700 bg-slate-950/40 hover:border-red-500 hover:bg-red-500/5"
-                : "border-slate-300 bg-slate-50/50 hover:border-red-500 hover:bg-red-50/30"
-            }`}
+            className="p-10 rounded-3xl border-2 border-dashed border-[#E8000A] bg-white text-center cursor-pointer transition-all hover:bg-red-50/20"
           >
             <input
               type="file"
@@ -164,28 +159,26 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               className="hidden"
             />
-            <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/70 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-3 shadow-2xs">
-              <Upload className="w-6 h-6" />
+            <div className="w-14 h-14 rounded-full bg-red-100/80 text-[#E8000A] flex items-center justify-center mx-auto mb-4">
+              <Upload className="w-7 h-7 text-[#E8000A]" />
             </div>
-            <p className={`text-sm font-semibold ${isDark ? "text-slate-200" : "text-slate-700"}`}>
-              点击或将发票文件 (PDF/图片) 拖拽至此处
+            <h4 className="text-base font-extrabold text-slate-900 mb-1.5">
+              点击或拖拽发票文件 (PDF、JPG、PNG、OFD) 到此处
+            </h4>
+            <p className="text-xs text-slate-500 font-medium">
+              支持多选批量上传，系统自动调用智能AI进行全票面字段提取与自动防重预警
             </p>
-            <p className="text-xs text-slate-400 mt-1">支持自动解析发票全票面信息与金额</p>
           </div>
 
-          {/* 进度与日志 */}
+          {/* 4. 识别进度与日志条 */}
           {uploadLogs.length > 0 && (
-            <div
-              className={`mt-4 border rounded-xl p-3 space-y-2 ${
-                isDark ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200"
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs font-bold">
+            <div className="mt-4 border border-slate-200 rounded-2xl p-4 space-y-2.5 bg-slate-50">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                 <span className="flex items-center space-x-1.5">
                   {isUploading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-red-600" />
+                    <Loader2 className="w-4 h-4 animate-spin text-[#E8000A]" />
                   ) : (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <CheckCircle2 className="w-4 h-4 text-[#009966]" />
                   )}
                   <span>
                     {isUploading
@@ -193,7 +186,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                       : `批量识别完成 (${uploadLogs.filter((l) => l.status === "success").length} / ${uploadLogs.length} 张)`}
                   </span>
                 </span>
-                <span className="font-mono text-slate-400">
+                <span className="font-mono text-slate-500">
                   {Math.round(
                     (uploadLogs.filter((l) => l.status === "success" || l.status === "error").length /
                       uploadLogs.length) *
@@ -203,9 +196,9 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                 </span>
               </div>
 
-              <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-red-600 h-full transition-all duration-300"
+                  className="bg-[#E8000A] h-full transition-all duration-300"
                   style={{
                     width: `${Math.round(
                       (uploadLogs.filter((l) => l.status === "success" || l.status === "error").length /
@@ -220,35 +213,35 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
                 {uploadLogs.map((log, idx) => (
                   <div
                     key={idx}
-                    className={`flex items-center justify-between text-xs p-2 rounded-lg border transition-colors ${
+                    className={`flex items-center justify-between text-xs p-2.5 rounded-xl border transition-colors ${
                       log.status === "processing"
-                        ? isDark ? "bg-amber-950/60 border-amber-800 text-amber-200" : "bg-amber-50 border-amber-300 text-amber-900"
+                        ? "bg-amber-50 border-amber-300 text-amber-900"
                         : log.status === "success"
-                        ? isDark ? "bg-slate-900 border-slate-800 text-slate-200" : "bg-white border-slate-200 text-slate-800"
+                        ? "bg-white border-slate-200 text-slate-800"
                         : log.status === "error"
-                        ? isDark ? "bg-red-950/60 border-red-800 text-red-200" : "bg-red-50 border-red-200 text-red-900"
-                        : "bg-slate-800/40 border-slate-700 text-slate-400"
+                        ? "bg-red-50 border-red-200 text-red-900"
+                        : "bg-white border-slate-200 text-slate-500"
                     }`}
                   >
-                    <span className="truncate max-w-[220px] font-medium">
+                    <span className="truncate max-w-[240px] font-medium">
                       {idx + 1}. {log.name}
                     </span>
                     <div className="flex items-center space-x-1">
                       {log.status === "waiting" && <span className="text-slate-400 text-[11px]">等待识别</span>}
                       {log.status === "processing" && (
-                        <span className="flex items-center space-x-1 text-amber-500 font-bold">
+                        <span className="flex items-center space-x-1 text-amber-600 font-bold">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           <span>{log.message || "识别中..."}</span>
                         </span>
                       )}
                       {log.status === "success" && (
-                        <span className="flex items-center space-x-1 text-emerald-500 font-semibold">
+                        <span className="flex items-center space-x-1 text-[#009966] font-semibold">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>{log.message}</span>
                         </span>
                       )}
                       {log.status === "error" && (
-                        <span className="flex items-center space-x-1 text-red-500 font-semibold">
+                        <span className="flex items-center space-x-1 text-red-600 font-semibold">
                           <AlertCircle className="w-3.5 h-3.5" />
                           <span>识别失败</span>
                         </span>
@@ -261,27 +254,16 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
           )}
         </div>
 
-        {/* 弹窗 Footer 按钮区 */}
-        <div
-          className={`px-6 py-4 border-t flex justify-end space-x-3 ${
-            isDark ? "border-slate-800 bg-slate-950/50" : "border-slate-100 bg-slate-50/50"
-          }`}
-        >
+        {/* 5. 弹窗 Footer 按钮区 (1:1 匹配图 1) */}
+        <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-200 flex items-center justify-between text-xs">
+          <span className="text-slate-400 font-medium">
+            支持多页PDF与格式防错补全
+          </span>
           <button
             onClick={onClose}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg border cursor-pointer ${
-              isDark
-                ? "border-slate-700 hover:bg-slate-800 text-slate-300"
-                : "border-slate-200 hover:bg-slate-100 text-slate-700"
-            }`}
+            className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer"
           >
-            取消
-          </button>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-xs cursor-pointer"
-          >
-            确认完成
+            关闭窗口
           </button>
         </div>
       </div>
