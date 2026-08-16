@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Theme Styles */
 body.theme-dark {
   background-color: #0E172B;
   color: #f1f5f9;
@@ -9,6 +8,44 @@ body.theme-dark {
 body.theme-light {
   background-color: #F3F5F9;
   color: #0f172a;
+}
+
+/* Force high-contrast dark text inside all white cards, inputs, tables & modals */
+.bg-white,
+.bg-slate-50 {
+  color: #0f172a;
+}
+
+.bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
+.bg-white p, .bg-white span, .bg-white label, .bg-white th, .bg-white td, .bg-white div,
+.bg-slate-50 h1, .bg-slate-50 h2, .bg-slate-50 h3, .bg-slate-50 h4, .bg-slate-50 h5, .bg-slate-50 h6,
+.bg-slate-50 p, .bg-slate-50 span, .bg-slate-50 label, .bg-slate-50 th, .bg-slate-50 td, .bg-slate-50 div {
+  color: #0f172a;
+}
+
+.bg-white input,
+.bg-white select,
+.bg-slate-50 input,
+.bg-slate-50 select {
+  color: #0f172a !important;
+}
+
+.bg-white input::placeholder,
+.bg-slate-50 input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Preserve specific status accent colors */
+.text-red-500, .text-red-600 {
+  color: #E8000A !important;
+}
+
+.text-emerald-600 {
+  color: #009966 !important;
+}
+
+.text-slate-400, .text-slate-500 {
+  color: #64748b !important;
 }
 
 /* Comprehensive CSS for Print Output */
