@@ -41,11 +41,11 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   ];
 
   return (
-    <div className="no-print border-b border-[#1E293B] bg-[#0B0F19] text-white sticky top-14 z-[60] px-4 py-2 flex flex-col space-y-2 text-xs shrink-0 transition-colors shadow-md">
-      {/* 行 1: 左侧拼页模式胶囊 + 右侧纸张类型与方向 (1:1 匹配图 1) */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        {/* 1. 拼页模式 */}
-        <div className="p-1 rounded-xl flex items-center border bg-[#121827] border-[#1E293B]">
+    <div className="no-print border-b border-[#1E293B] bg-[#0B0F19] text-white sticky top-14 z-[60] px-4 py-2 flex items-center justify-between text-xs shrink-0 transition-colors shadow-md">
+      {/* 左侧控制区块 (对应红框 1：拼页模式 + 剪裁线/封面/边距/排序) */}
+      <div className="flex flex-col space-y-2">
+        {/* 左侧行 1: 拼页模式胶囊 */}
+        <div className="p-1 rounded-xl flex items-center border bg-[#121827] border-[#1E293B] w-fit">
           {gridModes.map((mode) => {
             const active = config.gridMode === mode.id;
             return (
@@ -67,45 +67,8 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
           })}
         </div>
 
-        {/* 2. 纸张类型 & 方向 (位于行 1 右侧) */}
-        <div className="flex items-center space-x-2">
-          {/* 纸张规格 */}
-          <div className="flex items-center space-x-1 rounded-lg px-2.5 py-1.5 font-semibold border bg-[#121827] border-[#1E293B] text-[#94A3B8]">
-            <File className="w-3.5 h-3.5 text-[#94A3B8]" />
-            <span>纸张类型:</span>
-            <select
-              value={config.paperType || "A4"}
-              onChange={(e) => onChangeConfig({ paperType: e.target.value as PaperType })}
-              className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-            >
-              <option value="A4" className="bg-[#0B0F19]">A4 标准纸 (210×297mm)</option>
-              <option value="A5" className="bg-[#0B0F19]">A5 纸张 (148×210mm)</option>
-              <option value="B5" className="bg-[#0B0F19]">B5 纸张 (176×250mm)</option>
-              <option value="InvoiceSpecial240" className="bg-[#0B0F19]">发票专用平铺纸 (240×140mm)</option>
-            </select>
-          </div>
-
-          {/* 纸张方向 */}
-          <div className="flex items-center space-x-1 rounded-lg px-2.5 py-1.5 font-semibold border bg-[#121827] border-[#1E293B] text-[#94A3B8]">
-            <Compass className="w-3.5 h-3.5 text-[#94A3B8]" />
-            <span>纸张方向:</span>
-            <select
-              value={config.orientation}
-              onChange={(e) => onChangeConfig({ orientation: e.target.value as any })}
-              className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
-            >
-              <option value="landscape" className="bg-[#0B0F19]">横向 (Landscape)</option>
-              <option value="portrait" className="bg-[#0B0F19]">纵向 (Portrait)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* 行 2: 左侧剪裁线/封面/边距/排序 + 右侧统计与缩放 (1:1 匹配图 1) */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        {/* 左侧控制项 */}
+        {/* 左侧行 2: 剪裁线 / 带报销封面 / 页边距 / 排序 / 重置 */}
         <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-          {/* 剪裁线 */}
           <button
             onClick={() => onChangeConfig({ showCropLines: !config.showCropLines })}
             className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
@@ -124,7 +87,6 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             <span>剪裁线</span>
           </button>
 
-          {/* 带报销封面 */}
           <button
             onClick={() => onChangeConfig({ includeCoverPage: !config.includeCoverPage })}
             className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
@@ -143,7 +105,6 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             <span>带报销封面</span>
           </button>
 
-          {/* 页边距 */}
           <div className="flex items-center space-x-1 rounded-lg px-2.5 py-1.5 font-semibold border bg-[#121827] border-[#1E293B] text-[#94A3B8]">
             <SlidersHorizontal className="w-3.5 h-3.5 text-[#94A3B8]" />
             <span>页边距:</span>
@@ -159,7 +120,6 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             </select>
           </div>
 
-          {/* 排序方式 */}
           <div className="flex items-center space-x-1 rounded-lg px-2.5 py-1.5 font-semibold border bg-[#121827] border-[#1E293B] text-[#94A3B8]">
             <span>排序:</span>
             <select
@@ -181,10 +141,43 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
+      </div>
 
-        {/* 右侧统计与缩放 */}
+      {/* 右侧控制区块 (对应红框 2：纸张规格/方向 + 汇总统计与缩放) */}
+      <div className="flex flex-col space-y-2 items-end">
+        {/* 右侧行 1: 纸张规格 & 纸张方向 */}
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 rounded-lg px-2.5 py-1.5 font-semibold border bg-[#121827] border-[#1E293B] text-[#94A3B8]">
+            <File className="w-3.5 h-3.5 text-[#94A3B8]" />
+            <span>纸张类型:</span>
+            <select
+              value={config.paperType || "A4"}
+              onChange={(e) => onChangeConfig({ paperType: e.target.value as PaperType })}
+              className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+            >
+              <option value="A4" className="bg-[#0B0F19]">A4 标准纸 (210×297mm)</option>
+              <option value="A5" className="bg-[#0B0F19]">A5 纸张 (148×210mm)</option>
+              <option value="B5" className="bg-[#0B0F19]">B5 纸张 (176×250mm)</option>
+              <option value="InvoiceSpecial240" className="bg-[#0B0F19]">发票专用平铺纸 (240×140mm)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-1 rounded-lg px-2.5 py-1.5 font-semibold border bg-[#121827] border-[#1E293B] text-[#94A3B8]">
+            <Compass className="w-3.5 h-3.5 text-[#94A3B8]" />
+            <span>纸张方向:</span>
+            <select
+              value={config.orientation}
+              onChange={(e) => onChangeConfig({ orientation: e.target.value as any })}
+              className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+            >
+              <option value="landscape" className="bg-[#0B0F19]">横向 (Landscape)</option>
+              <option value="portrait" className="bg-[#0B0F19]">纵向 (Portrait)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* 右侧行 2: 统计数据 + 缩放控制 */}
         <div className="flex items-center space-x-3">
-          {/* 统计数字 */}
           <div className="font-mono font-semibold text-[#94A3B8]">
             共 <span className="font-bold text-amber-400">{totalInvoices}</span> 张发票 · 排{" "}
             <span className="font-bold text-amber-400">{totalPages}</span> 页 {config.paperType || "A4"} · 合计:{" "}
@@ -193,7 +186,6 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             </span>
           </div>
 
-          {/* 视图缩放 */}
           <div className="flex items-center space-x-1 rounded-lg px-2 py-1 border bg-[#121827] border-[#1E293B] text-[#94A3B8]">
             <button
               onClick={() => setZoom((z) => Math.max(0.4, Math.round((z - 0.1) * 10) / 10))}
