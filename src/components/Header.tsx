@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab("layout")}
           className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "layout"
-              ? "bg-[#0B0F19] text-[#E8000A] shadow-xs"
+              ? "bg-[#0B0F19] text-[#E8000A] border-2 border-[#E8000A] shadow-xs"
               : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/60"
           }`}
         >
@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab("ledger")}
           className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "ledger"
-              ? "bg-[#0B0F19] text-[#E8000A] shadow-xs"
+              ? "bg-[#0B0F19] text-[#E8000A] border-2 border-[#E8000A] shadow-xs"
               : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/60"
           }`}
         >
@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={() => setActiveTab("cover")}
           className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "cover"
-              ? "bg-[#0B0F19] text-[#E8000A] shadow-xs"
+              ? "bg-[#0B0F19] text-[#E8000A] border-2 border-[#E8000A] shadow-xs"
               : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/60"
           }`}
         >
@@ -137,14 +137,14 @@ export const Header: React.FC<HeaderProps> = ({
           <span>一键打印</span>
         </button>
 
-        {/* 设置 (1:1 匹配图 1：深色边框胶囊按钮，白字+齿轮图标) */}
+        {/* 设置 (纯白实心胶囊按钮，1:1 对齐图 2) */}
         <button
           onClick={onOpenSettings}
           title="设置（AI API Key、企业抬头与数据保存）"
-          className="flex items-center space-x-1 px-3.5 py-1.5 rounded-xl bg-[#121827] hover:bg-[#1E293B] text-white border border-[#1E293B] font-bold transition cursor-pointer shadow-xs"
+          className="flex items-center space-x-1 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 !text-slate-900 border border-slate-200 font-bold transition cursor-pointer shadow-xs"
         >
-          <Settings className="w-3.5 h-3.5 text-slate-300" />
-          <span className="text-white">设置</span>
+          <Settings className="w-3.5 h-3.5 !text-slate-700" />
+          <span className="!text-slate-900">设置</span>
         </button>
       </div>
     </header>
