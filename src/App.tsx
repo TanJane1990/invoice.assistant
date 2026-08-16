@@ -171,7 +171,7 @@ export const App: React.FC = () => {
     setTimeout(async () => {
       const mainEl = document.querySelector<HTMLElement>("main");
       if (mainEl) {
-        await generateAndPrintPdf(mainEl);
+        await generateAndPrintPdf(mainEl, `发票拼页排版_A4_${new Date().toISOString().split("T")[0]}.pdf`, printConfig.orientation);
       } else {
         window.print();
       }
