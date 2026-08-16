@@ -85,18 +85,12 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
 
       {/* RENDER REAL ORIGINAL INVOICE FILE IF AVAILABLE */}
       {renderedImgUrl ? (
-        <div className="w-full h-full flex flex-col justify-between overflow-hidden bg-white p-1 border border-slate-300 rounded-lg">
-          <div className="flex-1 w-full overflow-hidden flex items-center justify-center">
-            <img
-              src={renderedImgUrl}
-              alt={invoice.fileName || "发票原票件"}
-              className="w-full h-full object-contain pointer-events-none"
-            />
-          </div>
-          <div className="flex items-center justify-between px-1.5 py-0.5 text-[9px] border-t border-slate-100 text-slate-400 font-mono shrink-0">
-            <span className="truncate max-w-[70%]">原件: {invoice.fileName || `digital_${invoice.invoiceNumber}`}</span>
-            <span className="font-bold text-blue-600 font-sans">真实原件渲染</span>
-          </div>
+        <div className="w-full h-full flex items-center justify-center overflow-hidden bg-white p-0">
+          <img
+            src={renderedImgUrl}
+            alt={invoice.fileName || "发票原票件"}
+            className="w-full h-full object-contain pointer-events-none"
+          />
         </div>
       ) : (
         /* CLEAN MINIMALIST INVOICE DOCUMENT REPRESENTATION (When no file image attached) */
