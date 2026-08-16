@@ -9,7 +9,7 @@ import html2canvas from "html2canvas";
 export async function generateAndPrintPdf(
   pagesElementContainer: HTMLElement,
   fileName: string = `发票拼页排版_A4_${new Date().toISOString().split("T")[0]}.pdf`,
-  defaultOrientation: "portrait" | "landscape" = "landscape"
+  defaultOrientation: "portrait" | "landscape" = "portrait"
 ): Promise<void> {
   try {
     // 找出所有 A4 打印页面节点

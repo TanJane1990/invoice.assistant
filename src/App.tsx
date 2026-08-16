@@ -42,7 +42,7 @@ export const App: React.FC = () => {
   const [printConfig, setPrintConfig] = useState<PrintConfig>({
     gridMode: "4",
     paperType: "A4",
-    orientation: "landscape",
+    orientation: "portrait",
     showCropLines: true,
     showCategoryBadge: true,
     marginSize: "normal",

@@ -40,7 +40,7 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   const gridModes = [
     { id: "1", label: "1张/页 (单张原票 210×140mm)" },
     { id: "2", label: "2张/页 (上下 纵向)" },
-    { id: "4", label: "4张/页 (2×2 横向)" },
+    { id: "4", label: "4张/页 (2×2 纵向)" },
   ];
 
   return (
@@ -65,8 +65,7 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
               <button
                 key={mode.id}
                 onClick={() => {
-                  const newOrientation = mode.id === "2" ? "portrait" : "landscape";
-                  onChangeConfig({ gridMode: mode.id as any, orientation: newOrientation });
+                  onChangeConfig({ gridMode: mode.id as any, orientation: "portrait" });
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   active
