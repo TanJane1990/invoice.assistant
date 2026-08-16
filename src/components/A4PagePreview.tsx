@@ -115,10 +115,10 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 text-red-500 flex items-center justify-center shadow-xs">
             <FilePlus2 className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-extrabold text-slate-800">
+          <h3 className="text-lg font-extrabold !text-slate-900">
             发票排版预览为空
           </h3>
-          <p className="text-xs mt-1 mb-6 text-slate-500 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs mt-1 mb-6 !text-slate-600 max-w-md mx-auto leading-relaxed font-medium">
             您尚未勾选或导入任何发票。请批量上传电子发票 PDF/图片文件或选择本地 Excel 表格导入。
           </p>
           <button

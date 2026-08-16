@@ -60,13 +60,21 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
 
   return (
     <div
-      className="relative bg-white text-slate-800 transition-all duration-150 group overflow-hidden w-full h-full flex flex-col justify-between"
+      className={`relative bg-white text-slate-800 transition-all duration-150 group overflow-hidden w-full h-full flex flex-col justify-between ${
+        showCropLines ? "border-2 border-dashed border-red-400" : ""
+      }`}
       style={{
         boxSizing: "border-box",
         height: "100%",
         width: "100%",
       }}
     >
+      {/* 剪裁线角标提示 */}
+      {showCropLines && (
+        <div className="absolute top-0 left-0 z-10 pointer-events-none text-[9px] text-red-500 font-mono font-bold bg-red-50/80 px-1 border-b border-r border-red-300">
+          ✂ 剪裁线
+        </div>
+      )}
       {/* Delete Action (Screen only, strictly hidden in print) */}
       {onDelete && (
         <div className="no-print print:hidden absolute top-1 right-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">

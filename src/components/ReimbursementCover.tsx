@@ -275,18 +275,18 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           </tbody>
           <tfoot>
             <tr className="bg-slate-50 font-bold border-t-2 border-slate-400">
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-center">
+              <td colSpan={2} className="border border-slate-300 p-2.5 text-center text-slate-800">
                 报销金额合计 (大写)
               </td>
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-right font-serif text-sm text-red-700">
+              <td colSpan={2} className="border border-slate-300 p-2.5 text-right font-serif text-sm text-[#E8000A]">
                 {numberToRMB(grandTotal)}
               </td>
             </tr>
             <tr className="bg-slate-50 font-bold">
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-center">
+              <td colSpan={2} className="border border-slate-300 p-2.5 text-center text-slate-800">
                 报销金额合计 (小写)
               </td>
-              <td colSpan={2} className="border border-slate-300 p-2.5 text-right font-mono text-base text-red-700 font-extrabold">
+              <td colSpan={2} className="border border-slate-300 p-2.5 text-right font-mono text-base text-[#E8000A] font-extrabold">
                 ¥{grandTotal.toFixed(2)}
               </td>
             </tr>
