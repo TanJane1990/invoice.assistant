@@ -54,7 +54,16 @@ export const App: React.FC = () => {
   const [settings, setSettings] = useState<SystemSettings>(() => {
     try {
       const saved = localStorage.getItem("system_settings_v1");
-      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // 自动强行清除浏览器 localStorage 中残留的历史公司名称
+        if (parsed.defaultCompany && (parsed.defaultCompany.includes("云启智创") || parsed.defaultCompany.includes("北京"))) {
+          parsed.defaultCompany = "";
+          localStorage.setItem("system_settings_v1", JSON.stringify(parsed));
+        }
+        return parsed;
+      }
+      return DEFAULT_SETTINGS;
     } catch {
       return DEFAULT_SETTINGS;
     }
@@ -64,9 +73,15 @@ export const App: React.FC = () => {
     const saved = localStorage.getItem("invoice_app_data");
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed: InvoiceData[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          // 自动强行清除台账列表中残留的历史公司名称
+          const cleaned = parsed.map((inv) => ({
+            ...inv,
+            buyerName: (inv.buyerName || "").includes("云启智创") ? "" : inv.buyerName,
+          }));
+          localStorage.setItem("invoice_app_data", JSON.stringify(cleaned));
+          return cleaned;
         }
       } catch (e) {
         /* ignore */
