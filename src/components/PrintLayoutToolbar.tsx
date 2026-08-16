@@ -40,7 +40,7 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   const gridModes = [
     { id: "1", label: "1张/页 (单张原票 210×140mm)" },
     { id: "2", label: "2张/页 (上下 纵向)" },
-    { id: "4", label: "4张/页 (2×2 纵向)" },
+    { id: "4", label: "4张/页 (2×2 横向)" },
   ];
 
   return (
