@@ -465,7 +465,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex items-center space-x-3 text-xs !text-slate-500 font-medium">
             <span>设置保存后即刻生效</span>
             <span className="border-l border-slate-300 pl-3">
-              软件开发：会钓鱼的猫
+              智能发票管理助手 v1.0
             </span>
           </div>
 

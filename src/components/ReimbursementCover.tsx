@@ -21,7 +21,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   const selectedInvoices = invoices.filter((i) => i.selectedForPrint);
 
   const [formData, setFormData] = useState<ReimbursementCoverData>({
-    companyName: defaultSettings?.defaultCompany || "会钓鱼的猫",
+    companyName: defaultSettings?.defaultCompany || "示例单位名称",
     department: defaultSettings?.defaultDepartment || "猫粮研发部",
     applicant: defaultSettings?.defaultApplicant || "张喵喵",
     reimbursementNo: `BX-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-001`,
