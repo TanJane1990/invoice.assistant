@@ -118,11 +118,6 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* 右侧快捷操作按钮区 */}
       <div className="flex items-center space-x-2 text-xs">
-        {/* 1:1 匹配图 1：纯静止暗系标识 */}
-        <div className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-[#121827] text-amber-400 border border-[#1E293B] font-bold">
-          <Moon className="w-3.5 h-3.5 text-amber-400" />
-          <span>暗系</span>
-        </div>
 
         {/* 批量导入发票 */}
         <button

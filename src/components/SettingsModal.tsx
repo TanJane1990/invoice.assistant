@@ -100,7 +100,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800">
           <div className="flex items-center space-x-2">
             <Settings className="w-5 h-5 text-red-500" />
-            <h3 className="font-extrabold text-base tracking-wide text-white">智能发票助手 - 系统设置</h3>
+            <h3 className="font-extrabold text-base tracking-wide text-white" style={{ color: "#ffffff" }}>
+              智能发票助手 - 系统设置
+            </h3>
           </div>
           <button
             onClick={onClose}
