@@ -38,9 +38,9 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   const isDark = theme === "dark";
 
   const gridModes = [
-    { id: "1", label: "1张/页 (单张原票 210×140mm)" },
-    { id: "2", label: "2张/页 (上下 纵向)" },
-    { id: "4", label: "4张/页 (2×2 横向)" },
+    { id: "1", label: "1张/页 (单张原票 210×140mm)", orientation: "landscape" },
+    { id: "2", label: "2张/页 (上下 纵向)", orientation: "portrait" },
+    { id: "4", label: "4张/页 (2×2 横向)", orientation: "landscape" },
   ];
 
   return (
@@ -65,7 +65,10 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
               <button
                 key={mode.id}
                 onClick={() => {
-                  onChangeConfig({ gridMode: mode.id as any, orientation: "portrait" });
+                  onChangeConfig({
+                    gridMode: mode.id as any,
+                    orientation: mode.orientation as any,
+                  });
                 }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   active
@@ -258,7 +261,7 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className={`font-mono text-xs px-1 font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+            <span className={`font-mono text-xs px-1 font-bold ${isDark ? "text-[#00E676]" : "text-slate-900"}`}>
               {Math.round(zoom * 100)}%
             </span>
             <button

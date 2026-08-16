@@ -187,16 +187,19 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                   breakAfter: "page",
                 }}
               >
-                {/* 1:1 剪裁线：居中穿过页面中轴线的分割红线 */}
+                {/* 1:1 剪裁线：居中穿过页面中轴线的分割虚线 (1:1 匹配 media_1786901840126.png) */}
                 {showCropLines && (
                   <>
-                    {/* 上下 2 张/页 或 4 张/页 时：横向中轴裁剪红线 */}
                     {(config.gridMode === "2" || config.gridMode === "4") && (
-                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1px] bg-[#E8000A] pointer-events-none z-20" />
+                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-b border-dashed border-sky-400/80 pointer-events-none z-20" />
                     )}
-                    {/* 4 张/页 时：纵向中轴裁剪红线 */}
                     {config.gridMode === "4" && (
-                      <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1px] bg-[#E8000A] pointer-events-none z-20" />
+                      <>
+                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 border-r border-dashed border-sky-400/80 pointer-events-none z-20" />
+                        <div className="absolute right-3 top-1/2 translate-y-1.5 text-[10px] text-slate-400 font-mono flex items-center space-x-1 pointer-events-none z-20">
+                          <span>✂ 剪裁边线</span>
+                        </div>
+                      </>
                     )}
                   </>
                 )}
