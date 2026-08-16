@@ -35,13 +35,8 @@ const DEFAULT_SETTINGS: SystemSettings = {
 export const App: React.FC = () => {
   // 1. 核心状态：当前 Tab、皮肤主题、打印/排版配置
   const [activeTab, setActiveTab] = useState<"layout" | "ledger" | "cover">("layout");
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    try {
-      return (localStorage.getItem("app_theme_v1") as "light" | "dark") || "light";
-    } catch {
-      return "light";
-    }
-  });
+  // 锁死为唯一的暗系主题 (#0E172B)
+  const [theme] = useState<"light" | "dark">("dark");
   const [zoom, setZoom] = useState<number>(0.9);
 
   const [printConfig, setPrintConfig] = useState<PrintConfig>({

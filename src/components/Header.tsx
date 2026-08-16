@@ -118,28 +118,11 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* 右侧快捷操作按钮区 */}
       <div className="flex items-center space-x-2 text-xs">
-        {/* 模式切换按钮 */}
-        <button
-          onClick={onToggleTheme}
-          title={isDark ? "切换为白天模式" : "切换为暗系模式"}
-          className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl border transition cursor-pointer font-bold ${
-            isDark
-              ? "bg-[#121827] hover:bg-[#1E293B] text-amber-400 border-[#1E293B]"
-              : "bg-[#F3F5F9] hover:bg-slate-200 text-amber-600 border-slate-300"
-          }`}
-        >
-          {isDark ? (
-            <>
-              <Moon className="w-3.5 h-3.5 text-amber-400" />
-              <span>暗系</span>
-            </>
-          ) : (
-            <>
-              <Sun className="w-3.5 h-3.5 text-amber-600" />
-              <span>白天</span>
-            </>
-          )}
-        </button>
+        {/* 1:1 匹配图 1：纯静止暗系标识 */}
+        <div className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-[#121827] text-amber-400 border border-[#1E293B] font-bold">
+          <Moon className="w-3.5 h-3.5 text-amber-400" />
+          <span>暗系</span>
+        </div>
 
         {/* 批量导入发票 */}
         <button
