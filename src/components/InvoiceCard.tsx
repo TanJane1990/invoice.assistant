@@ -89,7 +89,9 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
           <img
             src={renderedImgUrl}
             alt={invoice.fileName || "发票原票件"}
-            className="w-full h-full object-contain pointer-events-none"
+            className={`w-full h-full pointer-events-none ${
+              gridMode === "4" ? "object-fill" : "object-contain"
+            }`}
           />
         </div>
       ) : (
