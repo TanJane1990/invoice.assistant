@@ -205,6 +205,10 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
+  if (!sellerName && (invoiceType.includes("铁路") || cleanText.includes("12306") || cleanText.includes("中国铁路"))) {
+    sellerName = "中国铁路";
+  }
+
   if (!sellerName && companies.length > 0) {
     sellerName = companies.find(c => c !== buyerName && c.includes("公司")) || companies[0];
   }
@@ -245,6 +249,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   if (totalAmountWithTax === 0) {
     const totalPatterns = [
+      /(?:票价|车票票价)\s*[:：]?\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
       /(?:价税合计|价税\s*合\s*计)[^0-9¥￥]*[¥￥]?\s*[:：]?\s*([0-9,，]+\.?\d*)/,
       /(?:（小写）|\(小写\)|小写)\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
       /小写[）\)]?\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
