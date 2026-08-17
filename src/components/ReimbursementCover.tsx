@@ -288,9 +288,10 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           </div>
         </div>
 
-        {/* Attachment Invoice Itemization Table (Matching Image 3) */}
+        {/* Attachment Invoice Itemization Table (Matching Red Box Image) */}
+        <div className="border-b border-dashed border-slate-400 my-4" style={{ borderColor: "#94a3b8" }} />
         <div className="mb-6 space-y-1">
-          <div className="text-[11px] font-bold text-slate-700" style={{ color: "#334155" }}>
+          <div className="text-[11px] font-bold text-slate-800" style={{ color: "#0f172a" }}>
             附件发票明细清单:
           </div>
           <table className="w-full text-[11px] border-collapse border border-slate-300" style={{ color: "#0f172a" }}>
