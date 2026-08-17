@@ -263,9 +263,14 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     if (mPassengerName) passengerName = mPassengerName[1];
 
     const mTrainRoute =
-      cleanText.match(/([\u4e00-\u9fa5]{2,10}站)\s*([A-Z]\d{1,5}|\d{1,5})\s*([\u4e00-\u9fa5]{2,10}站)/) ||
-      cleanText.match(/([\u4e00-\u9fa5]{2,10}站)[\s\S]{0,30}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,30}?([\u4e00-\u9fa5]{2,10}站)/);
-    if (mTrainRoute) trainRoute = `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`;
+      cleanText.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)\s*([A-Z0-9]{1,6})\s*([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)/) ||
+      cleanText.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)[\s\S]{0,40}?([A-Z0-9]{1,6})[\s\S]{0,40}?([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)/) ||
+      cleanText.match(/([\u4e00-\u9fa5]{2,15}站?)\s*(?:至|➔|->|--)\s*([\u4e00-\u9fa5]{2,15}站?)/);
+    if (mTrainRoute) {
+      trainRoute = mTrainRoute[3]
+        ? `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`
+        : `${mTrainRoute[1]} ➔ ${mTrainRoute[2]}`;
+    }
   }
   // 模式 2: 航空运输电子客票行程单
   else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
