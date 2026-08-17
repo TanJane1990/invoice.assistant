@@ -30,7 +30,6 @@ export const exportInvoicesToExcel = (
     合计税额: inv.totalTaxAmount,
     "价税合计(元)": inv.totalAmountWithTax,
     价税合计大写: inv.totalAmountWithTaxCN,
-    开票人: inv.drawer || "-",
     查重告警状态: inv.duplicateWarning ? "重复告警" : "正常唯一",
     防篡改保护: settings?.protectExportedExcel ? "已锁定加密" : "普通导出",
     备注: inv.remarks || "-",
