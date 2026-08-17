@@ -202,18 +202,23 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         </div>
       )}
 
-      {/* Printable Paper Voucher (Full A4 Paper Physical Layout - Compact to fit Page 1 with Signatures) */}
+      {/* Printable Paper Voucher (Strict 1-Page A4 Physical Container: Height strictly 297mm) */}
       <div
-        className="a4-print-page bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative"
+        className="a4-print-page a4-print-cover-page bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative flex flex-col justify-between"
         style={{
           width: "210mm",
-          minHeight: "297mm",
-          padding: "12mm 15mm",
+          height: "297mm",
+          maxHeight: "297mm",
+          padding: "8mm 12mm",
           boxSizing: "border-box",
-          color: "#0f172a",
+          color: "#000000",
           backgroundColor: "#ffffff",
+          pageBreakInside: "avoid",
+          breakInside: "avoid",
+          overflow: "hidden",
         }}
       >
+        <div>
         {/* Title */}
         <div className="text-center mb-3">
           <h2
@@ -346,8 +351,9 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
             </tbody>
           </table>
         </div>
+        </div>
 
-        {/* Approval Signatures Footer (Always Fits Perfectly on Page 1) */}
+        {/* Approval Signatures Footer (Pushed to absolute bottom of Page 1) */}
         <div className="grid grid-cols-4 gap-2 pt-3 border-t-2 border-slate-900 text-xs font-semibold" style={{ borderColor: "#000000", color: "#000000" }}>
           <div>
             <span>主管审批: </span>
