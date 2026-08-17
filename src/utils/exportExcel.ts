@@ -123,9 +123,7 @@ export const exportInvoicesToExcel = (
       rawBuyer = "个人";
     }
 
-    if (rawSeller === "出票服务单位" || rawSeller.includes("出票服务")) {
-      rawSeller = "北京京东世纪信息技术有限公司";
-    }
+
 
     const capitalRMB =
       inv.totalAmountWithTaxCN &&

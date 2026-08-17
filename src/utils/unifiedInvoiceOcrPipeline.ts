@@ -34,7 +34,7 @@ export async function processInvoiceFileUnified(
   let previewFileUrl = fileBase64;
   let extractedPdfText = "";
 
-  // Step 1: 如果是 PDF，渲染 300DPI 图像并提取 PDF 矢量文本；如果是图片，调用离线 OCR
+  // Step 1: 如果是 PDF，渲染 300DPI 图像并提取 PDF 矢量文本
   if (isPdf) {
     try {
       previewFileUrl = await convertPdfToImageDataUrl(fileBase64);
@@ -42,9 +42,15 @@ export async function processInvoiceFileUnified(
     } catch (e) {
       console.warn("PDF render/extract info:", e);
     }
-  } else {
+  }
+
+  // 强化：如果矢量文本不足或为空（如图片收据、扫描版火车票），自动触发 Tesseract 图像 OCR
+  if (!extractedPdfText || extractedPdfText.trim().length < 40) {
     try {
-      extractedPdfText = await recognizeImageTextWithTesseract(fileBase64);
+      const ocrText = await recognizeImageTextWithTesseract(previewFileUrl || fileBase64);
+      if (ocrText) {
+        extractedPdfText = (extractedPdfText + "\n" + ocrText).trim();
+      }
     } catch (e) {
       console.warn("Image OCR info:", e);
     }

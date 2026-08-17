@@ -129,11 +129,16 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceType = "增值税电子普通发票";
   }
 
-  // 2. 发票/收据号码
+  // 2. 发票/收据号码 (强优先匹配 "发票号码: 26117000000921189091" 或 "No. 44322051-00001445"，排除订单号)
   let invoiceNumber = "";
-  const mNumNo = cleanText.match(/No\.?\s*([0-9A-Za-z]+(?:-[0-9A-Za-z]+)?)/i) || cleanText.match(/(?:收款单号|单号|发票号码|发票号|号码|票据号码)[:：\s]*([0-9A-Za-z-]+)/);
-  if (mNumNo) {
-    invoiceNumber = mNumNo[1].trim();
+  const mInvDirect = cleanText.match(/(?:发票号码|发票号|票据号码|号码)[:：\s]*([0-9]{8,20})/);
+  if (mInvDirect) {
+    invoiceNumber = mInvDirect[1];
+  } else {
+    const mNumNo = cleanText.match(/No\.?\s*([0-9A-Za-z]+(?:-[0-9A-Za-z]+)?)/i) || cleanText.match(/(?:收款单号|单号)[:：\s]*([0-9A-Za-z-]+)/);
+    if (mNumNo) {
+      invoiceNumber = mNumNo[1].trim();
+    }
   }
 
   if (!invoiceNumber) {
