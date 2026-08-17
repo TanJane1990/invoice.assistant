@@ -52,14 +52,16 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [lastExportInfo, setLastExportInfo] = useState<LastExportInfo | null>(null);
 
-  // 1. 发票重复计算引擎（按发票号码分组）
+  // 1. 发票重复计算引擎（必须同时符合【票据/发票号码相同】且【价税合计金额一致】才算重复）
   const duplicateMap = React.useMemo(() => {
     const counts: Record<string, InvoiceData[]> = {};
     invoices.forEach((inv) => {
       if (inv.invoiceNumber && inv.invoiceNumber.trim()) {
         const num = inv.invoiceNumber.trim();
-        if (!counts[num]) counts[num] = [];
-        counts[num].push(inv);
+        const amt = Number((inv.totalAmountWithTax || 0).toFixed(2));
+        const key = `${num}_${amt}`;
+        if (!counts[key]) counts[key] = [];
+        counts[key].push(inv);
       }
     });
 

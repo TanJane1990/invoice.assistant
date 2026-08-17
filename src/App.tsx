@@ -160,12 +160,18 @@ export const App: React.FC = () => {
   );
 
   const duplicateCount = useMemo(() => {
-    const numCounts: Record<string, number> = {};
+    const counts: Record<string, number> = {};
     invoices.forEach((i) => {
       const numStr = (i.invoiceNumber || "").trim();
-      if (numStr) numCounts[numStr] = (numCounts[numStr] || 0) + 1;
+      const amtStr = Number((i.totalAmountWithTax || 0).toFixed(2)).toString();
+      if (numStr) {
+        const key = `${numStr}_${amtStr}`;
+        counts[key] = (counts[key] || 0) + 1;
+      }
     });
-    return Object.values(numCounts).filter((c) => c > 1).length;
+    return Object.values(counts)
+      .filter((c) => c > 1)
+      .reduce((sum, c) => sum + c, 0);
   }, [invoices]);
 
   const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
