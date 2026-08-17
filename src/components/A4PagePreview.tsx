@@ -196,7 +196,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                     {config.gridMode === "4" && (
                       <>
                         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 border-r border-dashed border-sky-400/80 pointer-events-none z-20" />
-                        <div className="absolute right-3 top-1/2 translate-y-1.5 text-[10px] text-slate-400 font-mono flex items-center space-x-1 pointer-events-none z-20">
+                        <div className="no-print print:hidden absolute right-3 top-1/2 translate-y-1.5 text-[10px] text-slate-400 font-mono flex items-center space-x-1 pointer-events-none z-20">
                           <span>✂ 剪裁边线</span>
                         </div>
                       </>

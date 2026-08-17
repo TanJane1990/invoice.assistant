@@ -117,7 +117,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div className="no-print print:hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-2xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col bg-white my-8">
         {/* 1. 顶部 Header (深黑背景) */}
         <div className="modal-dark-header px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800 flex items-center justify-between">
