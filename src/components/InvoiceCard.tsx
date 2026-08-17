@@ -67,18 +67,18 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
         width: "100%",
       }}
     >
-      {/* Delete Action (Screen only, strictly hidden in print) */}
+      {/* Delete Action (Screen only, strictly hidden in print - Always clear & visible on hover/screen) */}
       {onDelete && (
-        <div className="no-print print:hidden absolute top-1 right-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="no-print print:hidden absolute top-1.5 right-1.5 z-30 transition-all opacity-85 hover:opacity-100 scale-95 hover:scale-105">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete(invoice.id);
             }}
-            className="p-1 bg-red-600 hover:bg-red-700 text-white rounded shadow-sm cursor-pointer"
-            title="删除发票"
+            className="p-1.5 bg-[#E8000A] hover:bg-[#C80009] text-white rounded-lg shadow-md transition-all cursor-pointer flex items-center justify-center border border-white/40"
+            title="从当前排版中删除此发票"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3.5 h-3.5 text-white" style={{ color: "#ffffff" }} />
           </button>
         </div>
       )}

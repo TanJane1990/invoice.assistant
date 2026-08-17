@@ -14,7 +14,7 @@ body.theme-light {
    1. Universal High-Contrast Rules for Light/White Cards & Dark Headers
    ========================================================================== */
 
-/* Dark Headers in Modals & App Bars: ALWAYS CRISP BRIGHT WHITE TEXT (#ffffff) */
+/* Dark Headers in Modals & App Bars & Primary Red Buttons: ALWAYS CRISP BRIGHT WHITE TEXT (#ffffff) */
 div.bg-\[\#0E172B\],
 div.bg-\[\#0E172B\] *,
 div.bg-slate-950,
@@ -22,7 +22,12 @@ div.bg-slate-950 *,
 div.bg-slate-900,
 div.bg-slate-900 *,
 .modal-dark-header,
-.modal-dark-header * {
+.modal-dark-header *,
+.bg-\[\#E8000A\],
+.bg-\[\#E8000A\] *,
+.bg-red-600,
+.bg-red-600 *,
+.text-white {
   color: #ffffff !important;
 }
 
