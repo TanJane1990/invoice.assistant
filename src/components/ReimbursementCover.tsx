@@ -202,23 +202,30 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         </div>
       )}
 
-      {/* Printable Paper Voucher (Full A4 Paper Physical Layout - Match Image 1) */}
+      {/* Printable Paper Voucher (Full A4 Paper Physical Layout - Compact to fit Page 1 with Signatures) */}
       <div
-        className="a4-print-page bg-white text-slate-900 p-10 shadow-2xl border border-slate-300 mx-auto font-sans relative"
-        style={{ width: "210mm", minHeight: "297mm", boxSizing: "border-box", color: "#0f172a" }}
+        className="a4-print-page bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative"
+        style={{
+          width: "210mm",
+          minHeight: "297mm",
+          padding: "12mm 15mm",
+          boxSizing: "border-box",
+          color: "#0f172a",
+          backgroundColor: "#ffffff",
+        }}
       >
-        {/* Title (Matching Image 3) */}
-        <div className="text-center mb-4">
+        {/* Title */}
+        <div className="text-center mb-3">
           <h2
-            className="text-2xl font-extrabold tracking-[0.2em] font-serif text-slate-900 border-b-2 border-slate-900 pb-2 inline-block px-4"
-            style={{ color: "#0f172a" }}
+            className="text-xl font-extrabold tracking-[0.2em] font-serif text-slate-900 border-b-2 border-slate-900 pb-1.5 inline-block px-6"
+            style={{ color: "#000000" }}
           >
             费 用 报 销 凭 证 单
           </h2>
         </div>
 
-        {/* Sub-header info (Matching Image 3) */}
-        <div className="flex items-center justify-between text-xs font-semibold mb-3 border-b border-slate-800 pb-2" style={{ color: "#0f172a" }}>
+        {/* Sub-header info */}
+        <div className="flex items-center justify-between text-xs font-semibold mb-2.5 border-b border-slate-800 pb-1.5" style={{ color: "#000000" }}>
           <div>
             <span>报销部门: </span>
             <span className="font-bold">{formData.department}</span>
@@ -233,55 +240,55 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           </div>
         </div>
 
-        {/* Top Summary Table (Matching Image 3) */}
-        <table className="w-full text-xs border-collapse border border-slate-800 mb-4" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+        {/* Top Summary Table */}
+        <table className="w-full text-xs border-collapse border border-slate-900 mb-2.5" style={{ borderColor: "#000000", color: "#000000" }}>
           <tbody>
-            <tr className="border-b border-slate-800" style={{ borderColor: "#1e293b" }}>
-              <td className="p-2 border-r border-slate-800 font-bold text-center bg-slate-100 w-20" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+            <tr className="border-b border-slate-900" style={{ borderColor: "#000000" }}>
+              <td className="py-1 px-2 border-r border-slate-900 font-bold text-center bg-slate-100 w-20" style={{ borderColor: "#000000", color: "#000000" }}>
                 报销人
               </td>
-              <td className="p-2 border-r border-slate-800 text-left font-bold w-48" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+              <td className="py-1 px-2 border-r border-slate-900 text-left font-bold w-48" style={{ borderColor: "#000000", color: "#000000" }}>
                 {formData.applicant}
               </td>
-              <td className="p-2 border-r border-slate-800 font-bold text-center bg-slate-100 w-28" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+              <td className="py-1 px-2 border-r border-slate-900 font-bold text-center bg-slate-100 w-28" style={{ borderColor: "#000000", color: "#000000" }}>
                 附发票张数
               </td>
-              <td className="p-2 text-left font-bold text-[#E8000A]" style={{ color: "#E8000A" }}>
+              <td className="py-1 px-2 text-left font-bold" style={{ color: "#000000" }}>
                 {activeInvoices.length} 张
               </td>
             </tr>
             <tr>
-              <td className="p-2 border-r border-slate-800 font-bold text-center bg-slate-100" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+              <td className="py-1 px-2 border-r border-slate-900 font-bold text-center bg-slate-100" style={{ borderColor: "#000000", color: "#000000" }}>
                 报销事由
               </td>
-              <td colSpan={3} className="p-2 text-left font-medium" style={{ color: "#0f172a" }}>
+              <td colSpan={3} className="py-1 px-2 text-left font-medium" style={{ color: "#000000" }}>
                 {formData.reason}
               </td>
             </tr>
           </tbody>
         </table>
 
-        {/* Category Breakdown Table (Matching Image 3) */}
-        <div className="border border-slate-800 mb-4" style={{ borderColor: "#1e293b" }}>
-          <div className="bg-slate-100 text-center py-1.5 font-bold text-xs border-b border-slate-800 tracking-wider" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+        {/* Category Breakdown Table */}
+        <div className="border border-slate-900 mb-2.5" style={{ borderColor: "#000000" }}>
+          <div className="bg-slate-100 text-center py-1 font-bold text-xs border-b border-slate-900 tracking-wider" style={{ borderColor: "#000000", color: "#000000" }}>
             费 用 分 类 销 账 明 细 汇 总
           </div>
-          <table className="w-full text-xs border-collapse" style={{ color: "#0f172a" }}>
+          <table className="w-full text-xs border-collapse" style={{ color: "#000000" }}>
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-50 font-bold" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
-                <th className="p-2 text-left border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>费用类别</th>
-                <th className="p-2 text-center border-r border-slate-800 w-32" style={{ borderColor: "#1e293b", color: "#0f172a" }}>包含笔数</th>
-                <th className="p-2 text-right w-36" style={{ color: "#0f172a" }}>小计金额 (元)</th>
+              <tr className="border-b border-slate-900 bg-slate-50 font-bold" style={{ borderColor: "#000000", color: "#000000" }}>
+                <th className="py-1 px-2 text-left border-r border-slate-900" style={{ borderColor: "#000000", color: "#000000" }}>费用类别</th>
+                <th className="py-1 px-2 text-center border-r border-slate-900 w-32" style={{ borderColor: "#000000", color: "#000000" }}>包含笔数</th>
+                <th className="py-1 px-2 text-right w-36" style={{ color: "#000000" }}>小计金额 (元)</th>
               </tr>
             </thead>
             <tbody>
               {Object.entries(categorySummary).map(([cat, amt]) => {
                 const count = activeInvoices.filter((i) => i.category === cat).length;
                 return (
-                  <tr key={cat} className="border-b border-slate-800 last:border-b-0" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
-                    <td className="p-2 font-bold border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>{cat}</td>
-                    <td className="p-2 text-center font-mono border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>{count} 笔</td>
-                    <td className="p-2 text-right font-mono font-bold" style={{ color: "#0f172a" }}>¥{Number(amt).toFixed(2)}</td>
+                  <tr key={cat} className="border-b border-slate-900 last:border-b-0" style={{ borderColor: "#000000", color: "#000000" }}>
+                    <td className="py-1 px-2 font-bold border-r border-slate-900" style={{ borderColor: "#000000", color: "#000000" }}>{cat}</td>
+                    <td className="py-1 px-2 text-center font-mono border-r border-slate-900" style={{ borderColor: "#000000", color: "#000000" }}>{count} 笔</td>
+                    <td className="py-1 px-2 text-right font-mono font-bold" style={{ color: "#000000" }}>¥{Number(amt).toFixed(2)}</td>
                   </tr>
                 );
               })}
@@ -289,50 +296,50 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           </table>
         </div>
 
-        {/* Grand Total Bar (Matching Image 3) */}
-        <div className="border-2 border-slate-900 p-2.5 flex items-center justify-between text-xs font-bold mb-5 bg-white" style={{ borderColor: "#0f172a", color: "#0f172a" }}>
+        {/* Grand Total Bar */}
+        <div className="border-2 border-slate-900 py-1.5 px-3 flex items-center justify-between text-xs font-bold mb-3 bg-white" style={{ borderColor: "#000000", color: "#000000" }}>
           <div>
             <span>报销金额合计 (大写): </span>
-            <span className="text-[#E8000A] font-serif text-sm ml-1" style={{ color: "#E8000A" }}>
+            <span className="font-serif text-sm ml-1 font-extrabold" style={{ color: "#000000" }}>
               {numberToRMB(grandTotal)}
             </span>
           </div>
-          <div className="text-base font-mono font-extrabold" style={{ color: "#0f172a" }}>
+          <div className="text-base font-mono font-extrabold" style={{ color: "#000000" }}>
             ¥{grandTotal.toFixed(2)}
           </div>
         </div>
 
-        {/* Attachment Invoice Itemization Table (Matching Red Box Image) */}
-        <div className="border-b border-dashed border-slate-400 my-4" style={{ borderColor: "#94a3b8" }} />
-        <div className="mb-6 space-y-1">
-          <div className="text-[11px] font-bold text-slate-800" style={{ color: "#0f172a" }}>
+        {/* Attachment Invoice Itemization Table */}
+        <div className="border-b border-dashed border-slate-500 my-2.5" style={{ borderColor: "#64748b" }} />
+        <div className="mb-4 space-y-1">
+          <div className="text-[11px] font-bold" style={{ color: "#000000" }}>
             附件发票明细清单:
           </div>
-          <table className="w-full text-[11px] border-collapse border border-slate-300" style={{ color: "#0f172a" }}>
+          <table className="w-full text-[11px] border-collapse border border-slate-900" style={{ borderColor: "#000000", color: "#000000" }}>
             <thead>
-              <tr className="bg-slate-100 border-b border-slate-300 font-bold" style={{ color: "#0f172a" }}>
-                <th className="p-1.5 text-left border-r border-slate-300">发票号码</th>
-                <th className="p-1.5 text-left border-r border-slate-300 w-24">开票日期</th>
-                <th className="p-1.5 text-left border-r border-slate-300">开票单位</th>
-                <th className="p-1.5 text-center border-r border-slate-300 w-16">类别</th>
-                <th className="p-1.5 text-right w-20">金额 (元)</th>
+              <tr className="bg-slate-100 border-b border-slate-900 font-bold" style={{ borderColor: "#000000", color: "#000000" }}>
+                <th className="py-1 px-1.5 text-left border-r border-slate-900">发票号码</th>
+                <th className="py-1 px-1.5 text-left border-r border-slate-900 w-24">开票日期</th>
+                <th className="py-1 px-1.5 text-left border-r border-slate-900">开票单位</th>
+                <th className="py-1 px-1.5 text-center border-r border-slate-900 w-16">类别</th>
+                <th className="py-1 px-1.5 text-right w-20">金额 (元)</th>
               </tr>
             </thead>
             <tbody>
               {activeInvoices.length === 0 ? (
-                <tr className="border-b border-slate-200 font-sans text-[11px]" style={{ color: "#64748b" }}>
-                  <td colSpan={5} className="p-3 text-center text-slate-500 font-medium">
+                <tr className="border-b border-slate-900 font-sans text-[11px]" style={{ color: "#000000" }}>
+                  <td colSpan={5} className="py-2 px-2 text-center text-slate-600 font-medium">
                     （暂未勾选发票，请在【发票台账与查重】中勾选发票后自动在此列出明细）
                   </td>
                 </tr>
               ) : (
                 activeInvoices.map((inv) => (
-                  <tr key={inv.id} className="border-b border-slate-200 font-mono text-[11px]" style={{ color: "#0f172a" }}>
-                    <td className="p-1.5 border-r border-slate-200 font-bold">{inv.invoiceNumber}</td>
-                    <td className="p-1.5 border-r border-slate-200">{inv.issueDate}</td>
-                    <td className="p-1.5 border-r border-slate-200 font-sans truncate max-w-[180px]">{inv.sellerName || "-"}</td>
-                    <td className="p-1.5 border-r border-slate-200 text-center font-sans">{inv.category}</td>
-                    <td className="p-1.5 text-right font-bold">¥{inv.totalAmountWithTax.toFixed(2)}</td>
+                  <tr key={inv.id} className="border-b border-slate-900 last:border-b-0 font-mono text-[11px]" style={{ borderColor: "#000000", color: "#000000" }}>
+                    <td className="py-1 px-1.5 border-r border-slate-900 font-bold" style={{ borderColor: "#000000" }}>{inv.invoiceNumber}</td>
+                    <td className="py-1 px-1.5 border-r border-slate-900" style={{ borderColor: "#000000" }}>{inv.issueDate}</td>
+                    <td className="py-1 px-1.5 border-r border-slate-900 font-sans truncate max-w-[180px]" style={{ borderColor: "#000000" }}>{inv.sellerName || "-"}</td>
+                    <td className="py-1 px-1.5 border-r border-slate-900 text-center font-sans" style={{ borderColor: "#000000" }}>{inv.category}</td>
+                    <td className="py-1 px-1.5 text-right font-bold">¥{inv.totalAmountWithTax.toFixed(2)}</td>
                   </tr>
                 ))
               )}
@@ -340,23 +347,23 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           </table>
         </div>
 
-        {/* Approval Signatures Footer (Matching Image 3) */}
-        <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-800 text-xs font-semibold text-slate-800" style={{ color: "#1e293b" }}>
+        {/* Approval Signatures Footer (Always Fits Perfectly on Page 1) */}
+        <div className="grid grid-cols-4 gap-2 pt-3 border-t-2 border-slate-900 text-xs font-semibold" style={{ borderColor: "#000000", color: "#000000" }}>
           <div>
             <span>主管审批: </span>
-            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.approver}</span>
+            <span className="font-bold underline" style={{ color: "#000000" }}>{formData.approver}</span>
           </div>
           <div>
             <span>财务复核: </span>
-            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.financeAuditor}</span>
+            <span className="font-bold underline" style={{ color: "#000000" }}>{formData.financeAuditor}</span>
           </div>
           <div>
             <span>出纳或经办人: </span>
-            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.cashier}</span>
+            <span className="font-bold underline" style={{ color: "#000000" }}>{formData.cashier}</span>
           </div>
           <div>
             <span>报销人签章: </span>
-            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.applicant}</span>
+            <span className="font-bold underline" style={{ color: "#000000" }}>{formData.applicant}</span>
           </div>
         </div>
       </div>
