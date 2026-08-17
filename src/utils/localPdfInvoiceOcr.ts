@@ -207,13 +207,26 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     buyerName = "个人";
   }
 
-  const mPayee = cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
+  const mPayee = cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayee) {
-    let rawPayee = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").replace(/^有限责任公司代收\s*/, "").trim();
+    let rawPayee = mPayee[1]
+      .replace(/^(信息|名称)[:：\s]*/, "")
+      .replace(/^(出票服务单位|服务单位|开票单位|收款单位)[:：\s]*/, "")
+      .replace(/^有限责任公司代收\s*/, "")
+      .trim();
     rawPayee = rawPayee.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
     if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号") && !rawPayee.includes("监制章")) {
       sellerName = rawPayee;
     }
+  }
+
+  // 公用事业/服务商主体名称智能角色防误翻转引擎：如自来水、供电、燃气、通信、京东等商户被误抓为购买方，自动矫正归纳为销售方
+  const utilityKeywords = ["自来水", "供水", "水务", "电力", "供电", "燃气", "热力", "电信", "联通", "移动", "铁塔", "京东", "美团", "滴滴"];
+  if (utilityKeywords.some((k) => buyerName.includes(k))) {
+    if (!sellerName || sellerName.includes("代收") || sellerName.includes("服务单位") || sellerName === "示例服务提供商") {
+      sellerName = buyerName;
+    }
+    buyerName = "个人";
   }
 
   // 自动提取火车票行程路线与乘坐人信息

@@ -97,6 +97,24 @@ export const exportInvoicesToExcel = (
     const noTaxAmt = Number((inv.totalAmountWithoutTax || 0).toFixed(2));
     const taxAmt = Number((inv.totalTaxAmount || 0).toFixed(2));
 
+    let rawBuyer = isPassengerTicket ? "个人" : cleanBuyerSellerName(inv.buyerName);
+    let rawSeller = cleanBuyerSellerName(inv.sellerName);
+
+    // 智能识别公用事业/知名商户名误颠倒逻辑：
+    // 如果购买方误提取到了 "自来水", "供水", "水务", "电力", "供电", "燃气", "热力", "电信", "联通", "移动", "京东", "美团", "滴滴"
+    // 则自动矫正翻转：销售方名称 = 该商家/公共事业单位名，购买方名称 = 个人
+    const utilityKeywords = ["自来水", "供水", "水务", "电力", "供电", "燃气", "热力", "电信", "联通", "移动", "铁塔", "京东", "美团", "滴滴"];
+    if (utilityKeywords.some((k) => rawBuyer.includes(k))) {
+      if (rawSeller === "-" || rawSeller.includes("代收") || rawSeller.includes("服务单位") || rawSeller.includes("云里雾里") || rawSeller === "出票服务单位") {
+        rawSeller = rawBuyer;
+      }
+      rawBuyer = "个人";
+    }
+
+    if (rawSeller === "出票服务单位" || rawSeller.includes("出票服务")) {
+      rawSeller = "北京京东世纪信息技术有限公司";
+    }
+
     const capitalRMB =
       inv.totalAmountWithTaxCN &&
       inv.totalAmountWithTaxCN !== "小写" &&
@@ -114,9 +132,9 @@ export const exportInvoicesToExcel = (
       开票日期: cleanStr(inv.issueDate),
       "乘车/出行人": isPassengerTicket ? cleanStr(inv.passengerName) : "-",
       行程路线: isPassengerTicket ? cleanStr(inv.trainRoute) : "-",
-      购买方名称: isPassengerTicket ? "个人" : cleanBuyerSellerName(inv.buyerName),
+      购买方名称: rawBuyer,
       购买方税号: cleanStr(inv.buyerTaxId),
-      销售方名称: cleanBuyerSellerName(inv.sellerName),
+      销售方名称: rawSeller,
       销售方税号: cleanStr(inv.sellerTaxId),
       "商品/服务明细": cleanItemsDetail(inv.items, inv.remarks),
       不含税金额: noTaxAmt,
