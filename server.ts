@@ -3,6 +3,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import child_process from "child_process";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { parseInvoiceTextWithRules } from "./src/utils/localPdfInvoiceOcr";
@@ -68,6 +69,44 @@ async function startServer() {
       return res.json({ exists: false });
     } catch (e) {
       return res.json({ exists: false });
+    }
+  });
+
+  // API Endpoint: 打开 Mac Finder 或 Windows 资源管理器中的文件目录并选中文件
+  app.post("/api/open-file-folder", (req, res) => {
+    try {
+      const { fileName } = req.body;
+      if (!fileName) return res.json({ success: false });
+
+      const homeDir = os.homedir();
+      const possiblePaths = [
+        path.join(homeDir, "Downloads", fileName),
+        path.join(homeDir, "Desktop", fileName),
+        path.join(homeDir, "Documents", fileName),
+      ];
+
+      if (fs.existsSync("/Volumes")) {
+        try {
+          const vols = fs.readdirSync("/Volumes");
+          vols.forEach((v) => {
+            possiblePaths.push(path.join("/Volumes", v, fileName));
+          });
+        } catch (e) {}
+      }
+
+      const foundPath = possiblePaths.find((p) => fs.existsSync(p));
+      if (!foundPath) return res.json({ success: false, message: "未能在磁盘中找到该文件" });
+
+      if (process.platform === "darwin") {
+        child_process.exec(`open -R "${foundPath}"`);
+      } else if (process.platform === "win32") {
+        child_process.exec(`explorer.exe /select,"${foundPath}"`);
+      } else {
+        child_process.exec(`xdg-open "${path.dirname(foundPath)}"`);
+      }
+      return res.json({ success: true, filePath: foundPath });
+    } catch (e) {
+      return res.json({ success: false });
     }
   });
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { FileSpreadsheet, X, FilePlus, RefreshCw, Clock } from "lucide-react";
+import { FileSpreadsheet, X, FilePlus, RefreshCw, Clock, FolderOpen } from "lucide-react";
 
 interface LastExportInfo {
   fileName: string;
@@ -24,6 +24,17 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const handleOpenFileFolder = async () => {
+    if (!lastExportInfo?.fileName) return;
+    try {
+      await fetch("/api/open-file-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: lastExportInfo.fileName }),
+      });
+    } catch (e) {}
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto font-sans">
       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 my-8 flex flex-col" style={{ backgroundColor: "#ffffff" }}>
@@ -47,14 +58,32 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
         {/* Content */}
         <div className="p-6 space-y-5" style={{ color: "#0f172a", backgroundColor: "#ffffff" }}>
           {/* Historical File Info Box */}
-          <div className="p-4 rounded-2xl border border-slate-200 space-y-2" style={{ backgroundColor: "#f8fafc" }}>
-            <div className="flex items-center space-x-2 text-xs font-bold" style={{ color: "#475569" }}>
-              <Clock className="w-4 h-4" style={{ color: "#64748b" }} />
-              <span style={{ color: "#475569" }}>检测到您之前保存过的 Excel 文件：</span>
+          <div className="p-4 rounded-2xl border border-slate-200 space-y-2.5" style={{ backgroundColor: "#f8fafc" }}>
+            <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#475569" }}>
+              <div className="flex items-center space-x-1.5">
+                <Clock className="w-4 h-4" style={{ color: "#64748b" }} />
+                <span style={{ color: "#475569" }}>检测到您之前保存过的 Excel 文件：</span>
+              </div>
             </div>
-            <div className="text-sm font-black font-mono truncate px-1" style={{ color: "#0f172a" }}>
-              📄 {lastExportInfo?.fileName || "发票台账明细表.xlsx"}
-            </div>
+
+            {/* Clickable File Name Link Button */}
+            <button
+              onClick={handleOpenFileFolder}
+              title="点击在 Mac Finder / 资源管理器中打开并直接选中该文件"
+              className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white hover:border-[#009966] hover:bg-emerald-50/60 transition-all text-left group cursor-pointer shadow-xs"
+            >
+              <div className="text-xs font-black font-mono truncate flex items-center space-x-1.5 pr-2" style={{ color: "#0f172a" }}>
+                <span>📄</span>
+                <span className="truncate group-hover:text-[#009966] group-hover:underline">
+                  {lastExportInfo?.fileName || "发票台账明细表.xlsx"}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 shrink-0 flex items-center space-x-1 group-hover:bg-[#009966] group-hover:text-white transition-colors">
+                <FolderOpen className="w-3.5 h-3.5 inline mr-0.5" />
+                <span>打开目录</span>
+              </span>
+            </button>
+
             <div className="flex items-center justify-between text-[11px] font-semibold pt-1 border-t border-slate-200" style={{ color: "#64748b" }}>
               <span style={{ color: "#64748b" }}>上次导出时间：{lastExportInfo?.lastExportTime || "此前"}</span>
               <span style={{ color: "#64748b" }}>记录数：{lastExportInfo?.count || 0} 张</span>
