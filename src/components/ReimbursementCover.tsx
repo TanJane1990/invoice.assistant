@@ -40,12 +40,14 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // Group invoices by category and calculate total
-  const categorySummary = activeInvoices.reduce((acc, inv) => {
-    const cat = inv.category || "其他";
-    acc[cat] = (acc[cat] || 0) + inv.totalAmountWithTax;
-    return acc;
-  }, {} as Record<string, number>);
+  // Group invoices by category and calculate total (Default 1 row if empty)
+  const categorySummary = activeInvoices.length > 0
+    ? activeInvoices.reduce((acc, inv) => {
+        const cat = inv.category || "其他";
+        acc[cat] = (acc[cat] || 0) + inv.totalAmountWithTax;
+        return acc;
+      }, {} as Record<string, number>)
+    : { "其他": 0 };
 
   const grandTotal = activeInvoices.reduce(
     (sum, inv) => sum + inv.totalAmountWithTax,
@@ -313,15 +315,23 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               </tr>
             </thead>
             <tbody>
-              {activeInvoices.map((inv) => (
-                <tr key={inv.id} className="border-b border-slate-200 font-mono text-[11px]" style={{ color: "#0f172a" }}>
-                  <td className="p-1.5 border-r border-slate-200 font-bold">{inv.invoiceNumber}</td>
-                  <td className="p-1.5 border-r border-slate-200">{inv.issueDate}</td>
-                  <td className="p-1.5 border-r border-slate-200 font-sans truncate max-w-[180px]">{inv.sellerName || "-"}</td>
-                  <td className="p-1.5 border-r border-slate-200 text-center font-sans">{inv.category}</td>
-                  <td className="p-1.5 text-right font-bold">¥{inv.totalAmountWithTax.toFixed(2)}</td>
+              {activeInvoices.length === 0 ? (
+                <tr className="border-b border-slate-200 font-sans text-[11px]" style={{ color: "#64748b" }}>
+                  <td colSpan={5} className="p-3 text-center text-slate-500 font-medium">
+                    （暂未勾选发票，请在【发票台账与查重】中勾选发票后自动在此列出明细）
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                activeInvoices.map((inv) => (
+                  <tr key={inv.id} className="border-b border-slate-200 font-mono text-[11px]" style={{ color: "#0f172a" }}>
+                    <td className="p-1.5 border-r border-slate-200 font-bold">{inv.invoiceNumber}</td>
+                    <td className="p-1.5 border-r border-slate-200">{inv.issueDate}</td>
+                    <td className="p-1.5 border-r border-slate-200 font-sans truncate max-w-[180px]">{inv.sellerName || "-"}</td>
+                    <td className="p-1.5 border-r border-slate-200 text-center font-sans">{inv.category}</td>
+                    <td className="p-1.5 text-right font-bold">¥{inv.totalAmountWithTax.toFixed(2)}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
