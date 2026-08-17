@@ -148,7 +148,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           <div className="text-xs font-bold text-slate-700" style={{ color: "#1e293b" }}>
             总金额合计
           </div>
-          <div className="text-2xl font-black mt-1 font-mono text-slate-900" style={{ color: "#0f172a" }}>
+          <div className="text-2xl font-black mt-1 font-mono text-[#009966]" style={{ color: "#009966" }}>
             ¥
             {invoices
               .reduce((sum, i) => sum + i.totalAmountWithTax, 0)
@@ -363,14 +363,14 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       {/* Status */}
                       <td className="p-3.5 text-center font-sans">
                         {dupInfo ? (
-                          <span className="inline-flex items-center space-x-1 font-bold px-2 py-0.5 rounded-full border text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
+                          <span className="inline-flex items-center space-x-1 font-bold px-2.5 py-0.5 rounded-full border text-[10px] bg-amber-50 text-amber-700 border-amber-300">
                             <AlertTriangle className="w-3 h-3 text-amber-600" />
                             <span>⚠️ 发票重复 ({dupInfo.totalInGroup}张)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center space-x-1 font-bold px-2 py-0.5 rounded-full border text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                          <span className="inline-flex items-center space-x-1 font-bold px-2.5 py-0.5 rounded-full border text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>✓ 已核验</span>
+                            <span>✓ 唯一正常</span>
                           </span>
                         )}
                       </td>
