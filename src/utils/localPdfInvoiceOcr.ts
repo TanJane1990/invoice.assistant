@@ -331,6 +331,17 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
+  // 标题/极简页眉商户主体抽取补全 (如 "北京智慧生活有限公司 电子收据" -> 提取 "北京智慧生活有限公司" 为销售方)
+  if (!sellerName || sellerName === "出票服务单位") {
+    const mHeaderCompany = cleanText.match(/^([^\n\r\t]{3,40}(?:公司|单位|中心|集团))/);
+    if (mHeaderCompany) {
+      const comp = mHeaderCompany[1].replace(/(?:电子收据|收据|发票|收款单).*/, "").trim();
+      if (comp && comp.length >= 3 && !comp.includes("监制章") && !comp.includes("发票监制章")) {
+        sellerName = comp;
+      }
+    }
+  }
+
   // 6. 税号提取
   const taxIdMatches = Array.from(cleanText.matchAll(/([A-Za-z0-9]{15,20})/g)).map(m => m[1]);
   const validTaxIds = taxIdMatches.filter(id =>

@@ -94,41 +94,41 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
         </div>
       ) : (
         /* CLEAN MINIMALIST INVOICE DOCUMENT REPRESENTATION (When no file image attached) */
-        <div className="w-full h-full border border-slate-300 bg-white p-3 flex flex-col justify-between text-xs leading-tight">
+        <div className="w-full h-full border border-slate-300 bg-white p-3 flex flex-col justify-between text-xs leading-tight" style={{ backgroundColor: "#ffffff", color: "#0f172a" }}>
           {/* Header */}
-          <div className="flex justify-between items-start border-b border-slate-200 pb-1.5">
+          <div className="flex justify-between items-start border-b border-slate-200 pb-1.5" style={{ borderColor: "#e2e8f0" }}>
             <div>
-              <span className="font-bold text-slate-900 block text-sm">
+              <span className="font-bold block text-sm" style={{ color: "#0284C7" }}>
                 {invoice.invoiceType || "电子发票"}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">
-                {invoice.invoiceCode ? `代码: ${invoice.invoiceCode}` : ""}
+              <span className="text-[10px] font-mono" style={{ color: "#64748b" }}>
+                {invoice.invoiceCode ? `代码: ${invoice.invoiceCode}` : "电子票据"}
               </span>
             </div>
             <div className="text-right font-mono text-[11px]">
-              <div><span className="text-slate-400">号码: </span><span className="font-bold">{invoice.invoiceNumber}</span></div>
-              <div><span className="text-slate-400">日期: </span><span>{invoice.issueDate}</span></div>
+              <div><span style={{ color: "#64748b" }}>号码: </span><span className="font-bold" style={{ color: "#0f172a" }}>{invoice.invoiceNumber}</span></div>
+              <div><span style={{ color: "#64748b" }}>日期: </span><span style={{ color: "#334155" }}>{invoice.issueDate}</span></div>
             </div>
           </div>
 
           {/* Buyer & Seller */}
           <div className="grid grid-cols-2 gap-2 my-1 text-[11px]">
-            <div className="bg-slate-50 p-1.5 rounded border border-slate-100">
-              <span className="text-slate-400 block text-[9px]">购买方:</span>
-              <span className="font-bold text-slate-800 truncate block">{invoice.buyerName}</span>
-              <span className="text-[9px] font-mono text-slate-500 block truncate">{invoice.buyerTaxId || "-"}</span>
+            <div className="p-1.5 rounded border" style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}>
+              <span className="block text-[9px] font-bold" style={{ color: "#64748b" }}>购买方:</span>
+              <span className="font-bold truncate block" style={{ color: "#0f172a" }}>{invoice.buyerName}</span>
+              <span className="text-[9px] font-mono block truncate" style={{ color: "#94a3b8" }}>{invoice.buyerTaxId || "-"}</span>
             </div>
-            <div className="bg-slate-50 p-1.5 rounded border border-slate-100">
-              <span className="text-slate-400 block text-[9px]">销售方:</span>
-              <span className="font-bold text-slate-800 truncate block">{invoice.sellerName}</span>
-              <span className="text-[9px] font-mono text-slate-500 block truncate">{invoice.sellerTaxId || "-"}</span>
+            <div className="p-1.5 rounded border" style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}>
+              <span className="block text-[9px] font-bold" style={{ color: "#64748b" }}>销售方:</span>
+              <span className="font-bold truncate block" style={{ color: "#0f172a" }}>{invoice.sellerName}</span>
+              <span className="text-[9px] font-mono block truncate" style={{ color: "#94a3b8" }}>{invoice.sellerTaxId || "-"}</span>
             </div>
           </div>
 
           {/* Amount */}
-          <div className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-200 mt-auto">
-            <span className="text-slate-600 font-semibold text-[11px]">价税合计:</span>
-            <span className="font-extrabold text-red-700 text-sm font-mono">
+          <div className="flex justify-between items-center p-2 rounded border mt-auto" style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}>
+            <span className="font-bold text-[11px]" style={{ color: "#0284C7" }}>价税合计:</span>
+            <span className="font-black text-sm font-mono" style={{ color: "#E8000A" }}>
               ¥{invoice.totalAmountWithTax.toFixed(2)}
             </span>
           </div>
