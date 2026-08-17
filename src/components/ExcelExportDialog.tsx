@@ -108,7 +108,20 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-200 flex items-center justify-end" style={{ backgroundColor: "#f8fafc" }}>
+        <div className="px-6 py-3.5 border-t border-slate-200 flex items-center justify-between" style={{ backgroundColor: "#f8fafc" }}>
+          <button
+            onClick={() => {
+              try {
+                localStorage.removeItem("smart_invoice_last_export_info");
+              } catch (e) {}
+              onSaveNewFile();
+              onClose();
+            }}
+            className="text-[11px] font-bold text-slate-500 hover:text-red-600 underline transition-colors cursor-pointer"
+            style={{ color: "#64748b" }}
+          >
+            重置记忆 / 每次直接存新文件
+          </button>
           <button
             onClick={onClose}
             style={{ backgroundColor: "#ffffff", color: "#1e293b", borderColor: "#cbd5e1" }}

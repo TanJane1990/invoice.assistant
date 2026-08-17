@@ -51,6 +51,16 @@ async function startServer() {
         path.join(homeDir, "Documents", fileName),
       ];
 
+      // 自动检索 macOS 外接移动硬盘 / U盘挂载点 (/Volumes/*)
+      if (fs.existsSync("/Volumes")) {
+        try {
+          const vols = fs.readdirSync("/Volumes");
+          vols.forEach((v) => {
+            possiblePaths.push(path.join("/Volumes", v, fileName));
+          });
+        } catch (e) {}
+      }
+
       const foundPath = possiblePaths.find((p) => fs.existsSync(p));
       if (foundPath) {
         return res.json({ exists: true, filePath: foundPath });
