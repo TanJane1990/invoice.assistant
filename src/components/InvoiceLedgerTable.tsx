@@ -394,9 +394,18 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                         </button>
 
                         <button
-                          onClick={() => onDeleteInvoice(inv.id)}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `确定要从发票台账数据库中永久删除该发票记录吗？\n【发票号码】：${inv.invoiceNumber}\n【商户/金额】：${inv.sellerName} (¥${inv.totalAmountWithTax.toFixed(2)})\n\n（提示：如果您只是想在 A4 打印排版中临时不打印该发票，只需取消最左侧的勾选框即可，无需删除台账数据）`
+                              )
+                            ) {
+                              onDeleteInvoice(inv.id);
+                            }
+                          }}
                           style={{ color: "#DC2626", backgroundColor: "#FEE2E2" }}
                           className="px-2.5 py-1 hover:bg-red-100 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
+                          title="从发票台账主数据库中永久删除此记录"
                         >
                           <Trash2 className="w-3 h-3" style={{ color: "#DC2626" }} />
                           <span style={{ color: "#DC2626" }}>删除</span>

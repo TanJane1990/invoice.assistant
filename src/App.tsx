@@ -245,7 +245,7 @@ export const App: React.FC = () => {
               theme={theme}
               showCropLines={printConfig.showCropLines}
               onEditInvoice={(inv) => setEditingInvoice(inv)}
-              onDeleteInvoice={handleDeleteInvoice}
+              onDeleteInvoice={handleToggleSelectForPrint}
               onOpenBatchImport={() => setIsImportOpen(true)}
             />
           </main>
