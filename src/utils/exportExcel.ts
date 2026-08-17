@@ -1,10 +1,29 @@
 import * as XLSX from "xlsx";
 import { InvoiceData, SystemSettings } from "../types";
 
+const LAST_EXPORT_KEY = "smart_invoice_last_export_info";
+
+export interface LastExportInfo {
+  fileName: string;
+  lastExportTime: string;
+  count: number;
+}
+
+export const getLastExportInfo = (): LastExportInfo | null => {
+  try {
+    const raw = localStorage.getItem(LAST_EXPORT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+};
+
 export const exportInvoicesToExcel = (
   invoices: InvoiceData[],
   settings?: SystemSettings,
-  customFilename?: string
+  mode: "default" | "append" | "new" = "default",
+  overrideFilename?: string
 ) => {
   if (!invoices || invoices.length === 0) {
     alert("当前没有可导出的发票数据！");
@@ -60,11 +79,39 @@ export const exportInvoicesToExcel = (
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "发票台账数据");
 
-  const now = new Date();
-  const timestampStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
-  const fileName = customFilename || `发票台账明细表_${timestampStr}.xlsx`;
+  const lastInfo = getLastExportInfo();
+  let fileName = "";
+
+  if (overrideFilename) {
+    fileName = overrideFilename;
+  } else if (mode === "append" && lastInfo?.fileName) {
+    fileName = lastInfo.fileName;
+  } else if (mode === "new" || !lastInfo) {
+    const now = new Date();
+    const timestampStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+    fileName = `发票台账明细表_${timestampStr}.xlsx`;
+  } else {
+    fileName = "发票台账明细表.xlsx";
+  }
 
   XLSX.writeFile(workbook, fileName);
+
+  // Save last export file info to localStorage
+  const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
+  const exportRecord: LastExportInfo = {
+    fileName,
+    lastExportTime: nowStr,
+    count: invoices.length,
+  };
+  try {
+    localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify(exportRecord));
+  } catch (e) {
+    console.warn("Save export info error:", e);
+  }
+
+  if (mode === "append") {
+    alert(`成功追加/更新 ${invoices.length} 张发票数据至：${fileName}！`);
+  }
 
   if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {
     const pass = settings.exportPassword && settings.exportPassword.trim() !== "" ? settings.exportPassword.trim() : "123456";

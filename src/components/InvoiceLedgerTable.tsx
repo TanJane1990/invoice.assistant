@@ -13,7 +13,8 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
-import { exportInvoicesToExcel } from "../utils/exportExcel";
+import { exportInvoicesToExcel, getLastExportInfo, LastExportInfo } from "../utils/exportExcel";
+import { ExcelExportDialog } from "./ExcelExportDialog";
 
 interface InvoiceLedgerTableProps {
   invoices: InvoiceData[];
@@ -45,6 +46,8 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [filterDuplicateOnly, setFilterDuplicateOnly] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [lastExportInfo, setLastExportInfo] = useState<LastExportInfo | null>(null);
 
   // 1. 发票重复计算引擎（按发票号码分组）
   const duplicateMap = React.useMemo(() => {
@@ -100,9 +103,17 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   const selectedForPrintCount = invoices.filter((i) => i.selectedForPrint).length;
   const duplicateCount = Object.keys(duplicateMap).length;
 
-  // Export to Excel
-  const handleExportToExcel = () => {
-    exportInvoicesToExcel(invoices, systemSettings);
+  // 触发导出 Excel：智能判定首次导出 vs 再次导出
+  const handleExportButtonClick = () => {
+    const historicalInfo = getLastExportInfo();
+    if (!historicalInfo) {
+      // 首次导出，直接弹出保存对话框另存
+      exportInvoicesToExcel(invoices, systemSettings, "default");
+    } else {
+      // 发现此前导出过文件，弹出智能对话框供选择【追加/更新】还是【另存为新文件】
+      setLastExportInfo(historicalInfo);
+      setIsExportDialogOpen(true);
+    }
   };
 
   return (
@@ -222,7 +233,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           </button>
 
           <button
-            onClick={handleExportToExcel}
+            onClick={handleExportButtonClick}
             className="px-4 py-2 bg-[#009966] hover:bg-[#008055] text-white rounded-xl text-xs font-extrabold shadow-sm transition-colors cursor-pointer flex items-center space-x-1.5"
           >
             <FileSpreadsheet className="w-4 h-4 text-white" />
@@ -383,6 +394,15 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           </table>
         </div>
       </div>
+
+      {/* 4. 智能 Excel 导出与追加确认弹窗 */}
+      <ExcelExportDialog
+        isOpen={isExportDialogOpen}
+        onClose={() => setIsExportDialogOpen(false)}
+        lastExportInfo={lastExportInfo}
+        onAppendToExisting={() => exportInvoicesToExcel(invoices, systemSettings, "append")}
+        onSaveNewFile={() => exportInvoicesToExcel(invoices, systemSettings, "new")}
+      />
     </div>
   );
 };
