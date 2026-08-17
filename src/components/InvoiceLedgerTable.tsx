@@ -81,7 +81,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
     return dupInfoMap;
   }, [invoices]);
 
-  const duplicateGroupCount = new Set(Object.values(duplicateMap).map((d) => d.groupIndex)).size;
+  const duplicateGroupCount = new Set(Object.values(duplicateMap).map((d) => (d as { groupIndex: number }).groupIndex)).size;
 
   // 2. 筛选过滤逻辑
   const filteredInvoices = invoices.filter((inv) => {

@@ -71,6 +71,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
       duplicateWarning: false,
       remarks: form.remarks || "手动新建发票",
       importTime: form.importTime || new Date().toLocaleString("zh-CN", { hour12: false }),
+      items: form.items || [],
     };
     onSave(finalInvoice);
     onClose();

@@ -281,7 +281,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
                   <tr key={cat} className="border-b border-slate-800 last:border-b-0" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
                     <td className="p-2 font-bold border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>{cat}</td>
                     <td className="p-2 text-center font-mono border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>{count} 笔</td>
-                    <td className="p-2 text-right font-mono font-bold" style={{ color: "#0f172a" }}>¥{amt.toFixed(2)}</td>
+                    <td className="p-2 text-right font-mono font-bold" style={{ color: "#0f172a" }}>¥{Number(amt).toFixed(2)}</td>
                   </tr>
                 );
               })}

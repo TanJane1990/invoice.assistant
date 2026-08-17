@@ -12,6 +12,7 @@ import { A4PagePreview } from "./components/A4PagePreview";
 import { InvoiceLedgerTable } from "./components/InvoiceLedgerTable";
 import { ReimbursementCover } from "./components/ReimbursementCover";
 import { BatchImportModal } from "./components/BatchImportModal";
+import { InvoiceDetailModal } from "./components/InvoiceDetailModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { exportInvoicesToExcel, getLastExportInfo, LastExportInfo } from "./utils/exportExcel";
 import { ExcelExportDialog } from "./components/ExcelExportDialog";
