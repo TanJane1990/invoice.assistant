@@ -10,6 +10,14 @@ body.theme-light {
   color: #0f172a;
 }
 
+/* Force light color-scheme on all light card containers to prevent OS dark mode text fading */
+.bg-white,
+.bg-slate-50,
+.bg-\[\#F8FAFC\],
+.bg-amber-50 {
+  color-scheme: light !important;
+}
+
 /* Modal Dark Headers & Red Buttons: ALWAYS WHITE TEXT */
 .modal-dark-header,
 .modal-dark-header * {
