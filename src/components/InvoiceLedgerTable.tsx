@@ -1,97 +1,83 @@
-import React, { useState, useMemo } from "react";
-import { InvoiceData, SystemSettings } from "../types";
-import { exportInvoicesToExcel } from "../utils/exportExcel";
+import React, { useState } from "react";
 import {
   Search,
   Filter,
   FileSpreadsheet,
   Trash2,
   Edit3,
-  ShieldAlert,
-  CheckCircle2,
   AlertTriangle,
+  CheckCircle2,
+  Plus,
   CheckSquare,
   Square,
-  Plus,
+  ShieldAlert,
 } from "lucide-react";
+import { InvoiceData, SystemSettings } from "../types";
+import { exportInvoicesToExcel } from "../utils/exportExcel";
 
 interface InvoiceLedgerTableProps {
   invoices: InvoiceData[];
-  systemSettings?: SystemSettings;
-  onToggleSelectForPrint: (id: string) => void;
-  onToggleSelectAll: (select: boolean) => void;
   onDeleteInvoice: (id: string) => void;
   onEditInvoice: (invoice: InvoiceData) => void;
-  onAddCustomInvoice: () => void;
-  theme?: "light" | "dark";
+  onManualCreate: () => void;
+  onToggleSelectForPrint: (id: string) => void;
+  onToggleSelectAll: (selected: boolean) => void;
+  systemSettings?: SystemSettings;
 }
 
-// Distinct matching color styles for duplicate invoice groups
+// 相同号码重复发票的高亮调色盘
 const DUPLICATE_PALETTES = [
-  {
-    rowBg: "bg-amber-100/90 border-l-4 border-l-amber-500 font-medium",
-    badgeBg: "bg-amber-200 border-amber-300 font-bold",
-  },
-  {
-    rowBg: "bg-rose-100/90 border-l-4 border-l-rose-500 font-medium",
-    badgeBg: "bg-rose-200 border-rose-300 font-bold",
-  },
-  {
-    rowBg: "bg-purple-100/90 border-l-4 border-l-purple-500 font-medium",
-    badgeBg: "bg-purple-200 border-purple-300 font-bold",
-  },
-  {
-    rowBg: "bg-sky-100/90 border-l-4 border-l-sky-500 font-medium",
-    badgeBg: "bg-sky-200 border-sky-300 font-bold",
-  },
-  {
-    rowBg: "bg-emerald-100/90 border-l-4 border-l-emerald-500 font-medium",
-    badgeBg: "bg-emerald-200 border-emerald-300 font-bold",
-  },
+  { rowBg: "bg-amber-100/90 hover:bg-amber-100", badgeBg: "bg-amber-200 text-amber-900 border-amber-400" },
+  { rowBg: "bg-orange-100/90 hover:bg-orange-100", badgeBg: "bg-orange-200 text-orange-900 border-orange-400" },
+  { rowBg: "bg-rose-100/90 hover:bg-rose-100", badgeBg: "bg-rose-200 text-rose-900 border-rose-400" },
+  { rowBg: "bg-yellow-100/90 hover:bg-yellow-100", badgeBg: "bg-yellow-200 text-yellow-900 border-yellow-400" },
 ];
 
 export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   invoices,
-  systemSettings,
-  onToggleSelectForPrint,
-  onToggleSelectAll,
   onDeleteInvoice,
   onEditInvoice,
-  onAddCustomInvoice,
+  onManualCreate,
+  onToggleSelectForPrint,
+  onToggleSelectAll,
+  systemSettings,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [filterDuplicateOnly, setFilterDuplicateOnly] = useState(false);
 
-  // Calculate duplicate groups
-  const { duplicateMap, duplicateGroupCount } = useMemo(() => {
-    const numberCounts: Record<string, string[]> = {};
-
+  // 1. 发票重复计算引擎（按发票号码分组）
+  const duplicateMap = React.useMemo(() => {
+    const counts: Record<string, InvoiceData[]> = {};
     invoices.forEach((inv) => {
-      const numKey = (inv.invoiceNumber || "").trim();
-      if (numKey) {
-        if (!numberCounts[numKey]) numberCounts[numKey] = [];
-        numberCounts[numKey].push(inv.id);
+      if (inv.invoiceNumber && inv.invoiceNumber.trim()) {
+        const num = inv.invoiceNumber.trim();
+        if (!counts[num]) counts[num] = [];
+        counts[num].push(inv);
       }
     });
 
-    const map: Record<string, { groupIndex: number; totalInGroup: number; numKey: string }> = {};
-    let groupIdxCounter = 0;
+    const dupInfoMap: Record<string, { groupIndex: number; totalInGroup: number }> = {};
+    let groupCounter = 0;
 
-    Object.entries(numberCounts).forEach(([numKey, ids]) => {
-      if (ids.length >= 2) {
-        const groupIndex = groupIdxCounter;
-        groupIdxCounter++;
-        ids.forEach((id) => {
-          map[id] = { groupIndex, totalInGroup: ids.length, numKey };
+    Object.values(counts).forEach((group) => {
+      if (group.length > 1) {
+        const currentGroupIdx = groupCounter++;
+        group.forEach((inv) => {
+          dupInfoMap[inv.id] = {
+            groupIndex: currentGroupIdx,
+            totalInGroup: group.length,
+          };
         });
       }
     });
 
-    return { duplicateMap: map, duplicateGroupCount: groupIdxCounter };
+    return dupInfoMap;
   }, [invoices]);
 
-  // Filter invoices
+  const duplicateGroupCount = new Set(Object.values(duplicateMap).map((d) => d.groupIndex)).size;
+
+  // 2. 筛选过滤逻辑
   const filteredInvoices = invoices.filter((inv) => {
     const matchesSearch =
       inv.invoiceNumber.includes(searchTerm) ||
@@ -116,144 +102,141 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
   // Export to Excel
   const handleExportToExcel = () => {
-    exportInvoicesToExcel(invoices, systemSettings, `发票查重汇总台账_${new Date().toISOString().split("T")[0]}.xlsx`);
+    exportInvoicesToExcel(invoices, systemSettings);
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 space-y-4">
-      {/* Top Banner & Audit Stats */}
+    <div className="max-w-7xl mx-auto py-6 px-4 space-y-4 font-sans">
+      {/* 1. 顶部统计卡片区域 (4列全景 1:1 对标) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
+        {/* 卡片 1: 台账总发票数 */}
+        <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between">
+          <div className="text-xs font-bold text-slate-500">
             台账总发票数
           </div>
-          <div className="text-2xl font-black mt-1 text-slate-900" style={{ color: "#0f172a !important" }}>
-            {invoices.length} <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>张</span>
+          <div className="text-2xl font-black mt-2 text-[#0f172a] flex items-baseline space-x-1">
+            <span>{invoices.length}</span>
+            <span className="text-xs font-bold text-slate-400">张</span>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
+        {/* 卡片 2: 拟排版打印数 */}
+        <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between">
+          <div className="text-xs font-bold text-slate-500">
             拟排版打印数
           </div>
-          <div className="text-2xl font-black mt-1 text-[#E8000A]" style={{ color: "#E8000A !important" }}>
-            {selectedForPrintCount}{" "}
-            <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
-              / {invoices.length}
-            </span>
+          <div className="text-2xl font-black mt-2 text-[#E8000A] flex items-baseline space-x-1">
+            <span>{selectedForPrintCount}</span>
+            <span className="text-xs font-bold text-slate-400">/ {invoices.length}</span>
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
+        {/* 卡片 3: 总金额合计 */}
+        <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between">
+          <div className="text-xs font-bold text-slate-500">
             总金额合计
           </div>
-          <div className="text-2xl font-black mt-1 font-mono text-[#009966]" style={{ color: "#009966 !important" }}>
-            ¥
-            {invoices
-              .reduce((sum, i) => sum + i.totalAmountWithTax, 0)
-              .toFixed(2)}
+          <div className="text-2xl font-black mt-2 font-mono text-[#009966]">
+            ¥{invoices.reduce((sum, i) => sum + i.totalAmountWithTax, 0).toFixed(2)}
           </div>
         </div>
 
+        {/* 卡片 4: 相同发票号查重预警 */}
         <div
           onClick={() => setFilterDuplicateOnly((prev) => !prev)}
-          className={`p-5 rounded-2xl border cursor-pointer transition-all shadow-sm ${
+          className={`p-5 rounded-2xl border cursor-pointer transition-all shadow-sm flex flex-col justify-between ${
             duplicateCount > 0
               ? "bg-amber-50 border-amber-300"
-              : "bg-white border-slate-200"
+              : "bg-white border-slate-200/80"
           }`}
         >
-          <div className="flex items-center justify-between text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+          <div className="flex items-center justify-between text-xs font-bold text-slate-500">
             <span>相同发票号查重预警</span>
             {duplicateCount > 0 && <ShieldAlert className="w-4 h-4 animate-pulse text-amber-600" />}
           </div>
-          <div className="text-2xl font-black mt-1 text-slate-900" style={{ color: "#0f172a" }}>
-            {duplicateCount}{" "}
-            <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+          <div className="text-2xl font-black mt-2 text-[#0f172a] flex items-baseline space-x-1.5">
+            <span>{duplicateCount}</span>
+            <span className="text-xs font-bold text-slate-400">
               {duplicateCount > 0 ? `张发票存在重复 (${duplicateGroupCount}组相同色块标出)` : "无重复发票"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Control Bar: Search & Filter */}
-      <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-wrap items-center justify-between gap-3">
-        {/* Left: Search & Category */}
+      {/* 2. 中间控制栏：搜索、分类与操作按钮 (1:1 对标) */}
+      <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-wrap items-center justify-between gap-3">
+        {/* 左侧: 搜索框 & 分类选择 */}
         <div className="flex flex-wrap items-center space-x-3 gap-y-2">
-          {/* Search Box */}
+          {/* 搜索框 */}
           <div className="relative w-64">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-700" style={{ color: "#334155" }} />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
               placeholder="搜索发票号、商户、销货方..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-bold"
+              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-xl bg-[#F8FAFC] text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
 
-          {/* Category Filter */}
+          {/* 分类下拉列表 */}
           <div className="flex items-center space-x-1">
-            <Filter className="w-3.5 h-3.5 text-slate-700" style={{ color: "#334155" }} />
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-              className="border border-slate-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer font-bold"
+              className="border border-slate-300 text-xs rounded-xl px-3 py-1.5 bg-white text-slate-900 font-bold focus:outline-none cursor-pointer"
             >
-              <option value="all" style={{ color: "#0f172a" }}>全部分类</option>
-              <option value="餐饮费" style={{ color: "#0f172a" }}>餐饮费</option>
-              <option value="交通费" style={{ color: "#0f172a" }}>交通费</option>
-              <option value="住宿费" style={{ color: "#0f172a" }}>住宿费</option>
-              <option value="办公用品" style={{ color: "#0f172a" }}>办公用品</option>
-              <option value="通讯费" style={{ color: "#0f172a" }}>通讯费</option>
-              <option value="会议费" style={{ color: "#0f172a" }}>会议费</option>
-              <option value="软件服务" style={{ color: "#0f172a" }}>软件服务</option>
-              <option value="其他" style={{ color: "#0f172a" }}>其他</option>
+              <option value="all">全部分类</option>
+              <option value="餐饮费">餐饮费</option>
+              <option value="交通费">交通费</option>
+              <option value="住宿费">住宿费</option>
+              <option value="办公用品">办公用品</option>
+              <option value="通讯费">通讯费</option>
+              <option value="会议费">会议费</option>
+              <option value="软件服务">软件服务</option>
+              <option value="其他">其他</option>
             </select>
           </div>
 
-          {/* Duplicate filter check */}
-          <label className="flex items-center space-x-1.5 text-xs cursor-pointer px-3 py-1.5 rounded-xl border border-amber-200 font-bold bg-amber-50/70" style={{ color: "#78350f" }}>
+          {/* 仅筛选重复发票 */}
+          <label className="flex items-center space-x-1.5 text-xs cursor-pointer px-3 py-1.5 rounded-xl border border-amber-300 font-bold bg-amber-50 text-amber-800">
             <input
               type="checkbox"
               checked={filterDuplicateOnly}
               onChange={(e) => setFilterDuplicateOnly(e.target.checked)}
-              className="accent-amber-600 rounded cursor-pointer w-4 h-4"
+              className="accent-amber-600 rounded cursor-pointer"
             />
-            <span style={{ color: "#78350f" }}>仅筛选重复发票 ({duplicateCount}张)</span>
+            <span>仅筛选重复发票 ({duplicateCount}张)</span>
           </label>
         </div>
 
-        {/* Right Action Buttons */}
-        <div className="flex items-center space-x-2">
+        {/* 右侧: 新建与导出 Excel 按钮 */}
+        <div className="flex items-center space-x-3">
           <button
-            onClick={onAddCustomInvoice}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
-            style={{ color: "#0f172a" }}
+            onClick={onManualCreate}
+            className="px-4 py-2 bg-[#F1F5F9] hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer flex items-center space-x-1"
           >
-            <Plus className="w-3.5 h-3.5 text-slate-700" style={{ color: "#334155" }} />
-            <span style={{ color: "#0f172a" }}>手动新建发票</span>
+            <Plus className="w-4 h-4 text-slate-600" />
+            <span>手动新建发票</span>
           </button>
 
           <button
-            onClick={() => exportInvoicesToExcel(invoices, systemSettings, `发票查重汇总台账_${new Date().toISOString().split("T")[0]}.xlsx`)}
-            className="flex items-center space-x-1 px-3.5 py-1.5 bg-[#009966] hover:bg-[#007A52] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+            onClick={handleExportToExcel}
+            className="px-4 py-2 bg-[#009966] hover:bg-[#008055] text-white rounded-xl text-xs font-extrabold shadow-sm transition-colors cursor-pointer flex items-center space-x-1.5"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
-            <span className="text-white font-bold">导出 Excel 表格</span>
+            <FileSpreadsheet className="w-4 h-4 text-white" />
+            <span>导出 Excel 表格</span>
           </button>
         </div>
       </div>
 
-      {/* Table Section */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* 3. 底部发票台账表格 (1:1 对标) */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-100 font-extrabold text-xs whitespace-nowrap" style={{ color: "#0f172a" }}>
+              <tr className="border-b border-slate-200 bg-[#F8FAFC] font-extrabold text-xs text-slate-700 whitespace-nowrap">
                 <th className="p-3.5 w-10 text-center">
                   <button
                     onClick={() => onToggleSelectAll(!allSelected)}
@@ -263,21 +246,21 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                     {allSelected ? (
                       <CheckSquare className="w-4 h-4 text-[#E8000A]" />
                     ) : (
-                      <Square className="w-4 h-4 text-slate-600" />
+                      <Square className="w-4 h-4 text-slate-400" />
                     )}
                   </button>
                 </th>
-                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>发票类型与代码</th>
-                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>发票号码 (相同号码同色标出)</th>
-                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>开票日期</th>
-                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>销货方名称</th>
-                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>分类</th>
-                <th className="p-3.5 text-right font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>含税金额(元)</th>
-                <th className="p-3.5 text-center font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>查重状态与标记</th>
-                <th className="p-3.5 text-right font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>操作</th>
+                <th className="p-3.5 font-bold text-slate-700 whitespace-nowrap">发票类型与代码</th>
+                <th className="p-3.5 font-bold text-slate-700 whitespace-nowrap">发票号码 (相同号码同色标出)</th>
+                <th className="p-3.5 font-bold text-slate-700 whitespace-nowrap">开票日期</th>
+                <th className="p-3.5 font-bold text-slate-700 whitespace-nowrap">销货方名称</th>
+                <th className="p-3.5 font-bold text-slate-700 whitespace-nowrap">分类</th>
+                <th className="p-3.5 text-right font-bold text-slate-700 whitespace-nowrap">含税金额(元)</th>
+                <th className="p-3.5 text-center font-bold text-slate-700 whitespace-nowrap">查重状态与标记</th>
+                <th className="p-3.5 text-right font-bold text-slate-700 whitespace-nowrap">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 font-mono">
+            <tbody className="divide-y divide-slate-200/80 font-mono">
               {filteredInvoices.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="p-12 text-center text-slate-400 font-sans font-medium">
@@ -298,11 +281,11 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                         palette
                           ? palette.rowBg
                           : inv.selectedForPrint
-                          ? "bg-white hover:bg-slate-50"
+                          ? "bg-white hover:bg-slate-50/80"
                           : "bg-slate-50/70"
                       }`}
-                      style={{ color: "#0f172a" }}
                     >
+                      {/* Checkbox */}
                       <td className="p-3.5 text-center">
                         <button
                           onClick={() => onToggleSelectForPrint(inv.id)}
@@ -318,8 +301,8 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
                       {/* Invoice Type & Code */}
                       <td className="p-3.5 font-sans whitespace-nowrap">
-                        <div className="font-extrabold text-slate-900" style={{ color: "#0f172a" }}>{inv.invoiceType}</div>
-                        <div className="text-[10px] font-mono mt-0.5 text-slate-500" style={{ color: "#64748b" }}>
+                        <div className="font-extrabold text-slate-900">{inv.invoiceType}</div>
+                        <div className="text-[10px] font-mono mt-0.5 text-slate-400">
                           {inv.invoiceCode ? `代码: ${inv.invoiceCode}` : "电子发票(无代码)"}
                         </div>
                       </td>
@@ -327,11 +310,10 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       {/* Invoice Number */}
                       <td className="p-3.5 font-bold whitespace-nowrap">
                         <div className="flex items-center space-x-1.5">
-                          <span className="font-black text-slate-900" style={{ color: "#0f172a" }}>{inv.invoiceNumber}</span>
+                          <span className="font-black text-slate-900">{inv.invoiceNumber}</span>
                           {palette && (
                             <span
                               className={`px-2 py-0.5 text-[9px] rounded-md border whitespace-nowrap ${palette.badgeBg}`}
-                              style={{ color: "#78350f" }}
                               title={`相同号码发票重复出现在台账中 (重复组 #${dupInfo.groupIndex + 1})`}
                             >
                               重号组#{dupInfo.groupIndex + 1}
@@ -341,22 +323,22 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       </td>
 
                       {/* Date */}
-                      <td className="p-3.5 font-semibold text-slate-700 whitespace-nowrap" style={{ color: "#334155" }}>{inv.issueDate}</td>
+                      <td className="p-3.5 font-semibold text-slate-600 whitespace-nowrap">{inv.issueDate}</td>
 
                       {/* Seller */}
-                      <td className="p-3.5 font-sans truncate max-w-[200px] font-bold text-slate-900 whitespace-nowrap" style={{ color: "#0f172a" }}>
+                      <td className="p-3.5 font-sans truncate max-w-[220px] font-bold text-slate-800 whitespace-nowrap">
                         {inv.sellerName}
                       </td>
 
                       {/* Category Badge */}
                       <td className="p-3.5 font-sans whitespace-nowrap">
-                        <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border bg-slate-100 text-slate-700 border-slate-200" style={{ color: "#334155" }}>
+                        <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold border bg-slate-100 text-slate-600 border-slate-200">
                           {inv.category}
                         </span>
                       </td>
 
                       {/* Amount */}
-                      <td className="p-3.5 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap" style={{ color: "#0f172a" }}>
+                      <td className="p-3.5 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap">
                         ¥{inv.totalAmountWithTax.toFixed(2)}
                       </td>
 
@@ -379,17 +361,17 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       <td className="p-3.5 text-right font-sans space-x-1.5 whitespace-nowrap">
                         <button
                           onClick={() => onEditInvoice(inv)}
-                          className="px-2.5 py-1 border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 bg-[#E0F2FE] hover:bg-sky-100 text-[#0284C7] rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
                         >
-                          <Edit3 className="w-3 h-3 text-slate-600" />
+                          <Edit3 className="w-3 h-3 text-[#0284C7]" />
                           <span>编辑</span>
                         </button>
 
                         <button
                           onClick={() => onDeleteInvoice(inv.id)}
-                          className="px-2.5 py-1 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 bg-[#FEE2E2] hover:bg-red-100 text-[#DC2626] rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
                         >
-                          <Trash2 className="w-3 h-3 text-red-600" />
+                          <Trash2 className="w-3 h-3 text-[#DC2626]" />
                           <span>删除</span>
                         </button>
                       </td>
