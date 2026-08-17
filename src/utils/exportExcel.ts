@@ -66,13 +66,21 @@ const cleanBuyerSellerName = (val?: string): string => {
   return cleaned || "-";
 };
 
-const cleanItemsDetail = (items?: any[], remarks?: string): string => {
+import { isGarbledCipher } from "./localPdfInvoiceOcr";
+
+const cleanItemsDetail = (items?: any[], remarks?: string, category?: string, sellerName?: string): string => {
   if (!items || items.length === 0) {
     return cleanStr(remarks);
   }
-  const uniqueNames = Array.from(new Set(items.map((it) => cleanStr(it.name)))).filter((n) => n !== "-");
-  if (uniqueNames.length === 0) return cleanStr(remarks);
-  return uniqueNames.join("；");
+  const validNames = Array.from(new Set(items.map((it) => cleanStr(it.name))))
+    .filter((n) => n !== "-" && !isGarbledCipher(n));
+  if (validNames.length === 0) {
+    if (sellerName && sellerName !== "-" && sellerName !== "个人" && sellerName !== "出票服务单位") {
+      return `*${category || "费用"}*${sellerName}服务`;
+    }
+    return cleanStr(remarks);
+  }
+  return validNames.join("；");
 };
 
 export const exportInvoicesToExcel = (
@@ -140,7 +148,7 @@ export const exportInvoicesToExcel = (
       购买方税号: cleanStr(inv.buyerTaxId),
       销售方名称: rawSeller,
       销售方税号: cleanStr(inv.sellerTaxId),
-      "商品/服务明细": cleanItemsDetail(inv.items, inv.remarks),
+      "商品/服务明细": cleanItemsDetail(inv.items, inv.remarks, inv.category, rawSeller),
       不含税金额: noTaxAmt,
       合计税额: taxAmt,
       "价税合计(元)": totalAmt,

@@ -94,6 +94,15 @@ export function parseChineseAmount(text: string): number | null {
   return total > 0 ? total : null;
 }
 
+export function isGarbledCipher(text: string): boolean {
+  if (!text) return true;
+  if (/[>!@#$%^<+~`\\]/.test(text)) return true;
+  if ((text.match(/[_+\/\\=]/g) || []).length >= 3) return true;
+  const validLen = (text.match(/[\u4e00-\u9fa5a-zA-Z0-9]/g) || []).length;
+  if (text.length > 4 && validLen / text.length < 0.45) return true;
+  return false;
+}
+
 /**
  * 规则引擎：高精电子发票/收据解构算法
  */
@@ -458,22 +467,27 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 12. 明细商品全量抽取
+  // 12. 明细商品全量抽取 (自动剥离发票密码区/二维码密文乱码串)
   const items: ParsedInvoiceResult["items"] = [];
   const itemMatches = Array.from(cleanText.matchAll(/\*([^*\n\r]{1,30})\*([^\n\r]{1,50})/g));
   if (itemMatches.length > 0) {
     itemMatches.forEach((mIt, idx) => {
-      items.push({
-        id: `item-${Date.now()}-${idx + 1}`,
-        name: `*${mIt[1]}*${mIt[2].trim()}`,
-        amount: totalAmountWithTax,
-        quantity: 1,
-      });
+      const rawName = `*${mIt[1]}*${mIt[2].trim()}`;
+      if (!isGarbledCipher(rawName)) {
+        items.push({
+          id: `item-${Date.now()}-${idx + 1}`,
+          name: rawName,
+          amount: totalAmountWithTax,
+          quantity: 1,
+        });
+      }
     });
-  } else {
+  }
+
+  if (items.length === 0) {
     items.push({
       id: `item-${Date.now()}-1`,
-      name: sellerName ? `*${category}*物品/服务` : invoiceType,
+      name: sellerName && sellerName !== "出票服务单位" ? `*${category}*${sellerName}规费/服务` : `*${category}*物品/服务`,
       amount: totalAmountWithTax,
       quantity: 1,
     });
