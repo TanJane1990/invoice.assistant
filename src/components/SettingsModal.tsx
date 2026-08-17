@@ -99,7 +99,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800">
           <div className="flex items-center space-x-2">
-            <Settings className="w-5 h-5 text-red-500" />
+            <Settings className="w-5 h-5 text-[#E8000A]" style={{ color: "#E8000A" }} />
             <h3 className="font-extrabold text-base tracking-wide text-white" style={{ color: "#ffffff" }}>
               智能发票助手 - 系统设置
             </h3>

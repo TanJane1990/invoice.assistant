@@ -158,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
           style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
           className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-sm border border-slate-300 hover:bg-slate-100"
         >
-          <Settings className="w-3.5 h-3.5" style={{ color: "#334155" }} />
+          <Settings className="w-3.5 h-3.5 text-slate-900" style={{ color: "#0f172a" }} />
           <span style={{ color: "#0f172a" }}>设置</span>
         </button>
       </div>
