@@ -353,10 +353,20 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     category = "租金";
   }
 
-  // 10. 备注
+  // 10. 开票人提取
+  let drawer = "";
+  const mDrawer = cleanText.match(/开票人[:：\s]*([\u4e00-\u9fa5]{2,4})/);
+  if (mDrawer) {
+    drawer = mDrawer[1];
+  }
+
+  // 11. 备注与订单号
   let remarks = fileName || "发票识别";
+  const mOrder = cleanText.match(/订单号[:：\s]*([0-9A-Za-z]+)/);
   if (mTrainRoute) {
     remarks = `行程: ${mTrainRoute[1]} ➔ ${mTrainRoute[2]} ➔ ${mTrainRoute[3]}`;
+  } else if (mOrder) {
+    remarks = `订单号: ${mOrder[1]}`;
   } else {
     const mRemark = cleanText.match(/备\s*注[：:\s]*([^\n\r]{1,100})/);
     if (mRemark) {
@@ -367,15 +377,17 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 11. 明细
+  // 12. 明细商品全量抽取
   const items: ParsedInvoiceResult["items"] = [];
-  const mItem = cleanText.match(/\*([^*\n\r]{1,20})\*([^\n\r]{1,30})/);
-  if (mItem) {
-    items.push({
-      id: `item-${Date.now()}-1`,
-      name: `*${mItem[1]}*${mItem[2].trim()}`,
-      amount: totalAmountWithTax,
-      quantity: 1,
+  const itemMatches = Array.from(cleanText.matchAll(/\*([^*\n\r]{1,30})\*([^\n\r]{1,50})/g));
+  if (itemMatches.length > 0) {
+    itemMatches.forEach((mIt, idx) => {
+      items.push({
+        id: `item-${Date.now()}-${idx + 1}`,
+        name: `*${mIt[1]}*${mIt[2].trim()}`,
+        amount: totalAmountWithTax,
+        quantity: 1,
+      });
     });
   } else {
     items.push({
@@ -401,6 +413,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     totalAmountWithTaxCN: totalAmountWithTaxCN || numberToRMB(totalAmountWithTax),
     category,
     remarks,
+    drawer,
     passengerName,
     passengerId,
     trainRoute,

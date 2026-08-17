@@ -116,6 +116,7 @@ export async function processInvoiceFileUnified(
     totalAmountWithTaxCN: rawData.totalAmountWithTaxCN || numberToRMB(totalAmt),
     category: (rawData.category as any) || "其他",
     remarks: rawData.remarks || fileName,
+    drawer: rawData.drawer || "",
     passengerName: rawData.passengerName,
     passengerId: rawData.passengerId,
     trainRoute: rawData.trainRoute,
