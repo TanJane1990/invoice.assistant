@@ -69,33 +69,15 @@ export const App: React.FC = () => {
     }
   });
 
-  const [invoices, setInvoices] = useState<InvoiceData[]>(() => {
-    const saved = localStorage.getItem("invoice_app_data");
-    if (saved) {
-      try {
-        const parsed: InvoiceData[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // 自动强行清除台账列表中残留的历史公司名称
-          const cleaned = parsed.map((inv) => ({
-            ...inv,
-            buyerName: (inv.buyerName || "").includes("云启智创") ? "" : inv.buyerName,
-          }));
-          localStorage.setItem("invoice_app_data", JSON.stringify(cleaned));
-          return cleaned;
-        }
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    return [];
-  });
+  // 2. 发票列表状态：默认每次打开软件均为干净的空列表 [] (匹配用户要求图1效果)
+  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
 
   // 3. 模态框/弹窗控制状态
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(null);
 
-  // 自动将皮肤与发票数据持久化到本地
+  // 自动将皮肤与设置持久化到本地
   useEffect(() => {
     try {
       localStorage.setItem("app_theme_v1", theme);
@@ -110,17 +92,6 @@ export const App: React.FC = () => {
       document.body.classList.remove("theme-dark", "dark");
     }
   }, [theme]);
-
-  useEffect(() => {
-    if (settings.autoSaveInvoices) {
-      try {
-        localStorage.setItem("invoice_app_data", JSON.stringify(invoices));
-        localStorage.setItem("system_settings_v1", JSON.stringify(settings));
-      } catch (e) {
-        console.warn("Save failed:", e);
-      }
-    }
-  }, [invoices, settings]);
 
   // 更新排版参数
   const handleUpdateConfig = (newCfg: Partial<PrintConfig>) => {
