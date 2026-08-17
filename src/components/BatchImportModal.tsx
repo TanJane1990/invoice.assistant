@@ -26,6 +26,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
   settings,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState(0);
   const [uploadLogs, setUploadLogs] = useState<
     { name: string; status: "waiting" | "processing" | "success" | "error"; message?: string }[]
@@ -140,16 +141,25 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
           </span>
         </div>
 
-        {/* 3. 拖拽文件上传区域 Dropzone */}
+        {/* 3. 拖拽文件上传区域 Dropzone (动态悬浮/拖拽变红响应 - 匹配图1与图2) */}
         <div className="p-6 bg-white">
           <div
             onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
             onDrop={(e) => {
               e.preventDefault();
+              setIsDragOver(false);
               if (e.dataTransfer.files) handleFileUpload(e.dataTransfer.files);
             }}
-            className="p-10 rounded-3xl border-2 border-dashed border-[#E8000A] bg-white text-center cursor-pointer transition-all hover:bg-red-50/20"
+            className={`p-10 rounded-3xl border-2 border-dashed text-center cursor-pointer transition-all duration-300 group ${
+              isDragOver
+                ? "border-[#E8000A] bg-red-50/40 shadow-sm"
+                : "border-slate-300 hover:border-[#E8000A] bg-white hover:bg-red-50/30"
+            }`}
           >
             <input
               type="file"
@@ -159,7 +169,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               className="hidden"
             />
-            <div className="w-14 h-14 rounded-full bg-red-100/80 text-[#E8000A] flex items-center justify-center mx-auto mb-4">
+            <div className="w-14 h-14 rounded-full bg-red-100/70 text-[#E8000A] flex items-center justify-center mx-auto mb-4 transition-all duration-300 group-hover:scale-110 group-hover:bg-red-200/80">
               <Upload className="w-7 h-7 text-[#E8000A]" />
             </div>
             <h4 className="text-base font-black text-slate-900 mb-1.5" style={{ color: "#0f172a" }}>
