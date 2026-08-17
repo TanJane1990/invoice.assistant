@@ -181,7 +181,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       !name.includes("统一社会信用") &&
       !name.includes("纳税人识别") &&
       !name.includes("项目名称") &&
-      !name.includes("规格型号")
+      !name.includes("规格型号") &&
+      !name.includes("国家税务总局") &&
+      !name.includes("监制章")
     ) {
       seenComps.add(name);
       companies.push(name);
@@ -193,7 +195,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   const mPayer = cleanText.match(/(?:购买方|交款人|客户|抬头)(?:信息|\s|\/|\(|\))*[（(]?交款人\/单位[）)]?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayer) {
-    buyerName = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
+    buyerName = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").replace(/^[0-9a-zA-Z\s.]+(?=[\u4e00-\u9fa5])/, "").trim();
   }
 
   if (!buyerName && (cleanText.includes("个人") || cleanText.includes("交款人"))) {
@@ -202,7 +204,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   const mPayee = cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayee) {
-    const rawPayee = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
+    const rawPayee = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").replace(/^有限责任公司代收\s*/, "").trim();
     if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号")) {
       sellerName = rawPayee;
     }
@@ -213,22 +215,30 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let passengerName = "";
   let passengerId = "";
 
+  const isTrainOrPassenger =
+    invoiceType.includes("铁路") ||
+    invoiceType.includes("客票") ||
+    cleanText.includes("12306") ||
+    cleanText.includes("中国铁路");
+
   const mTrainRoute = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)[\s\S]{0,20}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,20}?([\u4e00-\u9fa5]{2,6}站)/);
   if (mTrainRoute) {
     trainRoute = `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`;
     if (!sellerName) sellerName = "中国铁路";
-  } else if (!sellerName && (invoiceType.includes("铁路") || cleanText.includes("12306") || cleanText.includes("中国铁路"))) {
+  } else if (!sellerName && isTrainOrPassenger) {
     sellerName = "中国铁路";
   }
 
-  // 提取乘坐人证件号 (例如: 130130********2459) 与乘坐人姓名 (例如: 李某年)
-  const mPassengerId = cleanText.match(/(\d{6}\*+\d{4}|\d{18}|\d{15})/);
-  if (mPassengerId) {
-    passengerId = mPassengerId[1];
-  }
-  const mPassengerName = cleanText.match(/(?:\d{6}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
-  if (mPassengerName) {
-    passengerName = mPassengerName[1];
+  // 提取乘坐人证件号与乘坐人姓名 (仅针对客票/铁路票据提取，避免误将普通发票开票人提取为乘车人)
+  if (isTrainOrPassenger) {
+    const mPassengerId = cleanText.match(/(\d{6}\*+\d{4}|\d{18}|\d{15})/);
+    if (mPassengerId) {
+      passengerId = mPassengerId[1];
+    }
+    const mPassengerName = cleanText.match(/(?:\d{6}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
+    if (mPassengerName) {
+      passengerName = mPassengerName[1];
+    }
   }
 
   if (!sellerName && companies.length > 0) {
@@ -249,7 +259,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     id.length <= 20 &&
     !/^\d{20}$/.test(id) &&
     !/^\d{8}$/.test(id) &&
-    !/^\d{16}$/.test(id)
+    !/^\d{16}$/.test(id) &&
+    !/^\d{17}$/.test(id)
   );
 
   if (validTaxIds.length >= 2) {

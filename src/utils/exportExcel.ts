@@ -46,6 +46,24 @@ export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> =
   return info;
 };
 
+import { numberToRMB } from "./numberToRMB";
+
+const cleanStr = (val?: string): string => {
+  if (!val || val.trim() === "") return "-";
+  // Remove XML control characters and weird unicode noise
+  let cleaned = val.replace(/[\x00-\x1F\x7F-\x9F]/g, "").replace(/_x[0-9a-fA-F]{4}_/g, "").trim();
+  return cleaned || "-";
+};
+
+const cleanItemsDetail = (items?: any[], remarks?: string): string => {
+  if (!items || items.length === 0) {
+    return cleanStr(remarks);
+  }
+  const uniqueNames = Array.from(new Set(items.map((it) => cleanStr(it.name)))).filter((n) => n !== "-");
+  if (uniqueNames.length === 0) return cleanStr(remarks);
+  return uniqueNames.join("；");
+};
+
 export const exportInvoicesToExcel = (
   invoices: InvoiceData[],
   settings?: SystemSettings,
@@ -57,28 +75,48 @@ export const exportInvoicesToExcel = (
     return;
   }
 
-  const exportData = invoices.map((inv, idx) => ({
-    序号: idx + 1,
-    费用类别: inv.category,
-    发票类型: inv.invoiceType,
-    发票代码: inv.invoiceCode || "-",
-    发票号码: inv.invoiceNumber,
-    开票日期: inv.issueDate,
-    "乘车/出行人": inv.passengerName || "-",
-    行程路线: inv.trainRoute || "-",
-    购买方名称: inv.buyerName,
-    购买方税号: inv.buyerTaxId || "-",
-    销售方名称: inv.sellerName,
-    销售方税号: inv.sellerTaxId || "-",
-    "商品/服务明细": inv.items && inv.items.length > 0 ? inv.items.map((it) => it.name).join("；") : "-",
-    不含税金额: inv.totalAmountWithoutTax,
-    合计税额: inv.totalTaxAmount,
-    "价税合计(元)": inv.totalAmountWithTax,
-    价税合计大写: inv.totalAmountWithTaxCN,
-    查重状态: inv.duplicateWarning ? "重复告警" : "正常唯一",
-    备注: inv.remarks || "-",
-    导入时间: inv.importTime || new Date().toLocaleString("zh-CN", { hour12: false }),
-  }));
+  const exportData = invoices.map((inv, idx) => {
+    const isPassengerTicket =
+      Boolean(inv.trainRoute) ||
+      inv.invoiceType?.includes("客票") ||
+      inv.invoiceType?.includes("铁路") ||
+      inv.invoiceType?.includes("航空");
+
+    const totalAmt = Number((inv.totalAmountWithTax || 0).toFixed(2));
+    const noTaxAmt = Number((inv.totalAmountWithoutTax || 0).toFixed(2));
+    const taxAmt = Number((inv.totalTaxAmount || 0).toFixed(2));
+
+    const capitalRMB =
+      inv.totalAmountWithTaxCN &&
+      inv.totalAmountWithTaxCN !== "小写" &&
+      inv.totalAmountWithTaxCN !== "零元整" &&
+      inv.totalAmountWithTaxCN !== "超出最大转换金额"
+        ? inv.totalAmountWithTaxCN
+        : numberToRMB(totalAmt);
+
+    return {
+      序号: idx + 1,
+      费用类别: inv.category,
+      发票类型: inv.invoiceType,
+      发票代码: cleanStr(inv.invoiceCode),
+      发票号码: cleanStr(inv.invoiceNumber),
+      开票日期: cleanStr(inv.issueDate),
+      "乘车/出行人": isPassengerTicket ? cleanStr(inv.passengerName) : "-",
+      行程路线: isPassengerTicket ? cleanStr(inv.trainRoute) : "-",
+      购买方名称: cleanStr(inv.buyerName),
+      购买方税号: cleanStr(inv.buyerTaxId),
+      销售方名称: cleanStr(inv.sellerName),
+      销售方税号: cleanStr(inv.sellerTaxId),
+      "商品/服务明细": cleanItemsDetail(inv.items, inv.remarks),
+      不含税金额: noTaxAmt,
+      合计税额: taxAmt,
+      "价税合计(元)": totalAmt,
+      价税合计大写: capitalRMB,
+      查重状态: inv.duplicateWarning ? "重复告警" : "正常唯一",
+      备注: cleanStr(inv.remarks),
+      导入时间: cleanStr(inv.importTime || new Date().toLocaleString("zh-CN", { hour12: false })),
+    };
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(exportData);
 
