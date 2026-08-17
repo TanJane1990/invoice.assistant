@@ -97,7 +97,11 @@ export const exportInvoicesToExcel = (
     const noTaxAmt = Number((inv.totalAmountWithoutTax || 0).toFixed(2));
     const taxAmt = Number((inv.totalTaxAmount || 0).toFixed(2));
 
-    let rawBuyer = isPassengerTicket ? "个人" : cleanBuyerSellerName(inv.buyerName);
+    let rawBuyer = isPassengerTicket
+      ? inv.buyerName && inv.buyerName !== "-" && !inv.buyerName.includes("监制章")
+        ? cleanBuyerSellerName(inv.buyerName)
+        : "个人"
+      : cleanBuyerSellerName(inv.buyerName);
     let rawSeller = cleanBuyerSellerName(inv.sellerName);
 
     // 智能识别公用事业/知名商户名误颠倒逻辑：

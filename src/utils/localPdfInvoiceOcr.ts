@@ -239,21 +239,32 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   // =========================================================================
 
   // 模式 1: 电子发票（铁路电子客票）
-  if (invoiceType.includes("铁路") || invoiceType.includes("客票") || cleanText.includes("12306")) {
+  if (invoiceType.includes("铁路") || invoiceType.includes("客票") || cleanText.includes("12306") || cleanText.includes("电子客票号")) {
     invoiceType = "电子发票（铁路电子客票）";
     sellerName = "中国铁路";
     sellerTaxId = "-";
+
+    const mTrainBuyer = cleanText.match(/购买方名称[:：\s]*([^\n\r\t]{2,50})/);
+    if (mTrainBuyer) {
+      const bName = mTrainBuyer[1].replace(/统一社会信用代码.*/, "").trim();
+      if (bName && !bName.includes("监制章") && !bName.includes("税务总局")) {
+        buyerName = bName;
+      }
+    }
+
     if (!buyerName || buyerName.includes("监制章") || buyerName.includes("税务总局")) {
       buyerName = "个人";
     }
 
-    const mPassengerId = cleanText.match(/(\d{6}\*+\d{4}|\d{18}|\d{15})/);
+    const mPassengerId = cleanText.match(/(\d{6,10}\*+\d{4}|\d{18}|\d{15})/);
     if (mPassengerId) passengerId = mPassengerId[1];
 
-    const mPassengerName = cleanText.match(/(?:\d{6}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
+    const mPassengerName = cleanText.match(/(?:\d{6,10}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
     if (mPassengerName) passengerName = mPassengerName[1];
 
-    const mTrainRoute = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)[\s\S]{0,20}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,20}?([\u4e00-\u9fa5]{2,6}站)/);
+    const mTrainRoute =
+      cleanText.match(/([\u4e00-\u9fa5]{2,10}站)\s*([A-Z]\d{1,5}|\d{1,5})\s*([\u4e00-\u9fa5]{2,10}站)/) ||
+      cleanText.match(/([\u4e00-\u9fa5]{2,10}站)[\s\S]{0,30}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,30}?([\u4e00-\u9fa5]{2,10}站)/);
     if (mTrainRoute) trainRoute = `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`;
   }
   // 模式 2: 航空运输电子客票行程单
