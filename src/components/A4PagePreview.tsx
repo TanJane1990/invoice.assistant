@@ -138,6 +138,15 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
+      {/* 动态物理打印方向控制：4张/页自动锁定 A4 横向 (297x210mm)，2张/页自动锁定 A4 纵向 (210x297mm) */}
+      <style>{`
+        @media print {
+          @page {
+            size: ${isLandscape ? "A4 landscape" : "A4 portrait"};
+            margin: 0;
+          }
+        }
+      `}</style>
       {/* Pages Container with Scaling Zoom */}
       <div
         className="transition-transform origin-top flex flex-col items-center space-y-10 relative z-0"

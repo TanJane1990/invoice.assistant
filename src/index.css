@@ -51,7 +51,6 @@ textarea::placeholder {
 /* Print CSS - Strictly Isolates A4 Printable Canvas & Cover Page Only */
 @media print {
   @page {
-    size: A4 portrait;
     margin: 0;
   }
 
@@ -110,7 +109,6 @@ textarea::placeholder {
     box-shadow: none !important;
     border: none !important;
     margin: 0 auto !important;
-    width: 210mm !important;
     page-break-after: always !important;
     break-after: page !important;
     background-color: #ffffff !important;
