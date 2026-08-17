@@ -10,32 +10,40 @@ body.theme-light {
   color: #0f172a;
 }
 
-/* Force high-contrast dark text inside all white cards, inputs, tables & modals */
+/* ==========================================================================
+   1. 100% High-Contrast Text Enforcement for All Light/White Cards & Modals
+   ========================================================================== */
 .bg-white,
 .bg-slate-50 {
-  color: #0f172a;
+  color: #0f172a !important;
 }
 
 .bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
-.bg-white p, .bg-white span, .bg-white label, .bg-white th, .bg-white td,
+.bg-white p, .bg-white span, .bg-white label, .bg-white th, .bg-white td, .bg-white div, .bg-white b, .bg-white strong,
 .bg-slate-50 h1, .bg-slate-50 h2, .bg-slate-50 h3, .bg-slate-50 h4, .bg-slate-50 h5, .bg-slate-50 h6,
-.bg-slate-50 p, .bg-slate-50 span, .bg-slate-50 label, .bg-slate-50 th, .bg-slate-50 td {
+.bg-slate-50 p, .bg-slate-50 span, .bg-slate-50 label, .bg-slate-50 th, .bg-slate-50 td, .bg-slate-50 div, .bg-slate-50 b, .bg-slate-50 strong {
   color: #0f172a;
 }
 
+/* White card inputs & selects */
 .bg-white input,
 .bg-white select,
+.bg-white textarea,
 .bg-slate-50 input,
-.bg-slate-50 select {
+.bg-slate-50 select,
+.bg-slate-50 textarea {
   color: #0f172a !important;
+  background-color: #ffffff !important;
 }
 
 .bg-white input::placeholder,
 .bg-slate-50 input::placeholder {
-  color: #94a3b8 !important;
+  color: #64748b !important;
 }
 
-/* Ensure dark headers in modals ALWAYS render crisp bright white text */
+/* ==========================================================================
+   2. Dark Headers & Dark Modal Inputs High-Contrast Text Rules
+   ========================================================================== */
 .bg-\[\#0E172B\],
 .bg-\[\#0E172B\] *,
 .modal-dark-header,
@@ -43,7 +51,18 @@ body.theme-light {
   color: #ffffff !important;
 }
 
-/* Preserve specific status accent colors */
+/* Dark Modal (e.g. InvoiceDetailModal) inputs */
+.bg-slate-800 input,
+.bg-slate-800 select,
+.bg-slate-800 textarea,
+.bg-slate-900 input,
+.bg-slate-900 select,
+.bg-slate-900 textarea {
+  color: #ffffff !important;
+  background-color: #1e293b !important;
+}
+
+/* Accent status text colors */
 .text-red-500, .text-red-600 {
   color: #E8000A !important;
 }
@@ -52,11 +71,9 @@ body.theme-light {
   color: #009966 !important;
 }
 
-.text-slate-400, .text-slate-500 {
-  color: #64748b !important;
-}
-
-/* Comprehensive CSS for Print Output */
+/* ==========================================================================
+   3. Comprehensive CSS for Print Output
+   ========================================================================== */
 @media print {
   .no-print,
   .print\:hidden,
@@ -66,73 +83,25 @@ body.theme-light {
   .header-container,
   .settings-modal,
   .batch-modal,
-  .toolbar-container,
-  button {
+  .toast-container {
     display: none !important;
   }
 
-  @page {
-    size: auto;
-    margin: 0mm;
-  }
-
-  html,
-  body,
-  #root,
-  main,
-  div,
-  body.theme-dark,
-  body.theme-light {
+  body {
     background-color: #ffffff !important;
-    background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
-
-  /* Reset zoom transforms during physical printing */
-  .origin-top,
-  .transition-transform {
-    transform: none !important;
-  }
-
-  img, canvas, svg {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
   }
 
   .a4-print-page {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
     box-shadow: none !important;
     border: none !important;
-    margin: 0 auto !important;
-    box-sizing: border-box !important;
+    margin: 0 !important;
     width: 100% !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
     page-break-after: always !important;
     break-after: page !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-  }
-
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
 }
