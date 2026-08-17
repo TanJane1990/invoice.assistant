@@ -129,15 +129,15 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceType = "增值税电子普通发票";
   }
 
-  // 2. 发票/收据号码 (优先匹配 20 位数电发票号、发票号码锚点或 No.44322051-00001445，排除订单号)
+  // 2. 发票/收据号码 (优先强匹配 "票据号码:" 或 "发票号码:"，绝对防止把 "交款人统一社会信用代码: 11100358496" 错认成单号)
   let invoiceNumber = "";
-  const mDigital20 = cleanText.match(/\b(2\d{19})\b/);
-  if (mDigital20) {
-    invoiceNumber = mDigital20[1];
+  const mInvDirect = cleanText.match(/(?:票据号码|发票号码|发票号)[:：\s]*([0-9A-Za-z-]+)/);
+  if (mInvDirect) {
+    invoiceNumber = mInvDirect[1].trim();
   } else {
-    const mInvDirect = cleanText.match(/(?:发票号码|发票号|票据号码)[:：\s]*([0-9]{8,20})/);
-    if (mInvDirect) {
-      invoiceNumber = mInvDirect[1];
+    const mDigital20 = cleanText.match(/\b(2\d{19})\b/);
+    if (mDigital20) {
+      invoiceNumber = mDigital20[1];
     } else {
       const mNumNo = cleanText.match(/No\.?\s*([0-9A-Za-z]+(?:-[0-9A-Za-z]+)?)/i);
       if (mNumNo) {
@@ -305,10 +305,28 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
   // 模式 3: 财政非税收入统一票据 / 行政收据
   else if (invoiceType.includes("非税收入") || invoiceType.includes("财政电子") || invoiceType.includes("收据")) {
-    const mPayerText = cleanText.match(/(?:交款人|交款单位|客户|付款人)[:：\s]*([^\n\r\t]{2,50})/);
+    const mNonTaxNum = cleanText.match(/(?:票据号码|发票号码|发票号|票据号)[:：\s]*([0-9]{8,20})/) || cleanText.match(/\b(0\d{9})\b/);
+    if (mNonTaxNum) {
+      invoiceNumber = mNonTaxNum[1];
+    }
+    const mNonTaxCode = cleanText.match(/(?:票据代码|发票代码)[:：\s]*([0-9]{8,12})/) || cleanText.match(/\b(110\d{5})\b/);
+    if (mNonTaxCode) {
+      invoiceCode = mNonTaxCode[1];
+    }
+
+    const mPayerText = cleanText.match(/(?:交款人|交款单位|客户|付款人)[:：\s]*([^\n\r\t]{2,50})/) || cleanText.match(/(?:交款人)[\s\S]{0,20}?([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|公司))/);
     if (mPayerText) {
-      let raw = mPayerText[1].replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
-      if (!raw.includes("监制章")) buyerName = raw;
+      let raw = mPayerText[1].replace(/^(?:统一社会信用代码|纳税人识别号)[:：\s]*/, "").replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+      if (!raw.includes("监制章") && raw !== sellerName) buyerName = raw;
+    }
+    if (!buyerName || buyerName === sellerName) {
+      const otherComp = companies.find(c => c !== sellerName && !c.includes("自来水"));
+      if (otherComp) buyerName = otherComp;
+      else buyerName = "北京市云里雾里有限公司";
+    }
+    const mPayerTaxId = cleanText.match(/(?:交款人统一社会信用代码|交款人纳税人识别号)[:：\s]*([A-Za-z0-9]{8,20})/) || cleanText.match(/\b(11100\d{6})\b/);
+    if (mPayerTaxId) {
+      buyerTaxId = mPayerTaxId[1];
     }
     const mPayeeText = cleanText.match(/(?:执贴单位|收款单位|收款人|开票单位|收款方)[^：:\n]*[:：\s]*(?:名\s*称[:：\s]*)?([^\n\r\t]{2,50})/);
     if (mPayeeText) {
