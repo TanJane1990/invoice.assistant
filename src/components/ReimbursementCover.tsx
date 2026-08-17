@@ -23,18 +23,21 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   onPrintCover,
 }) => {
   const isDark = theme === "dark";
-  const activeInvoices = selectedInvoices || (invoices ? invoices.filter((i) => i.selectedForPrint) : []);
+  const rawList = selectedInvoices || invoices || [];
+  const activeInvoices = Array.isArray(rawList)
+    ? rawList.filter((i) => i && (i.selectedForPrint || rawList.length === 1))
+    : [];
   const activeSettings = settings || defaultSettings || ({} as SystemSettings);
 
   const [formData, setFormData] = useState({
-    companyName: activeSettings.defaultCompany || "示例单位名称",
-    department: activeSettings.defaultDepartment || "猫粮研发部",
-    applicant: activeSettings.defaultApplicant || "张喵喵",
+    companyName: activeSettings?.defaultCompany || "示例单位名称",
+    department: activeSettings?.defaultDepartment || "猫粮研发部",
+    applicant: activeSettings?.defaultApplicant || "张喵喵",
     reimbursementNo: `BX-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-001`,
     date: new Date().toISOString().split("T")[0],
-    approver: activeSettings.defaultApprover || "李喵喵",
-    financeAuditor: activeSettings.defaultFinanceAuditor || "陈喵喵",
-    cashier: activeSettings.defaultCashier || "王喵喵",
+    approver: activeSettings?.defaultApprover || "李喵喵",
+    financeAuditor: activeSettings?.defaultFinanceAuditor || "陈喵喵",
+    cashier: activeSettings?.defaultCashier || "王喵喵",
     reason: "三季度客户拜访与办公用品出差报销",
   });
 
@@ -43,14 +46,15 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   // Group invoices by category and calculate total (Default 1 row if empty)
   const categorySummary = activeInvoices.length > 0
     ? activeInvoices.reduce((acc, inv) => {
-        const cat = inv.category || "其他";
-        acc[cat] = (acc[cat] || 0) + inv.totalAmountWithTax;
+        const cat = inv?.category || "其他";
+        const amt = typeof inv?.totalAmountWithTax === "number" && !isNaN(inv.totalAmountWithTax) ? inv.totalAmountWithTax : 0;
+        acc[cat] = (acc[cat] || 0) + amt;
         return acc;
       }, {} as Record<string, number>)
     : { "其他": 0 };
 
   const grandTotal = activeInvoices.reduce(
-    (sum, inv) => sum + inv.totalAmountWithTax,
+    (sum, inv) => sum + (typeof inv?.totalAmountWithTax === "number" && !isNaN(inv.totalAmountWithTax) ? inv.totalAmountWithTax : 0),
     0
   );
 
