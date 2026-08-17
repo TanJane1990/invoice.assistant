@@ -50,6 +50,30 @@ export function parseInvoiceQrString(qrText: string): QrInvoiceResult | null {
     };
   }
 
+  // 1.5 财政电子非税票据二维码 (CZ-EI-11, 1.1.0, 票据代码, 票据号码, 校验码, 开票日期, 金额)
+  if (parts.length >= 7 && (parts[0].startsWith("CZ-EI") || parts[0].includes("CZ"))) {
+    const invoiceCode = parts[2] || "";
+    const invoiceNumber = parts[3] || "";
+    const checksum = parts[4] || "";
+    const rawDate = parts[5] || "";
+    let issueDate = "";
+    if (rawDate.length === 8 && /^\d{8}$/.test(rawDate)) {
+      issueDate = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
+    }
+    const totalAmountWithTax = parseFloat(parts[6]) || 0;
+
+    return {
+      invoiceCode,
+      invoiceNumber,
+      totalAmountWithoutTax: totalAmountWithTax,
+      totalTaxAmount: 0,
+      totalAmountWithTax,
+      issueDate,
+      checksum,
+      rawQrText: cleanText,
+    };
+  }
+
   // 2. 如果包含数值和日期
   const numMatches = cleanText.match(/\d+/g);
   if (numMatches && numMatches.length >= 3) {
