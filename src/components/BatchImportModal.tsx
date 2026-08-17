@@ -117,9 +117,9 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
       <div className="w-full max-w-2xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col bg-white my-8">
         {/* 1. 顶部 Header (深黑背景) */}
         <div className="px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800 flex items-center justify-between">
-          <h3 className="font-extrabold text-base tracking-wide flex items-center space-x-2 text-white">
+          <h3 className="font-extrabold text-base tracking-wide flex items-center space-x-2 text-white" style={{ color: "#ffffff" }}>
             <Upload className="w-5 h-5 text-[#E8000A]" />
-            <span className="text-white font-extrabold">批量导入发票文件</span>
+            <span className="text-white font-extrabold" style={{ color: "#ffffff" }}>批量导入发票文件</span>
           </h3>
           <button
             onClick={onClose}

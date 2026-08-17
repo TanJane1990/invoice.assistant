@@ -151,18 +151,15 @@ export const Header: React.FC<HeaderProps> = ({
           <span>一键打印</span>
         </button>
 
-        {/* 设置 (纯白/浅色实心胶囊按钮) */}
+        {/* 设置 (纯白实心胶囊按钮) */}
         <button
           onClick={onOpenSettings}
           title="设置（AI API Key、企业抬头与数据保存）"
-          className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-xs border ${
-            isDark
-              ? "bg-white hover:bg-slate-100 !text-slate-900 border-slate-200"
-              : "bg-white hover:bg-slate-100 !text-slate-900 border-slate-300"
-          }`}
+          style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+          className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-sm border border-slate-300 hover:bg-slate-100"
         >
-          <Settings className="w-3.5 h-3.5 !text-slate-700" />
-          <span className="!text-slate-900">设置</span>
+          <Settings className="w-3.5 h-3.5" style={{ color: "#334155" }} />
+          <span style={{ color: "#0f172a" }}>设置</span>
         </button>
       </div>
     </header>
