@@ -6,12 +6,18 @@ async function getOcrWorker() {
   if (!workerPromise) {
     workerPromise = (async () => {
       try {
-        const worker = await createWorker("chi_sim+eng");
+        const worker = await createWorker("chi_sim+eng", 1, {
+          logger: () => {},
+          errorHandler: () => {},
+        });
         return worker;
       } catch (e) {
         console.warn("Failed to init Tesseract worker with chi_sim+eng, trying eng fallback:", e);
         try {
-          const worker = await createWorker("eng");
+          const worker = await createWorker("eng", 1, {
+            logger: () => {},
+            errorHandler: () => {},
+          });
           return worker;
         } catch (err) {
           console.warn("Failed to init Tesseract eng worker:", err);
