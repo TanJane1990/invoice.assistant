@@ -192,11 +192,16 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   let buyerName = "";
   let sellerName = "";
+  let buyerTaxId = "";
+  let sellerTaxId = "";
+  let passengerName = "";
+  let passengerId = "";
+  let trainRoute = "";
 
   const mPayer = cleanText.match(/(?:购买方|交款人|客户|抬头)(?:信息|\s|\/|\(|\))*[（(]?交款人\/单位[）)]?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayer) {
     let rawPayer = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
-    // 过滤购买方名称前面的校验乱码数字串 (如 "8496 11010125 0102244139 6214f3 110100 9.52 北京市自来水集团" -> "北京市自来水集团")
+    // 过滤购买方名称前面的校验乱码数字串
     rawPayer = rawPayer.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
     if (!rawPayer.includes("监制章") && !rawPayer.includes("税务总局")) {
       buyerName = rawPayer;
@@ -229,53 +234,79 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     buyerName = "个人";
   }
 
-  // 自动提取火车票行程路线与乘坐人信息
-  let trainRoute = "";
-  let passengerName = "";
-  let passengerId = "";
+  // =========================================================================
+  // 🏛️ 5 大标准发票/票据解构引擎 (5 Standard Template Structural Engine)
+  // =========================================================================
 
-  const isTrainOrPassenger =
-    invoiceType.includes("铁路") ||
-    invoiceType.includes("客票") ||
-    cleanText.includes("12306") ||
-    cleanText.includes("中国铁路");
-
-  if (isTrainOrPassenger) {
-    buyerName = "个人"; // 火车票/客票购买方默认为 "个人"
-  }
-
-  const mTrainRoute = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)[\s\S]{0,20}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,20}?([\u4e00-\u9fa5]{2,6}站)/);
-  if (mTrainRoute) {
-    trainRoute = `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`;
-    if (!sellerName) sellerName = "中国铁路";
-  } else if (!sellerName && isTrainOrPassenger) {
+  // 模式 1: 电子发票（铁路电子客票）
+  if (invoiceType.includes("铁路") || invoiceType.includes("客票") || cleanText.includes("12306")) {
+    invoiceType = "电子发票（铁路电子客票）";
     sellerName = "中国铁路";
-  }
+    sellerTaxId = "-";
+    if (!buyerName || buyerName.includes("监制章") || buyerName.includes("税务总局")) {
+      buyerName = "个人";
+    }
 
-  // 提取乘坐人证件号与乘坐人姓名 (仅针对客票/铁路票据提取，避免误将普通发票开票人提取为乘车人)
-  if (isTrainOrPassenger) {
     const mPassengerId = cleanText.match(/(\d{6}\*+\d{4}|\d{18}|\d{15})/);
-    if (mPassengerId) {
-      passengerId = mPassengerId[1];
-    }
+    if (mPassengerId) passengerId = mPassengerId[1];
+
     const mPassengerName = cleanText.match(/(?:\d{6}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
-    if (mPassengerName) {
-      passengerName = mPassengerName[1];
+    if (mPassengerName) passengerName = mPassengerName[1];
+
+    const mTrainRoute = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)[\s\S]{0,20}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,20}?([\u4e00-\u9fa5]{2,6}站)/);
+    if (mTrainRoute) trainRoute = `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`;
+  }
+  // 模式 2: 航空运输电子客票行程单
+  else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
+    invoiceType = "航空运输电子客票行程单";
+    const mAirPassenger = cleanText.match(/(?:旅客姓名|乘机人|姓名)[:：\s]*([\u4e00-\u9fa5]{2,6})/);
+    if (mAirPassenger) passengerName = mAirPassenger[1];
+
+    const mAirId = cleanText.match(/(?:有效身份证件号码|身份证号|证件号)[:：\s]*([A-Za-z0-9*]+)/);
+    if (mAirId) passengerId = mAirId[1];
+
+    const mFlight = cleanText.match(/([A-Z0-9]{2}\d{3,4})/);
+    if (mFlight) trainRoute = `航班: ${mFlight[1]}`;
+
+    if (!buyerName || buyerName.includes("监制章")) buyerName = "个人";
+  }
+  // 模式 3: 财政非税收入统一票据 / 行政收据
+  else if (invoiceType.includes("非税收入") || invoiceType.includes("财政电子") || invoiceType.includes("收据")) {
+    const mPayerText = cleanText.match(/(?:交款人|交款单位|付款人)[:：\s]*([^\n\r\t]{2,50})/);
+    if (mPayerText) {
+      let raw = mPayerText[1].replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+      if (!raw.includes("监制章")) buyerName = raw;
+    }
+    const mPayeeText = cleanText.match(/(?:收款单位|收款人|开票单位)[:：\s]*([^\n\r\t]{2,50})/);
+    if (mPayeeText) {
+      let raw = mPayeeText[1].replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+      if (!raw.includes("监制章")) sellerName = raw;
     }
   }
-
-  if (!sellerName && companies.length > 0) {
-    sellerName = companies.find(c => c !== buyerName && c.includes("公司")) || companies[0];
+  // 模式 4: 数电发票 (全面数字化电子发票 - 无发票代码)
+  else if (invoiceType.includes("数电发票") || (invoiceNumber.length === 20 && !invoiceCode)) {
+    const mDigitalBuyer = cleanText.match(/(?:购买方信息|购买方名称|购买方)[^：:\n]*[:：\s]*([^\n\r\t]{2,50})/);
+    if (mDigitalBuyer) {
+      const name = mDigitalBuyer[1].replace(/^名称[:：\s]*/, "").trim();
+      if (!name.includes("监制章")) buyerName = name;
+    }
+    const mDigitalSeller = cleanText.match(/(?:销售方信息|销售方名称|销售方)[^：:\n]*[:：\s]*([^\n\r\t]{2,50})/);
+    if (mDigitalSeller) {
+      const name = mDigitalSeller[1].replace(/^名称[:：\s]*/, "").trim();
+      if (!name.includes("监制章")) sellerName = name;
+    }
   }
-
-  if (!buyerName && companies.length >= 2) {
-    buyerName = companies.find(c => c !== sellerName) || "个人";
+  // 模式 5: 传统增值税纸质/电子发票 (带发票代码)
+  else {
+    if (!sellerName && companies.length > 0) {
+      sellerName = companies.find(c => c !== buyerName && c.includes("公司")) || companies[0];
+    }
+    if (!buyerName && companies.length >= 2) {
+      buyerName = companies.find(c => c !== sellerName) || "个人";
+    }
   }
 
   // 6. 税号提取
-  let buyerTaxId = "";
-  let sellerTaxId = "";
-
   const taxIdMatches = Array.from(cleanText.matchAll(/([A-Za-z0-9]{15,20})/g)).map(m => m[1]);
   const validTaxIds = taxIdMatches.filter(id =>
     id.length >= 15 &&
@@ -397,8 +428,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   // 11. 备注与订单号
   let remarks = fileName || "发票识别";
   const mOrder = cleanText.match(/订单号[:：\s]*([0-9A-Za-z]+)/);
-  if (mTrainRoute) {
-    remarks = `行程: ${mTrainRoute[1]} ➔ ${mTrainRoute[2]} ➔ ${mTrainRoute[3]}`;
+  if (trainRoute) {
+    remarks = `行程: ${trainRoute}`;
   } else if (mOrder) {
     remarks = `订单号: ${mOrder[1]}`;
   } else {
