@@ -43,12 +43,6 @@ export const clearLastExportInfo = () => {
 export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> => {
   const info = getLastExportInfo();
   if (!info) return null;
-  const existsOnDisk = await checkDiskFileExists(info.fileName);
-  if (!existsOnDisk) {
-    // 磁盘上该文件已被用户删除了或未找到，自动清空记忆日志
-    clearLastExportInfo();
-    return null;
-  }
   return info;
 };
 
