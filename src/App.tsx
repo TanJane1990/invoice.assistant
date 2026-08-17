@@ -163,9 +163,10 @@ export const App: React.FC = () => {
     const counts: Record<string, number> = {};
     invoices.forEach((i) => {
       const numStr = (i.invoiceNumber || "").trim();
+      const checkStr = (i.checkCode || "").trim();
       const amtStr = Number((i.totalAmountWithTax || 0).toFixed(2)).toString();
       if (numStr) {
-        const key = `${numStr}_${amtStr}`;
+        const key = checkStr ? `${numStr}_${checkStr}_${amtStr}` : `${numStr}_${amtStr}`;
         counts[key] = (counts[key] || 0) + 1;
       }
     });

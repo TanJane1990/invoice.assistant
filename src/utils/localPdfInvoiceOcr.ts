@@ -20,6 +20,7 @@ export interface ParsedInvoiceResult {
   passengerName?: string;
   passengerId?: string;
   trainRoute?: string;
+  checkCode?: string;
   items: Array<{
     id: string;
     name: string;
@@ -172,6 +173,13 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const mCode = cleanText.match(/(?:发票代码|票据代码)[:：\s]*(\d{8,12})/);
   if (mCode) {
     invoiceCode = mCode[1];
+  }
+
+  // 3.5 校验码 (如 6214f3 或 20位防伪校验码)
+  let checkCode = "";
+  const mCheck = cleanText.match(/(?:校验码|校\s*验\s*码)[:：\s]*([0-9a-zA-Z]{6,20})/);
+  if (mCheck) {
+    checkCode = mCheck[1].trim();
   }
 
   // 4. 开票日期
@@ -584,6 +592,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     passengerName,
     passengerId,
     trainRoute,
+    checkCode,
     items,
   };
 }
