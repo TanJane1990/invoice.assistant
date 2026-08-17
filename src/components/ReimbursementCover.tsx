@@ -4,42 +4,50 @@ import { FileText, Edit2, Printer } from "lucide-react";
 import { numberToRMB } from "../utils/numberToRMB";
 
 interface ReimbursementCoverProps {
-  selectedInvoices: InvoiceData[];
-  settings: SystemSettings;
+  selectedInvoices?: InvoiceData[];
+  invoices?: InvoiceData[];
+  settings?: SystemSettings;
+  defaultSettings?: SystemSettings;
+  config?: any;
   theme?: "light" | "dark";
   onPrintCover?: () => void;
+  onOpenBatchImport?: () => void;
 }
 
 export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   selectedInvoices,
+  invoices,
   settings,
+  defaultSettings,
   theme = "dark",
   onPrintCover,
 }) => {
   const isDark = theme === "dark";
+  const activeInvoices = selectedInvoices || (invoices ? invoices.filter((i) => i.selectedForPrint) : []);
+  const activeSettings = settings || defaultSettings || ({} as SystemSettings);
 
   const [formData, setFormData] = useState({
-    companyName: settings.defaultCompany || "示例单位名称",
-    department: settings.defaultDepartment || "猫粮研发部",
-    applicant: settings.defaultApplicant || "张喵喵",
+    companyName: activeSettings.defaultCompany || "示例单位名称",
+    department: activeSettings.defaultDepartment || "猫粮研发部",
+    applicant: activeSettings.defaultApplicant || "张喵喵",
     reimbursementNo: `BX-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-001`,
     date: new Date().toISOString().split("T")[0],
-    approver: settings.defaultApprover || "李喵喵",
-    financeAuditor: settings.defaultFinanceAuditor || "陈喵喵",
-    cashier: settings.defaultCashier || "王喵喵",
+    approver: activeSettings.defaultApprover || "李喵喵",
+    financeAuditor: activeSettings.defaultFinanceAuditor || "陈喵喵",
+    cashier: activeSettings.defaultCashier || "王喵喵",
     reason: "三季度客户拜访与办公用品出差报销",
   });
 
   const [isEditing, setIsEditing] = useState(false);
 
   // Group invoices by category and calculate total
-  const categorySummary = selectedInvoices.reduce((acc, inv) => {
+  const categorySummary = activeInvoices.reduce((acc, inv) => {
     const cat = inv.category || "其他";
     acc[cat] = (acc[cat] || 0) + inv.totalAmountWithTax;
     return acc;
   }, {} as Record<string, number>);
 
-  const grandTotal = selectedInvoices.reduce(
+  const grandTotal = activeInvoices.reduce(
     (sum, inv) => sum + inv.totalAmountWithTax,
     0
   );
@@ -61,7 +69,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               企业费用报销凭证汇总单
             </h3>
             <p className="text-xs text-slate-400 font-medium" style={{ color: "#94a3b8" }}>
-              可作为发票贴单最上层的报销封面单，已选包含 {selectedInvoices.length} 张发票，总金额 ¥
+              可作为发票贴单最上层的报销封面单，已选包含 {activeInvoices.length} 张发票，总金额 ¥
               {grandTotal.toFixed(2)}
             </p>
           </div>
@@ -233,7 +241,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
                 附发票张数
               </td>
               <td className="p-2 text-left font-bold text-[#E8000A]" style={{ color: "#E8000A" }}>
-                {selectedInvoices.length} 张
+                {activeInvoices.length} 张
               </td>
             </tr>
             <tr>
@@ -262,7 +270,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
             </thead>
             <tbody>
               {Object.entries(categorySummary).map(([cat, amt]) => {
-                const count = selectedInvoices.filter((i) => i.category === cat).length;
+                const count = activeInvoices.filter((i) => i.category === cat).length;
                 return (
                   <tr key={cat} className="border-b border-slate-800 last:border-b-0" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
                     <td className="p-2 font-bold border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>{cat}</td>
@@ -305,7 +313,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               </tr>
             </thead>
             <tbody>
-              {selectedInvoices.map((inv) => (
+              {activeInvoices.map((inv) => (
                 <tr key={inv.id} className="border-b border-slate-200 font-mono text-[11px]" style={{ color: "#0f172a" }}>
                   <td className="p-1.5 border-r border-slate-200 font-bold">{inv.invoiceNumber}</td>
                   <td className="p-1.5 border-r border-slate-200">{inv.issueDate}</td>

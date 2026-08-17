@@ -222,7 +222,9 @@ export const App: React.FC = () => {
             {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
               <div className="pt-6">
                 <ReimbursementCover
+                  selectedInvoices={selectedInvoices}
                   invoices={invoices}
+                  settings={settings}
                   defaultSettings={settings}
                   config={printConfig}
                   theme={theme}
@@ -280,7 +282,9 @@ export const App: React.FC = () => {
       {activeTab === "cover" && (
         <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0E172B]" : "bg-[#F3F5F9]"}`}>
           <ReimbursementCover
+            selectedInvoices={selectedInvoices}
             invoices={invoices}
+            settings={settings}
             defaultSettings={settings}
             config={printConfig}
             theme={theme}
