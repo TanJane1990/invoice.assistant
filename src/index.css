@@ -14,8 +14,24 @@ body.theme-light {
 .bg-white,
 .bg-slate-50,
 .bg-\[\#F8FAFC\],
-.bg-amber-50 {
+.bg-amber-50,
+.a4-print-page,
+.invoice-card-container,
+.invoice-card-content {
   color-scheme: light !important;
+}
+
+/* Printable A4 Page & Invoice Cards: ALWAYS DEEP DARK TEXT EVEN IN DARK MODE */
+.invoice-card-content {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.invoice-card-content *,
+.invoice-card-content span,
+.invoice-card-content div,
+.invoice-card-content p {
+  color: #0f172a !important;
 }
 
 /* Modal Dark Headers & Red Buttons: ALWAYS WHITE TEXT */

@@ -94,7 +94,7 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
         </div>
       ) : (
         /* CLEAN MINIMALIST INVOICE DOCUMENT REPRESENTATION (When no file image attached) */
-        <div className="w-full h-full border border-slate-300 bg-white p-3 flex flex-col justify-between text-xs leading-tight" style={{ backgroundColor: "#ffffff", color: "#0f172a" }}>
+        <div className="invoice-card-content invoice-card-container w-full h-full border border-slate-300 bg-white p-3 flex flex-col justify-between text-xs leading-tight" style={{ backgroundColor: "#ffffff", color: "#0f172a" }}>
           {/* Header */}
           <div className="flex justify-between items-start border-b border-slate-200 pb-1.5" style={{ borderColor: "#e2e8f0" }}>
             <div>

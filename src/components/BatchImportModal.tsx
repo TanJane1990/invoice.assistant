@@ -75,7 +75,6 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
         const fileBase64 = await fileBase64Promise;
         const mimeType = file.type || "image/png";
 
-        // 静默调用统一管线识别
         const { invoice } = await processInvoiceFileUnified(
           fileBase64,
           mimeType,
@@ -83,6 +82,10 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
           i,
           settings
         );
+
+        if (!invoice.fileUrl) {
+          invoice.fileUrl = fileBase64;
+        }
 
         parsedInvoices.push(invoice);
 
