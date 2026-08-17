@@ -73,8 +73,28 @@ export const App: React.FC = () => {
     }
   });
 
-  // 3. 发票列表状态：默认每次打开软件均为干净的空列表 []
-  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
+  // 3. 发票列表状态：永久保存于本地 localStorage，关闭软件后重新打开依然保留台账，方便查重比对
+  const [invoices, setInvoices] = useState<InvoiceData[]>(() => {
+    try {
+      const saved = localStorage.getItem("saved_invoices_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      return SAMPLE_INVOICES;
+    } catch {
+      return SAMPLE_INVOICES;
+    }
+  });
+
+  // 自动将发票台账数据持久化存入本地，保证数据永久保存
+  useEffect(() => {
+    try {
+      localStorage.setItem("saved_invoices_v1", JSON.stringify(invoices));
+    } catch {}
+  }, [invoices]);
 
   // 自动将皮肤与设置持久化到本地
   useEffect(() => {
