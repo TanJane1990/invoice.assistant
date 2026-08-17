@@ -42,7 +42,7 @@ export const App: React.FC = () => {
   const [printConfig, setPrintConfig] = useState<PrintConfig>({
     gridMode: "4",
     paperType: "A4",
-    orientation: "portrait",
+    orientation: "landscape", // 4张/页 (2×2 横向) 默认锁定为横向 (Landscape)
     showCropLines: true,
     showCategoryBadge: true,
     marginSize: "normal",
@@ -93,9 +93,15 @@ export const App: React.FC = () => {
     }
   }, [theme]);
 
-  // 更新排版参数
+  // 更新排版参数 (4张/页 自动绑定横向 Landscape)
   const handleUpdateConfig = (newCfg: Partial<PrintConfig>) => {
-    setPrintConfig((prev) => ({ ...prev, ...newCfg }));
+    setPrintConfig((prev) => {
+      const next = { ...prev, ...newCfg };
+      if (newCfg.gridMode === "4" && !newCfg.orientation) {
+        next.orientation = "landscape";
+      }
+      return next;
+    });
   };
 
   // 切换暗黑/白天模式
