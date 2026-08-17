@@ -116,6 +116,9 @@ export async function processInvoiceFileUnified(
     totalAmountWithTaxCN: rawData.totalAmountWithTaxCN || numberToRMB(totalAmt),
     category: (rawData.category as any) || "其他",
     remarks: rawData.remarks || fileName,
+    passengerName: rawData.passengerName,
+    passengerId: rawData.passengerId,
+    trainRoute: rawData.trainRoute,
     items: Array.isArray(rawData.items) && rawData.items.length > 0
       ? rawData.items.map((it: any, idx: number) => ({
           id: it.id || `item-${Date.now()}-${idx + 1}`,

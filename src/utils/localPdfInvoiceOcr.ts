@@ -17,6 +17,9 @@ export interface ParsedInvoiceResult {
   remarks: string;
   taxRegion?: string;
   drawer?: string;
+  passengerName?: string;
+  passengerId?: string;
+  trainRoute?: string;
   items: Array<{
     id: string;
     name: string;
@@ -205,12 +208,27 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 自动提取火车票行程路线与车次 (例如: 昆山站 K850 苏州站)
+  // 自动提取火车票行程路线与乘坐人信息
+  let trainRoute = "";
+  let passengerName = "";
+  let passengerId = "";
+
   const mTrainRoute = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)[\s\S]{0,20}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,20}?([\u4e00-\u9fa5]{2,6}站)/);
   if (mTrainRoute) {
-    sellerName = `中国铁路 (${mTrainRoute[1]}-${mTrainRoute[3]} ${mTrainRoute[2]})`;
+    trainRoute = `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`;
+    if (!sellerName) sellerName = "中国铁路";
   } else if (!sellerName && (invoiceType.includes("铁路") || cleanText.includes("12306") || cleanText.includes("中国铁路"))) {
     sellerName = "中国铁路";
+  }
+
+  // 提取乘坐人证件号 (例如: 130130********2459) 与乘坐人姓名 (例如: 李某年)
+  const mPassengerId = cleanText.match(/(\d{6}\*+\d{4}|\d{18}|\d{15})/);
+  if (mPassengerId) {
+    passengerId = mPassengerId[1];
+  }
+  const mPassengerName = cleanText.match(/(?:\d{6}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
+  if (mPassengerName) {
+    passengerName = mPassengerName[1];
   }
 
   if (!sellerName && companies.length > 0) {
@@ -383,6 +401,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     totalAmountWithTaxCN: totalAmountWithTaxCN || numberToRMB(totalAmountWithTax),
     category,
     remarks,
+    passengerName,
+    passengerId,
+    trainRoute,
     items,
   };
 }
