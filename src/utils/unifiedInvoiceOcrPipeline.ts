@@ -31,20 +31,35 @@ export async function processInvoiceFileUnified(
     fileName.toLowerCase().endsWith(".pdf") ||
     fileBase64.startsWith("data:application/pdf");
 
+  // 核心优化：【Step 1 强优先】毫秒级发票防伪二维码直接扫码解构
   let previewFileUrl = fileBase64;
-  let extractedPdfText = "";
-
-  // Step 1: 如果是 PDF，渲染 300DPI 图像并提取 PDF 矢量文本
   if (isPdf) {
     try {
       previewFileUrl = await convertPdfToImageDataUrl(fileBase64);
-      extractedPdfText = await extractTextFromPdf(fileBase64);
     } catch (e) {
-      console.warn("PDF render/extract info:", e);
+      console.warn("PDF render preview info:", e);
     }
   }
 
-  // 强化：如果矢量文本不足或为空（如图片收据、扫描版火车票），自动触发 Tesseract 图像 OCR
+  // 1. 强优先：首先使用 jsQR 直接读取发票二维码（包含国家税务局权威定额数据）
+  let qrData: QrInvoiceResult | null = null;
+  try {
+    qrData = await scanInvoiceQrCodeFromBase64(previewFileUrl);
+  } catch (qrErr) {
+    console.warn("QR code scan info:", qrErr);
+  }
+
+  // 2. 提取 PDF 矢量文本
+  let extractedPdfText = "";
+  if (isPdf) {
+    try {
+      extractedPdfText = await extractTextFromPdf(fileBase64);
+    } catch (e) {
+      console.warn("PDF extract text info:", e);
+    }
+  }
+
+  // 3. 强化：如果矢量文本不足或为空（如图片收据、扫描版火车票），自动触发离线图像 OCR
   if (!extractedPdfText || extractedPdfText.trim().length < 40) {
     try {
       const ocrText = await recognizeImageTextWithTesseract(previewFileUrl || fileBase64);
@@ -54,14 +69,6 @@ export async function processInvoiceFileUnified(
     } catch (e) {
       console.warn("Image OCR info:", e);
     }
-  }
-
-  // Step 2: 尝试对图片/PDF Canvas 进行二维码防伪解码
-  let qrData: QrInvoiceResult | null = null;
-  try {
-    qrData = await scanInvoiceQrCodeFromBase64(previewFileUrl);
-  } catch (qrErr) {
-    console.warn("QR code scan info:", qrErr);
   }
 
   // Step 3: 尝试调用后端 /api/parse-invoice 服务 (支持 AI 大模型 / 百度云)
@@ -119,6 +126,7 @@ export async function processInvoiceFileUnified(
     invoiceCode: qrData?.invoiceCode || rawData.invoiceCode || "",
     invoiceNumber: qrData?.invoiceNumber || rawData.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
     issueDate: qrData?.issueDate || rawData.issueDate || new Date().toISOString().split("T")[0],
+    checkCode: qrData?.checksum || rawData.checkCode || "",
     buyerName: rawData.buyerName || settings?.defaultCompany || "个人",
     buyerTaxId: rawData.buyerTaxId || "",
     sellerName: rawData.sellerName || "示例服务提供商",

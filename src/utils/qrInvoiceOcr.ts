@@ -80,14 +80,31 @@ export async function scanInvoiceQrCodeFromImageData(
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert",
+    // 尝试 1: 全图扫码 (支持正向与反色防伪二维码)
+    const fullImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let code = jsQR(fullImageData.data, fullImageData.width, fullImageData.height, {
+      inversionAttempts: "attemptBoth",
     });
 
     if (code && code.data) {
-      console.log("Recognized Invoice QR Code:", code.data);
-      return parseInvoiceQrString(code.data);
+      const parsed = parseInvoiceQrString(code.data);
+      if (parsed) return parsed;
+    }
+
+    // 尝试 2: 发票右上角专属区域 (Top-Right 50% x 50%) 强聚焦扫描 (国家标准发票二维码印刷位置)
+    const cropW = Math.floor(canvas.width * 0.5);
+    const cropH = Math.floor(canvas.height * 0.5);
+    const cropX = canvas.width - cropW;
+    const cropY = 0;
+    const topRightImageData = ctx.getImageData(cropX, cropY, cropW, cropH);
+
+    code = jsQR(topRightImageData.data, topRightImageData.width, topRightImageData.height, {
+      inversionAttempts: "attemptBoth",
+    });
+
+    if (code && code.data) {
+      const parsed = parseInvoiceQrString(code.data);
+      if (parsed) return parsed;
     }
   } catch (err) {
     console.warn("QR code scan error:", err);
