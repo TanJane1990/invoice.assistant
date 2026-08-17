@@ -467,7 +467,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 12. 明细商品全量抽取 (自动剥离发票密码区/二维码密文乱码串)
+  // 12. 明细商品全量抽取 (支持标准星号商品、非税票规费名、智能剔除密文乱码串)
   const items: ParsedInvoiceResult["items"] = [];
   const itemMatches = Array.from(cleanText.matchAll(/\*([^*\n\r]{1,30})\*([^\n\r]{1,50})/g));
   if (itemMatches.length > 0) {
@@ -482,6 +482,22 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
         });
       }
     });
+  }
+
+  // 针对非税收入票据，专项提取规费项目名称 (如 "污水处理费（居民）")
+  if (items.length === 0 && (invoiceType.includes("非税") || invoiceType.includes("财政") || cleanText.includes("非税"))) {
+    const mNonTaxItem = cleanText.match(/([\u4e00-\u9fa5（）()]{2,25}(?:费|水费|电费|气费|管理费|服务费|规费|基金|附加))/);
+    if (mNonTaxItem) {
+      const feeName = mNonTaxItem[1].trim();
+      if (!isGarbledCipher(feeName) && !feeName.includes("收据") && !feeName.includes("票据")) {
+        items.push({
+          id: `item-${Date.now()}-1`,
+          name: `*规费*${feeName}`,
+          amount: totalAmountWithTax,
+          quantity: 1,
+        });
+      }
+    }
   }
 
   if (items.length === 0) {
