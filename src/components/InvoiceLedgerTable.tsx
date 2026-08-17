@@ -20,10 +20,12 @@ interface InvoiceLedgerTableProps {
   invoices: InvoiceData[];
   onDeleteInvoice: (id: string) => void;
   onEditInvoice: (invoice: InvoiceData) => void;
-  onManualCreate: () => void;
+  onManualCreate?: () => void;
+  onAddCustomInvoice?: () => void;
   onToggleSelectForPrint: (id: string) => void;
   onToggleSelectAll: (selected: boolean) => void;
   systemSettings?: SystemSettings;
+  theme?: "light" | "dark";
 }
 
 // 相同号码重复发票的高亮调色盘
@@ -39,6 +41,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   onDeleteInvoice,
   onEditInvoice,
   onManualCreate,
+  onAddCustomInvoice,
   onToggleSelectForPrint,
   onToggleSelectAll,
   systemSettings,
@@ -228,7 +231,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         {/* 右侧: 新建与导出 Excel 按钮 */}
         <div className="flex items-center space-x-3">
           <button
-            onClick={onManualCreate}
+            onClick={onManualCreate || onAddCustomInvoice}
             style={{ color: "#1e293b", backgroundColor: "#F1F5F9" }}
             className="px-4 py-2 hover:bg-slate-200 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer flex items-center space-x-1"
           >

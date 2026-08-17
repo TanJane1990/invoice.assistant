@@ -246,7 +246,7 @@ export const App: React.FC = () => {
             onToggleSelectAll={handleToggleSelectAll}
             onDeleteInvoice={handleDeleteInvoice}
             onEditInvoice={(inv) => setEditingInvoice(inv)}
-            onAddCustomInvoice={() => {
+            onManualCreate={() => {
               const newInv: InvoiceData = {
                 id: `custom-${Date.now()}`,
                 invoiceType: "电子发票(普通发票)",
