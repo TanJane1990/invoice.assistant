@@ -205,7 +205,11 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  if (!sellerName && (invoiceType.includes("铁路") || cleanText.includes("12306") || cleanText.includes("中国铁路"))) {
+  // 自动提取火车票行程路线与车次 (例如: 昆山站 K850 苏州站)
+  const mTrainRoute = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)[\s\S]{0,20}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,20}?([\u4e00-\u9fa5]{2,6}站)/);
+  if (mTrainRoute) {
+    sellerName = `中国铁路 (${mTrainRoute[1]}-${mTrainRoute[3]} ${mTrainRoute[2]})`;
+  } else if (!sellerName && (invoiceType.includes("铁路") || cleanText.includes("12306") || cleanText.includes("中国铁路"))) {
     sellerName = "中国铁路";
   }
 
@@ -333,11 +337,15 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   // 10. 备注
   let remarks = fileName || "发票识别";
-  const mRemark = cleanText.match(/备\s*注[：:\s]*([^\n\r]{1,100})/);
-  if (mRemark) {
-    const remarkText = mRemark[1].trim();
-    if (!/统一社会信用|纳税人识别|信用代码/.test(remarkText)) {
-      remarks = remarkText;
+  if (mTrainRoute) {
+    remarks = `行程: ${mTrainRoute[1]} ➔ ${mTrainRoute[2]} ➔ ${mTrainRoute[3]}`;
+  } else {
+    const mRemark = cleanText.match(/备\s*注[：:\s]*([^\n\r]{1,100})/);
+    if (mRemark) {
+      const remarkText = mRemark[1].trim();
+      if (!/统一社会信用|纳税人识别|信用代码/.test(remarkText)) {
+        remarks = remarkText;
+      }
     }
   }
 
