@@ -12,9 +12,9 @@ import { A4PagePreview } from "./components/A4PagePreview";
 import { InvoiceLedgerTable } from "./components/InvoiceLedgerTable";
 import { ReimbursementCover } from "./components/ReimbursementCover";
 import { BatchImportModal } from "./components/BatchImportModal";
-import { InvoiceDetailModal } from "./components/InvoiceDetailModal";
 import { SettingsModal } from "./components/SettingsModal";
-import { exportInvoicesToExcel } from "./utils/exportExcel";
+import { exportInvoicesToExcel, getLastExportInfo, LastExportInfo } from "./utils/exportExcel";
+import { ExcelExportDialog } from "./components/ExcelExportDialog";
 import { generateAndPrintPdf } from "./utils/exportPdf";
 
 const DEFAULT_SETTINGS: SystemSettings = {
@@ -152,6 +152,19 @@ export const App: React.FC = () => {
   const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
   const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
 
+  const [isTopNavExportDialogOpen, setIsTopNavExportDialogOpen] = useState(false);
+  const [topNavLastExportInfo, setTopNavLastExportInfo] = useState<LastExportInfo | null>(null);
+
+  const handleTopNavExportExcel = () => {
+    const historicalInfo = getLastExportInfo();
+    if (!historicalInfo) {
+      exportInvoicesToExcel(invoices, settings, "default");
+    } else {
+      setTopNavLastExportInfo(historicalInfo);
+      setIsTopNavExportDialogOpen(true);
+    }
+  };
+
   // 调起标准系统直接打印（直接选择打印机物理打印，不强制下载 PDF）
   const handlePrint = () => {
     setActiveTab("layout");
@@ -176,7 +189,7 @@ export const App: React.FC = () => {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLoadSamples={() => setInvoices(SAMPLE_INVOICES)}
         onPrint={handlePrint}
-        onExportExcel={() => exportInvoicesToExcel(invoices, settings)}
+        onExportExcel={handleTopNavExportExcel}
         selectedCount={selectedInvoices.length}
         duplicateCount={duplicateCount}
       />
@@ -310,6 +323,14 @@ export const App: React.FC = () => {
           setInvoices([]);
           localStorage.removeItem("invoice_app_data");
         }}
+      />
+
+      <ExcelExportDialog
+        isOpen={isTopNavExportDialogOpen}
+        onClose={() => setIsTopNavExportDialogOpen(false)}
+        lastExportInfo={topNavLastExportInfo}
+        onAppendToExisting={() => exportInvoicesToExcel(invoices, settings, "append")}
+        onSaveNewFile={() => exportInvoicesToExcel(invoices, settings, "new")}
       />
     </div>
   );
