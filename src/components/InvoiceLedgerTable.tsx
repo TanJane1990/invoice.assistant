@@ -253,7 +253,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-100 font-extrabold" style={{ color: "#0f172a" }}>
+              <tr className="border-b border-slate-200 bg-slate-100 font-extrabold text-xs whitespace-nowrap" style={{ color: "#0f172a" }}>
                 <th className="p-3.5 w-10 text-center">
                   <button
                     onClick={() => onToggleSelectAll(!allSelected)}
@@ -267,14 +267,14 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                     )}
                   </button>
                 </th>
-                <th className="p-3.5 font-bold" style={{ color: "#0f172a" }}>发票类型与代码</th>
-                <th className="p-3.5 font-bold" style={{ color: "#0f172a" }}>发票号码 (相同号码同色标出)</th>
-                <th className="p-3.5 font-bold" style={{ color: "#0f172a" }}>开票日期</th>
-                <th className="p-3.5 font-bold" style={{ color: "#0f172a" }}>销货方名称</th>
-                <th className="p-3.5 font-bold" style={{ color: "#0f172a" }}>分类</th>
-                <th className="p-3.5 text-right font-bold" style={{ color: "#0f172a" }}>含税金额(元)</th>
-                <th className="p-3.5 text-center font-bold" style={{ color: "#0f172a" }}>查重状态与标记</th>
-                <th className="p-3.5 text-right font-bold" style={{ color: "#0f172a" }}>操作</th>
+                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>发票类型与代码</th>
+                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>发票号码 (相同号码同色标出)</th>
+                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>开票日期</th>
+                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>销货方名称</th>
+                <th className="p-3.5 font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>分类</th>
+                <th className="p-3.5 text-right font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>含税金额(元)</th>
+                <th className="p-3.5 text-center font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>查重状态与标记</th>
+                <th className="p-3.5 text-right font-bold whitespace-nowrap" style={{ color: "#0f172a" }}>操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-mono">
@@ -294,7 +294,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                   return (
                     <tr
                       key={inv.id}
-                      className={`transition-colors ${
+                      className={`transition-colors whitespace-nowrap ${
                         palette
                           ? palette.rowBg
                           : inv.selectedForPrint
@@ -317,7 +317,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       </td>
 
                       {/* Invoice Type & Code */}
-                      <td className="p-3.5 font-sans">
+                      <td className="p-3.5 font-sans whitespace-nowrap">
                         <div className="font-extrabold text-slate-900" style={{ color: "#0f172a" }}>{inv.invoiceType}</div>
                         <div className="text-[10px] font-mono mt-0.5 text-slate-500" style={{ color: "#64748b" }}>
                           {inv.invoiceCode ? `代码: ${inv.invoiceCode}` : "电子发票(无代码)"}
@@ -325,12 +325,12 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       </td>
 
                       {/* Invoice Number */}
-                      <td className="p-3.5 font-bold">
+                      <td className="p-3.5 font-bold whitespace-nowrap">
                         <div className="flex items-center space-x-1.5">
                           <span className="font-black text-slate-900" style={{ color: "#0f172a" }}>{inv.invoiceNumber}</span>
                           {palette && (
                             <span
-                              className={`px-2 py-0.5 text-[9px] rounded-md border ${palette.badgeBg}`}
+                              className={`px-2 py-0.5 text-[9px] rounded-md border whitespace-nowrap ${palette.badgeBg}`}
                               style={{ color: "#78350f" }}
                               title={`相同号码发票重复出现在台账中 (重复组 #${dupInfo.groupIndex + 1})`}
                             >
@@ -341,34 +341,34 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       </td>
 
                       {/* Date */}
-                      <td className="p-3.5 font-semibold text-slate-700" style={{ color: "#334155" }}>{inv.issueDate}</td>
+                      <td className="p-3.5 font-semibold text-slate-700 whitespace-nowrap" style={{ color: "#334155" }}>{inv.issueDate}</td>
 
                       {/* Seller */}
-                      <td className="p-3.5 font-sans truncate max-w-[170px] font-bold text-slate-900" style={{ color: "#0f172a" }}>
+                      <td className="p-3.5 font-sans truncate max-w-[200px] font-bold text-slate-900 whitespace-nowrap" style={{ color: "#0f172a" }}>
                         {inv.sellerName}
                       </td>
 
                       {/* Category Badge */}
-                      <td className="p-3.5 font-sans">
+                      <td className="p-3.5 font-sans whitespace-nowrap">
                         <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border bg-slate-100 text-slate-700 border-slate-200" style={{ color: "#334155" }}>
                           {inv.category}
                         </span>
                       </td>
 
                       {/* Amount */}
-                      <td className="p-3.5 text-right font-mono font-black text-sm text-slate-900" style={{ color: "#0f172a" }}>
+                      <td className="p-3.5 text-right font-mono font-black text-sm text-slate-900 whitespace-nowrap" style={{ color: "#0f172a" }}>
                         ¥{inv.totalAmountWithTax.toFixed(2)}
                       </td>
 
                       {/* Status */}
-                      <td className="p-3.5 text-center font-sans">
+                      <td className="p-3.5 text-center font-sans whitespace-nowrap">
                         {dupInfo ? (
-                          <span className="inline-flex items-center space-x-1 font-bold px-2.5 py-0.5 rounded-full border text-[10px] bg-amber-50 text-amber-700 border-amber-300">
+                          <span className="inline-flex items-center space-x-1 font-bold px-2.5 py-0.5 rounded-full border text-[10px] bg-amber-50 text-amber-700 border-amber-300 whitespace-nowrap">
                             <AlertTriangle className="w-3 h-3 text-amber-600" />
                             <span>⚠️ 发票重复 ({dupInfo.totalInGroup}张)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center space-x-1 font-bold px-2.5 py-0.5 rounded-full border text-[10px] bg-emerald-50 text-[#009966] border-emerald-200">
+                          <span className="inline-flex items-center space-x-1 font-bold px-2.5 py-0.5 rounded-full border text-[10px] bg-emerald-50 text-[#009966] border-emerald-200 whitespace-nowrap">
                             <CheckCircle2 className="w-3.5 h-3.5 text-[#009966]" />
                             <span>✓ 唯一正常</span>
                           </span>
@@ -376,7 +376,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       </td>
 
                       {/* Actions */}
-                      <td className="p-3.5 text-right font-sans space-x-1.5">
+                      <td className="p-3.5 text-right font-sans space-x-1.5 whitespace-nowrap">
                         <button
                           onClick={() => onEditInvoice(inv)}
                           className="px-2.5 py-1 border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
