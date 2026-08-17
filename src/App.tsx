@@ -14,7 +14,7 @@ import { ReimbursementCover } from "./components/ReimbursementCover";
 import { BatchImportModal } from "./components/BatchImportModal";
 import { InvoiceDetailModal } from "./components/InvoiceDetailModal";
 import { SettingsModal } from "./components/SettingsModal";
-import { exportInvoicesToExcel, getLastExportInfo, LastExportInfo } from "./utils/exportExcel";
+import { exportInvoicesToExcel, getLastExportInfoAsync, LastExportInfo } from "./utils/exportExcel";
 import { ExcelExportDialog } from "./components/ExcelExportDialog";
 import { generateAndPrintPdf } from "./utils/exportPdf";
 
@@ -151,8 +151,8 @@ export const App: React.FC = () => {
   const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
   const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
 
-  const handleTopNavExportExcel = () => {
-    const historicalInfo = getLastExportInfo();
+  const handleTopNavExportExcel = async () => {
+    const historicalInfo = await getLastExportInfoAsync();
     if (!historicalInfo) {
       exportInvoicesToExcel(invoices, settings, "default");
     } else {

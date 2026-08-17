@@ -19,6 +19,33 @@ export const getLastExportInfo = (): LastExportInfo | null => {
   }
 };
 
+export const checkDiskFileExists = async (fileName: string): Promise<boolean> => {
+  try {
+    const res = await fetch("/api/check-file-exists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName }),
+    });
+    if (!res.ok) return true;
+    const data = await res.json();
+    return Boolean(data.exists);
+  } catch (e) {
+    return true;
+  }
+};
+
+export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> => {
+  const info = getLastExportInfo();
+  if (!info) return null;
+  const existsOnDisk = await checkDiskFileExists(info.fileName);
+  if (!existsOnDisk) {
+    // 磁盘上该文件已被用户删除了，自动清空记忆日志
+    localStorage.removeItem(LAST_EXPORT_KEY);
+    return null;
+  }
+  return info;
+};
+
 export const exportInvoicesToExcel = (
   invoices: InvoiceData[],
   settings?: SystemSettings,

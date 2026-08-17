@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from "express";
 import path from "path";
+import fs from "fs";
+import os from "os";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { parseInvoiceTextWithRules } from "./src/utils/localPdfInvoiceOcr";
@@ -32,6 +34,31 @@ async function startServer() {
   // API Health Check
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // API Endpoint: 检查上次导出的 Excel 文件是否仍然真实存在于 Mac 磁盘 Downloads/Desktop 中
+  app.post("/api/check-file-exists", (req, res) => {
+    try {
+      const { fileName } = req.body;
+      if (!fileName) {
+        return res.json({ exists: false });
+      }
+
+      const homeDir = os.homedir();
+      const possiblePaths = [
+        path.join(homeDir, "Downloads", fileName),
+        path.join(homeDir, "Desktop", fileName),
+        path.join(homeDir, "Documents", fileName),
+      ];
+
+      const foundPath = possiblePaths.find((p) => fs.existsSync(p));
+      if (foundPath) {
+        return res.json({ exists: true, filePath: foundPath });
+      }
+      return res.json({ exists: false });
+    } catch (e) {
+      return res.json({ exists: false });
+    }
   });
 
   // API Endpoint: Intelligent Invoice Parsing (Supports Gemini AI, Baidu OCR, & Local PDF OCR)

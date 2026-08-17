@@ -13,7 +13,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
-import { exportInvoicesToExcel, getLastExportInfo, LastExportInfo } from "../utils/exportExcel";
+import { exportInvoicesToExcel, getLastExportInfoAsync, LastExportInfo } from "../utils/exportExcel";
 import { ExcelExportDialog } from "./ExcelExportDialog";
 
 interface InvoiceLedgerTableProps {
@@ -106,14 +106,14 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   const selectedForPrintCount = invoices.filter((i) => i.selectedForPrint).length;
   const duplicateCount = Object.keys(duplicateMap).length;
 
-  // 触发导出 Excel：智能判定首次导出 vs 再次导出
-  const handleExportButtonClick = () => {
-    const historicalInfo = getLastExportInfo();
+  // 触发导出 Excel：智能判定首次导出 vs 再次导出（包含 Mac 磁盘物理文件存在性检测）
+  const handleExportButtonClick = async () => {
+    const historicalInfo = await getLastExportInfoAsync();
     if (!historicalInfo) {
-      // 首次导出，直接弹出保存对话框另存
+      // 首次导出或磁盘文件已删除，直接弹出保存对话框另存
       exportInvoicesToExcel(invoices, systemSettings, "default");
     } else {
-      // 发现此前导出过文件，弹出智能对话框供选择【追加/更新】还是【另存为新文件】
+      // 发现此前导出过文件且磁盘上该文件真实存在，弹出智能对话框
       setLastExportInfo(historicalInfo);
       setIsExportDialogOpen(true);
     }
