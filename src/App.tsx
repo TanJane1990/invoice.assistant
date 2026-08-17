@@ -73,19 +73,19 @@ export const App: React.FC = () => {
     }
   });
 
-  // 3. 发票列表状态：永久保存于本地 localStorage，关闭软件后重新打开依然保留台账，方便查重比对
+  // 3. 发票列表状态：默认干净的空列表 []，用户未导入前绝不填充示例发票
   const [invoices, setInvoices] = useState<InvoiceData[]>(() => {
     try {
       const saved = localStorage.getItem("saved_invoices_v1");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
-      return SAMPLE_INVOICES;
+      return [];
     } catch {
-      return SAMPLE_INVOICES;
+      return [];
     }
   });
 
