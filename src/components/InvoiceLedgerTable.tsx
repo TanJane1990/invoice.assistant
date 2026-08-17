@@ -124,31 +124,31 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       {/* Top Banner & Audit Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
             台账总发票数
           </div>
-          <div className="text-2xl font-black mt-1 text-slate-900" style={{ color: "#0f172a" }}>
-            {invoices.length} <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>张</span>
+          <div className="text-2xl font-black mt-1 text-slate-900" style={{ color: "#0f172a !important" }}>
+            {invoices.length} <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>张</span>
           </div>
         </div>
 
         <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
             拟排版打印数
           </div>
-          <div className="text-2xl font-black mt-1 text-[#E8000A]" style={{ color: "#E8000A" }}>
+          <div className="text-2xl font-black mt-1 text-[#E8000A]" style={{ color: "#E8000A !important" }}>
             {selectedForPrintCount}{" "}
-            <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+            <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
               / {invoices.length}
             </span>
           </div>
         </div>
 
         <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b !important" }}>
             总金额合计
           </div>
-          <div className="text-2xl font-black mt-1 font-mono text-[#009966]" style={{ color: "#009966" }}>
+          <div className="text-2xl font-black mt-1 font-mono text-[#009966]" style={{ color: "#009966 !important" }}>
             ¥
             {invoices
               .reduce((sum, i) => sum + i.totalAmountWithTax, 0)

@@ -60,7 +60,9 @@ export const exportInvoicesToExcel = (
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "发票台账数据");
 
-  const fileName = customFilename || "发票台账明细表.xlsx";
+  const now = new Date();
+  const timestampStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+  const fileName = customFilename || `发票台账明细表_${timestampStr}.xlsx`;
 
   XLSX.writeFile(workbook, fileName);
 

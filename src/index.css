@@ -15,25 +15,26 @@ body.theme-light {
    ========================================================================== */
 
 /* Dark Headers in Modals & App Bars & Primary Red Buttons: ALWAYS CRISP BRIGHT WHITE TEXT (#ffffff) */
-div.bg-\[\#0E172B\],
-div.bg-\[\#0E172B\] *,
-div.bg-slate-950,
-div.bg-slate-950 *,
-div.bg-slate-900,
-div.bg-slate-900 *,
-.modal-dark-header,
-.modal-dark-header *,
-.bg-\[\#E8000A\],
-.bg-\[\#E8000A\] *,
-.bg-red-600,
-.bg-red-600 *,
-.text-white {
+/* Dark Headers in Modals & App Bars & Primary Red Buttons: ALWAYS CRISP BRIGHT WHITE TEXT (#ffffff) */
+.bg-\[\#0E172B\] h1, .bg-\[\#0E172B\] h2, .bg-\[\#0E172B\] h3, .bg-\[\#0E172B\] h4, .bg-\[\#0E172B\] span, .bg-\[\#0E172B\] p, .bg-\[\#0E172B\] div, .bg-\[\#0E172B\] svg,
+.modal-dark-header, .modal-dark-header *,
+.bg-\[\#E8000A\], .bg-\[\#E8000A\] * {
   color: #ffffff !important;
 }
 
-/* White Card Containers & Modals: CRISP DARK SLATE TEXT (#0f172a) */
-.bg-white p, .bg-white span, .bg-white label, .bg-white th, .bg-white td, .bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
-.bg-slate-50 p, .bg-slate-50 span, .bg-slate-50 label, .bg-slate-50 th, .bg-slate-50 td {
+/* White Card Containers & Modals (excluding dark headers): CRISP DARK SLATE TEXT (#0f172a) */
+.bg-white p:not(.bg-\[\#0E172B\] *),
+.bg-white span:not(.bg-\[\#0E172B\] *),
+.bg-white label:not(.bg-\[\#0E172B\] *),
+.bg-white th, .bg-white td,
+.bg-white h1:not(.bg-\[\#0E172B\] *),
+.bg-white h2:not(.bg-\[\#0E172B\] *),
+.bg-white h3:not(.bg-\[\#0E172B\] *),
+.bg-white h4:not(.bg-\[\#0E172B\] *),
+.bg-slate-50 p:not(.bg-\[\#0E172B\] *),
+.bg-slate-50 span:not(.bg-\[\#0E172B\] *),
+.bg-slate-50 label:not(.bg-\[\#0E172B\] *),
+.bg-slate-50 th, .bg-slate-50 td {
   color: #0f172a !important;
 }
 

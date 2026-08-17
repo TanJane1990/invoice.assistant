@@ -97,10 +97,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 my-8 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800">
+        <div className="modal-dark-header flex items-center justify-between px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800">
           <div className="flex items-center space-x-2">
             <Settings className="w-5 h-5 text-[#E8000A]" style={{ color: "#E8000A" }} />
-            <h3 className="font-extrabold text-base tracking-wide text-white" style={{ color: "#ffffff" }}>
+            <h3 className="font-extrabold text-base tracking-wide text-white" style={{ color: "#ffffff !important" }}>
               智能发票助手 - 系统设置
             </h3>
           </div>
