@@ -175,16 +175,11 @@ export const App: React.FC = () => {
   const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
   const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
 
-  // 高精矢量防错打印
-  const handlePrint = async () => {
+  // 调起标准系统直接打印（直接选择打印机物理打印，不强制下载 PDF）
+  const handlePrint = () => {
     setActiveTab("layout");
-    setTimeout(async () => {
-      const mainEl = document.querySelector<HTMLElement>("main");
-      if (mainEl) {
-        await generateAndPrintPdf(mainEl, `发票拼页排版_A4_${new Date().toISOString().split("T")[0]}.pdf`, printConfig.orientation);
-      } else {
-        window.print();
-      }
+    setTimeout(() => {
+      window.print();
     }, 200);
   };
 
