@@ -48,29 +48,72 @@ textarea::placeholder {
   opacity: 1 !important;
 }
 
-/* Print CSS */
+/* Print CSS - Strictly Isolates A4 Printable Canvas & Cover Page Only */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 0;
   }
 
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 隐掉所有非打印区域（导航栏、顶部控制栏、表格试图、背景层、按钮、提示框、弹窗） */
   .no-print,
   .print\:hidden,
   [data-no-print="true"],
   header,
   nav,
+  button,
+  input,
+  select,
   .header-container,
   .settings-modal,
   .batch-modal,
-  .toast-container {
+  .toast-container,
+  .ledger-table-container,
+  .modal-overlay,
+  .fixed,
+  .sticky {
     display: none !important;
   }
 
-  body {
+  /* 消除屏幕缩放 (zoom transform) 造成的物理打印排版偏斜与边框撕裂 */
+  div,
+  section,
+  main {
+    transform: none !important;
+    transform-origin: top left !important;
+    background-color: transparent !important;
+  }
+
+  /* 强制打印卡片白底黑字并保持精细 1:1 物理像素尺寸 */
+  .a4-print-page {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    width: 210mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
     background-color: #ffffff !important;
-    color: #000000 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 强制锁死发票卡片文字深度对比度，防止黑色模式遗留影响物理打印 */
+  .invoice-card-content,
+  .invoice-card-content * {
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
