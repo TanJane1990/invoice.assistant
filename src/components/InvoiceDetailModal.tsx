@@ -50,28 +50,40 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
       totalAmountWithoutTax: withoutTax,
       totalTaxAmount: tax,
       totalAmountWithTaxCN: numberToRMB(newAmt),
+      items: prev.items && prev.items.length > 0
+        ? prev.items.map((it) => ({ ...it, amount: newAmt }))
+        : [{ id: `item-mod-${Date.now()}`, name: `*${prev.category || "其他"}*物品/服务`, amount: newAmt, quantity: 1 }],
     }));
   };
 
   const handleSave = () => {
+    const finalAmount = Number(form.totalAmountWithTax || 0);
+    const withoutTax = form.totalAmountWithoutTax || Math.round(finalAmount * 0.94 * 100) / 100;
+    const tax = form.totalTaxAmount || Math.round((finalAmount - withoutTax) * 100) / 100;
+
+    const updatedItems = form.items && form.items.length > 0
+      ? form.items.map((it) => ({ ...it, amount: finalAmount }))
+      : [{ id: `item-save-${Date.now()}`, name: `*${form.category || "其他"}*物品/服务`, amount: finalAmount, quantity: 1 }];
+
     const finalInvoice: InvoiceData = {
+      ...form,
       id: form.id || `custom-${Date.now()}`,
       invoiceType: form.invoiceType || "增值税电子普通发票",
       invoiceCode: form.invoiceCode || "",
       invoiceNumber: form.invoiceNumber || `N${Date.now().toString().slice(-8)}`,
       issueDate: form.issueDate || new Date().toISOString().split("T")[0],
-      buyerName: form.buyerName || "示例单位名称",
-      sellerName: form.sellerName || "新建手工发票商户",
-      totalAmountWithoutTax: form.totalAmountWithoutTax || 94.34,
-      totalTaxAmount: form.totalTaxAmount || 5.66,
-      totalAmountWithTax: form.totalAmountWithTax || 100,
-      totalAmountWithTaxCN: form.totalAmountWithTaxCN || numberToRMB(form.totalAmountWithTax || 100),
-      category: form.category || "办公用品",
+      buyerName: form.buyerName || "个人",
+      sellerName: form.sellerName || "出票服务单位",
+      totalAmountWithoutTax: withoutTax,
+      totalTaxAmount: tax,
+      totalAmountWithTax: finalAmount,
+      totalAmountWithTaxCN: form.totalAmountWithTaxCN || numberToRMB(finalAmount),
+      category: form.category || "其他",
       selectedForPrint: true,
       duplicateWarning: false,
       remarks: form.remarks || "手动新建发票",
       importTime: form.importTime || new Date().toLocaleString("zh-CN", { hour12: false }),
-      items: form.items || [],
+      items: updatedItems,
     };
     onSave(finalInvoice);
     onClose();
