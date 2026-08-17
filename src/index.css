@@ -117,13 +117,14 @@ textarea::placeholder {
     print-color-adjust: exact !important;
   }
 
-  /* 报销凭证封面单：强制锁死单页 A4 物理高度 (297mm)，严禁产生跨页缝隙与截断 */
+  /* 报销凭证封面单：强制锁定为 210mm×297mm 物理纵向 A4，绝不可与横向发票拼接，并强制分页 */
   .a4-print-cover-page {
     width: 210mm !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
-    overflow: hidden !important;
-    page-break-after: avoid !important;
+    max-width: 210mm !important;
+    height: auto !important;
+    min-height: 270mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
