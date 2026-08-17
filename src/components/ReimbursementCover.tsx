@@ -202,10 +202,10 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         </div>
       )}
 
-      {/* Printable Paper Voucher (1:1 Match to Image 3) */}
+      {/* Printable Paper Voucher (Full A4 Paper Physical Layout - Match Image 1) */}
       <div
-        className="a4-print-page bg-white text-slate-900 p-8 rounded-xl shadow-xl border border-slate-200 mx-auto font-sans"
-        style={{ width: "210mm", boxSizing: "border-box", color: "#0f172a" }}
+        className="a4-print-page bg-white text-slate-900 p-10 shadow-2xl border border-slate-300 mx-auto font-sans relative"
+        style={{ width: "210mm", minHeight: "297mm", boxSizing: "border-box", color: "#0f172a" }}
       >
         {/* Title (Matching Image 3) */}
         <div className="text-center mb-4">

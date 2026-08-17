@@ -124,31 +124,31 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       {/* Top Banner & Audit Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+          <div className="text-xs font-bold text-slate-700" style={{ color: "#0f172a" }}>
             台账总发票数
           </div>
           <div className="text-2xl font-black mt-1 text-slate-900" style={{ color: "#0f172a" }}>
-            {invoices.length} <span className="text-xs font-bold text-slate-700" style={{ color: "#334155" }}>张</span>
+            {invoices.length} <span className="text-xs font-bold text-slate-900" style={{ color: "#0f172a" }}>张</span>
           </div>
         </div>
 
         <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+          <div className="text-xs font-bold text-slate-700" style={{ color: "#0f172a" }}>
             拟排版打印数
           </div>
           <div className="text-2xl font-black mt-1 text-[#E8000A]" style={{ color: "#E8000A" }}>
             {selectedForPrintCount}{" "}
-            <span className="text-xs font-bold text-slate-500" style={{ color: "#64748b" }}>
+            <span className="text-xs font-bold text-slate-900" style={{ color: "#0f172a" }}>
               / {invoices.length}
             </span>
           </div>
         </div>
 
         <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="text-xs font-bold text-slate-700" style={{ color: "#1e293b" }}>
+          <div className="text-xs font-bold text-slate-700" style={{ color: "#0f172a" }}>
             总金额合计
           </div>
-          <div className="text-2xl font-black mt-1 font-mono text-[#009966]" style={{ color: "#009966" }}>
+          <div className="text-2xl font-black mt-1 font-mono text-slate-900" style={{ color: "#0f172a" }}>
             ¥
             {invoices
               .reduce((sum, i) => sum + i.totalAmountWithTax, 0)
@@ -164,13 +164,13 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
               : "bg-white border-slate-200"
           }`}
         >
-          <div className="flex items-center justify-between text-xs font-bold text-slate-800" style={{ color: "#1e293b" }}>
+          <div className="flex items-center justify-between text-xs font-bold text-slate-900" style={{ color: "#0f172a" }}>
             <span>相同发票号查重预警</span>
             {duplicateCount > 0 && <ShieldAlert className="w-4 h-4 animate-pulse text-amber-600" />}
           </div>
           <div className="text-2xl font-black mt-1 text-slate-900" style={{ color: "#0f172a" }}>
             {duplicateCount}{" "}
-            <span className="text-xs font-bold text-slate-600" style={{ color: "#475569" }}>
+            <span className="text-xs font-bold text-slate-900" style={{ color: "#0f172a" }}>
               {duplicateCount > 0 ? `张发票存在重复 (${duplicateGroupCount}组相同色块标出)` : "无重复发票"}
             </span>
           </div>

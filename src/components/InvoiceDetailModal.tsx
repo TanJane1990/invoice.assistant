@@ -101,27 +101,27 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="font-extrabold block mb-1.5 text-slate-900" style={{ color: "#0f172a" }}>
-                发票类型 (支持选择或自定义输入)
+                发票类型 (支持下拉选择)
               </label>
-              <input
-                type="text"
-                list="invoice-types-list"
-                value={form.invoiceType || ""}
+              <select
+                value={form.invoiceType || "电子发票(普通发票)"}
                 onChange={(e) => setForm({ ...form, invoiceType: e.target.value })}
-                placeholder="选择或输入中国标准发票种类"
                 style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
-                className="w-full p-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-bold"
-              />
-              <datalist id="invoice-types-list">
-                <option value="增值税电子普通发票" />
-                <option value="增值税电子专用发票" />
-                <option value="电子发票(普通发票)" />
-                <option value="电子发票(专用发票)" />
-                <option value="铁路电子客票" />
-                <option value="航空运输电子客票行程单" />
-                <option value="道路通行费电子普通发票" />
-                <option value="通用定额发票" />
-              </datalist>
+                className="w-full p-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-bold cursor-pointer"
+              >
+                <option value="电子发票(普通发票)" style={{ color: "#0f172a" }}>电子发票（普通发票）</option>
+                <option value="电子发票(专用发票)" style={{ color: "#0f172a" }}>电子发票（专用发票）</option>
+                <option value="增值税电子普通发票" style={{ color: "#0f172a" }}>增值税电子普通发票</option>
+                <option value="增值税电子专用发票" style={{ color: "#0f172a" }}>增值税电子专用发票</option>
+                <option value="增值税普通发票(纸质)" style={{ color: "#0f172a" }}>增值税普通发票（纸质）</option>
+                <option value="增值税专用发票(纸质)" style={{ color: "#0f172a" }}>增值税专用发票（纸质）</option>
+                <option value="铁路电子客票" style={{ color: "#0f172a" }}>铁路电子客票</option>
+                <option value="航空运输电子客票行程单" style={{ color: "#0f172a" }}>航空运输电子客票行程单</option>
+                <option value="道路通行费电子普通发票" style={{ color: "#0f172a" }}>道路通行费电子普通发票</option>
+                <option value="通用定额发票" style={{ color: "#0f172a" }}>通用定额发票</option>
+                <option value="海关缴款书" style={{ color: "#0f172a" }}>海关缴款书</option>
+                <option value="其他发票" style={{ color: "#0f172a" }}>其他发票</option>
+              </select>
             </div>
 
             <div>

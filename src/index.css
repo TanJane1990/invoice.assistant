@@ -11,23 +11,28 @@ body.theme-light {
 }
 
 /* ==========================================================================
-   1. Universal HIGH-SPECIFICITY FORCE-DARK-TEXT Rule inside White Containers
+   1. Universal High-Contrast Rules for Light/White Cards & Dark Headers
    ========================================================================== */
-.bg-white,
-.bg-white p, .bg-white span, .bg-white label, .bg-white th, .bg-white td, .bg-white div, .bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
-.bg-slate-50,
-.bg-slate-50 p, .bg-slate-50 span, .bg-slate-50 label, .bg-slate-50 th, .bg-slate-50 td, .bg-slate-50 div {
-  color: #0f172a !important;
-}
 
-/* Re-grant bright white text ONLY to dark headers & red primary buttons inside white containers */
+/* Dark Headers in Modals & App Bars: ALWAYS CRISP BRIGHT WHITE TEXT (#ffffff) */
+div.bg-\[\#0E172B\],
+div.bg-\[\#0E172B\] *,
+div.bg-slate-950,
+div.bg-slate-950 *,
+div.bg-slate-900,
+div.bg-slate-900 *,
 .modal-dark-header,
-.modal-dark-header *,
-.text-white {
+.modal-dark-header * {
   color: #ffffff !important;
 }
 
-/* Special preservation for colored badges/accents inside white containers */
+/* White Card Containers & Modals: CRISP DARK SLATE TEXT (#0f172a) */
+.bg-white p, .bg-white span, .bg-white label, .bg-white th, .bg-white td, .bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
+.bg-slate-50 p, .bg-slate-50 span, .bg-slate-50 label, .bg-slate-50 th, .bg-slate-50 td {
+  color: #0f172a !important;
+}
+
+/* Special preservation for colored badges/accents */
 .text-red-500,
 .text-red-600,
 .text-\[\#E8000A\] {
