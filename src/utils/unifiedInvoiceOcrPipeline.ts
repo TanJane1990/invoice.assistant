@@ -3,6 +3,7 @@ import { parseInvoiceTextWithRules, ParsedInvoiceResult } from "./localPdfInvoic
 import { convertPdfToImageDataUrl, extractTextFromPdf } from "./pdfToImage";
 import { scanInvoiceQrCodeFromBase64, QrInvoiceResult } from "./qrInvoiceOcr";
 import { numberToRMB } from "./numberToRMB";
+import { recognizeImageTextWithTesseract } from "./imageOcr";
 
 export interface UnifiedOcrResult {
   invoice: InvoiceData;
@@ -33,13 +34,19 @@ export async function processInvoiceFileUnified(
   let previewFileUrl = fileBase64;
   let extractedPdfText = "";
 
-  // Step 1: 如果是 PDF，渲染 300DPI 图像并提取 PDF 矢量文本
+  // Step 1: 如果是 PDF，渲染 300DPI 图像并提取 PDF 矢量文本；如果是图片，调用离线 OCR
   if (isPdf) {
     try {
       previewFileUrl = await convertPdfToImageDataUrl(fileBase64);
       extractedPdfText = await extractTextFromPdf(fileBase64);
     } catch (e) {
       console.warn("PDF render/extract info:", e);
+    }
+  } else {
+    try {
+      extractedPdfText = await recognizeImageTextWithTesseract(fileBase64);
+    } catch (e) {
+      console.warn("Image OCR info:", e);
     }
   }
 
