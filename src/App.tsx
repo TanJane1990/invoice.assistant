@@ -275,7 +275,7 @@ export const App: React.FC = () => {
                 selectedForPrint: true,
                 items: [],
               };
-              setInvoices([newInv, ...invoices]);
+              // 仅打开编辑草稿弹窗，不提前将未提交的发票写入台账
               setEditingInvoice(newInv);
             }}
           />
@@ -310,7 +310,14 @@ export const App: React.FC = () => {
         onClose={() => setEditingInvoice(null)}
         theme={theme}
         onSave={(updated) => {
-          setInvoices((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+          // 仅在用户明确点击【保存】按钮时，才真正插入或更新台账发票
+          setInvoices((prev) => {
+            const exists = prev.some((i) => i.id === updated.id);
+            if (exists) {
+              return prev.map((i) => (i.id === updated.id ? updated : i));
+            }
+            return [updated, ...prev];
+          });
           setEditingInvoice(null);
         }}
       />
