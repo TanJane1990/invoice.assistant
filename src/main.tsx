@@ -30,20 +30,23 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-[#0E172B] text-white flex flex-col items-center justify-center p-6 font-sans">
-          <div className="bg-white rounded-3xl p-8 max-w-md text-center shadow-2xl border border-slate-200">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-[#E8000A] text-2xl font-black">
+          <div className="bg-white rounded-3xl p-8 max-w-md text-center shadow-2xl border border-slate-200" style={{ backgroundColor: "#ffffff" }}>
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-black" style={{ backgroundColor: "#fee2e2", color: "#E8000A" }}>
               ⚠️
             </div>
-            <h2 className="text-xl font-extrabold text-slate-900 mb-2">应用运行遇到轻微异常</h2>
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-              页面已被捕获保护，点击下方按钮即可快速恢复运行。
+            <h2 className="text-xl font-extrabold mb-2" style={{ color: "#0f172a" }}>
+              应用运行遇到轻微异常
+            </h2>
+            <p className="text-xs mb-6 leading-relaxed" style={{ color: "#475569" }}>
+              {this.state.error?.message || "页面已被捕获保护，点击下方按钮即可快速恢复运行。"}
             </p>
             <button
               onClick={() => {
                 this.setState({ hasError: false, error: null });
                 window.location.reload();
               }}
-              className="w-full py-3 bg-[#E8000A] hover:bg-[#C80009] text-white font-extrabold rounded-xl text-sm transition-colors cursor-pointer shadow-md"
+              style={{ backgroundColor: "#E8000A", color: "#ffffff" }}
+              className="w-full py-3 hover:bg-[#C80009] text-white font-extrabold rounded-xl text-sm transition-colors cursor-pointer shadow-md"
             >
               🔄 重新载入应用
             </button>

@@ -33,10 +33,15 @@ const DEFAULT_SETTINGS: SystemSettings = {
 };
 
 export const App: React.FC = () => {
-  // 核心状态：当前 Tab、皮肤主题、打印/排版配置
+  // 1. 所有 useState Hooks 统一在最顶层声明（避免 React Hook 顺序错乱异常）
   const [activeTab, setActiveTab] = useState<"layout" | "ledger" | "cover">("layout");
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [zoom, setZoom] = useState<number>(0.9);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(null);
+  const [isTopNavExportDialogOpen, setIsTopNavExportDialogOpen] = useState(false);
+  const [topNavLastExportInfo, setTopNavLastExportInfo] = useState<LastExportInfo | null>(null);
 
   const [printConfig, setPrintConfig] = useState<PrintConfig>({
     gridMode: "4",
@@ -55,7 +60,6 @@ export const App: React.FC = () => {
       const saved = localStorage.getItem("system_settings_v1");
       if (saved) {
         const parsed = JSON.parse(saved);
-        // 自动强行清除浏览器 localStorage 中残留的历史公司名称
         if (parsed.defaultCompany && (parsed.defaultCompany.includes("云启智创") || parsed.defaultCompany.includes("北京"))) {
           parsed.defaultCompany = "";
           localStorage.setItem("system_settings_v1", JSON.stringify(parsed));
@@ -68,13 +72,8 @@ export const App: React.FC = () => {
     }
   });
 
-  // 2. 发票列表状态：默认每次打开软件均为干净的空列表 [] (匹配用户要求图1效果)
+  // 3. 发票列表状态：默认每次打开软件均为干净的空列表 []
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
-
-  // 3. 模态框/弹窗控制状态
-  const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(null);
 
   // 自动将皮肤与设置持久化到本地
   useEffect(() => {
@@ -150,9 +149,6 @@ export const App: React.FC = () => {
 
   const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
   const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
-
-  const [isTopNavExportDialogOpen, setIsTopNavExportDialogOpen] = useState(false);
-  const [topNavLastExportInfo, setTopNavLastExportInfo] = useState<LastExportInfo | null>(null);
 
   const handleTopNavExportExcel = () => {
     const historicalInfo = getLastExportInfo();
