@@ -1,56 +1,41 @@
-import React, { useState, useEffect } from "react";
-import { InvoiceData, ReimbursementCoverData, SystemSettings, PrintConfig } from "../types";
+import React, { useState } from "react";
+import { InvoiceData, SystemSettings } from "../types";
+import { FileText, Edit2, Printer } from "lucide-react";
 import { numberToRMB } from "../utils/numberToRMB";
-import { Printer, Edit2, Save, FileText } from "lucide-react";
 
 interface ReimbursementCoverProps {
-  invoices: InvoiceData[];
-  defaultSettings?: SystemSettings;
-  config?: PrintConfig;
-  onOpenBatchImport?: () => void;
+  selectedInvoices: InvoiceData[];
+  settings: SystemSettings;
   theme?: "light" | "dark";
+  onPrintCover?: () => void;
 }
 
 export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
-  invoices,
-  defaultSettings,
-  onOpenBatchImport,
+  selectedInvoices,
+  settings,
   theme = "dark",
+  onPrintCover,
 }) => {
   const isDark = theme === "dark";
-  const selectedInvoices = invoices.filter((i) => i.selectedForPrint);
 
-  const [formData, setFormData] = useState<ReimbursementCoverData>({
-    companyName: defaultSettings?.defaultCompany || "示例单位名称",
-    department: defaultSettings?.defaultDepartment || "猫粮研发部",
-    applicant: defaultSettings?.defaultApplicant || "张喵喵",
-    reimbursementNo: `BX-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-001`,
+  const [formData, setFormData] = useState({
+    companyName: settings.defaultCompany || "示例单位名称",
+    department: settings.defaultDepartment || "猫粮研发部",
+    applicant: settings.defaultApplicant || "张喵喵",
+    reimbursementNo: `BX-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-001`,
     date: new Date().toISOString().split("T")[0],
+    approver: settings.defaultApprover || "李喵喵",
+    financeAuditor: settings.defaultFinanceAuditor || "陈喵喵",
+    cashier: settings.defaultCashier || "王喵喵",
     reason: "三季度客户拜访与办公用品出差报销",
-    approver: defaultSettings?.defaultApprover || "李喵喵",
-    financeAuditor: defaultSettings?.defaultFinanceAuditor || "陈喵喵",
-    cashier: defaultSettings?.defaultCashier || "王喵喵",
   });
-
-  useEffect(() => {
-    if (defaultSettings) {
-      setFormData((prev) => ({
-        ...prev,
-        companyName: defaultSettings.defaultCompany || prev.companyName,
-        department: defaultSettings.defaultDepartment || prev.department,
-        applicant: defaultSettings.defaultApplicant || prev.applicant,
-        approver: defaultSettings.defaultApprover || prev.approver,
-        financeAuditor: defaultSettings.defaultFinanceAuditor || prev.financeAuditor,
-        cashier: defaultSettings.defaultCashier || prev.cashier,
-      }));
-    }
-  }, [defaultSettings]);
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // Group by category summary
+  // Group invoices by category and calculate total
   const categorySummary = selectedInvoices.reduce((acc, inv) => {
-    acc[inv.category] = (acc[inv.category] || 0) + inv.totalAmountWithTax;
+    const cat = inv.category || "其他";
+    acc[cat] = (acc[cat] || 0) + inv.totalAmountWithTax;
     return acc;
   }, {} as Record<string, number>);
 
@@ -59,260 +44,296 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
     0
   );
 
-  if (selectedInvoices.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <div className={`flex flex-col items-center justify-center min-h-[55vh] p-8 text-center rounded-2xl border-2 border-dashed my-4 transition-all ${
+  return (
+    <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
+      {/* Action Header */}
+      <div
+        className={`no-print p-4 rounded-2xl border flex items-center justify-between shadow-md transition-colors ${
           isDark
-            ? "bg-slate-900/50 border-slate-800 text-slate-400"
-            : "bg-white/80 border-slate-200 text-slate-500 shadow-2xs"
-        }`}>
-          <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-4 shadow-xs">
-            <FileText className="w-8 h-8" />
+            ? "border-[#1E293B] bg-[#121827] text-white"
+            : "border-slate-200 bg-white text-slate-900"
+        }`}
+      >
+        <div className="flex items-center space-x-2">
+          <FileText className="w-5 h-5 text-red-500" />
+          <div>
+            <h3 className="font-extrabold text-sm text-white" style={{ color: "#ffffff" }}>
+              企业费用报销凭证汇总单
+            </h3>
+            <p className="text-xs text-slate-400 font-medium" style={{ color: "#94a3b8" }}>
+              可作为发票贴单最上层的报销封面单，已选包含 {selectedInvoices.length} 张发票，总金额 ¥
+              {grandTotal.toFixed(2)}
+            </p>
           </div>
-          <h3 className={`text-lg font-bold mb-1 ${isDark ? "text-slate-200" : "text-slate-800"}`}>
-            报销汇总封面单为空
-          </h3>
-          <p className="text-sm text-slate-400 max-w-md mb-6">
-            尚无勾选或识别的发票。请批量上传电子发票文件或在发票台账勾选发票，系统将自动汇总并生成专业报销封面。
-          </p>
-          {onOpenBatchImport && (
+        </div>
+
+        <div className="flex items-center space-x-3 text-xs">
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-xl border font-bold transition cursor-pointer ${
+              isEditing
+                ? "bg-red-600 text-white border-red-600"
+                : isDark
+                ? "bg-[#1E293B] hover:bg-[#334155] text-white border-[#334155]"
+                : "bg-white hover:bg-slate-100 text-slate-800 border-slate-300"
+            }`}
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            <span>{isEditing ? "完成编辑" : "编辑封面信息"}</span>
+          </button>
+
+          {onPrintCover && (
             <button
-              onClick={onOpenBatchImport}
-              className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium text-xs rounded-xl shadow-md transition-all cursor-pointer"
+              onClick={onPrintCover}
+              className="flex items-center space-x-1 px-4 py-1.5 bg-[#E8000A] hover:bg-[#C80009] text-white font-bold rounded-xl shadow-sm transition cursor-pointer"
             >
-              立即批量导入发票
+              <Printer className="w-3.5 h-3.5" />
+              <span>打印此封面单</span>
             </button>
           )}
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      {/* Top Controls (hidden in print) */}
-      <div className={`no-print p-4 rounded-xl border shadow-2xs mb-6 flex items-center justify-between ${isDark ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-        <div>
-          <h3 className={`font-bold text-sm ${isDark ? "text-slate-100" : "text-slate-800"}`}>
-            企业费用报销凭证汇总单
-          </h3>
-          <p className="text-xs text-slate-400">
-            可作为发票贴单最上层的报销封面单，已选包含 {selectedInvoices.length}{" "}
-            张发票，总金额 ¥{grandTotal.toFixed(2)}
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className={`flex items-center space-x-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer border ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"}`}
-          >
-            {isEditing ? (
-              <>
-                <Save className={`w-3.5 h-3.5 ${isDark ? "text-emerald-400" : "text-emerald-600"}`} />
-                <span>保存信息</span>
-              </>
-            ) : (
-              <>
-                <Edit2 className="w-3.5 h-3.5" />
-                <span>编辑封面信息</span>
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="flex items-center space-x-1 px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg shadow-2xs transition-all cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>打印此封面单</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Editable Form Modal / Drawer if isEditing */}
+      {/* Edit Form Drawer */}
       {isEditing && (
-        <div className={`no-print p-4 rounded-xl border mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs ${isDark ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-          <div>
-            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>公司/单位名称</label>
-            <input
-              type="text"
-              value={formData.companyName}
-              onChange={(e) =>
-                setFormData({ ...formData, companyName: e.target.value })
-              }
-              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
-            />
-          </div>
-          <div>
-            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>报销部门</label>
-            <input
-              type="text"
-              value={formData.department}
-              onChange={(e) =>
-                setFormData({ ...formData, department: e.target.value })
-              }
-              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
-            />
-          </div>
-          <div>
-            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>报销人</label>
-            <input
-              type="text"
-              value={formData.applicant}
-              onChange={(e) =>
-                setFormData({ ...formData, applicant: e.target.value })
-              }
-              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
-            />
-          </div>
-          <div>
-            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>报销单号</label>
-            <input
-              type="text"
-              value={formData.reimbursementNo}
-              onChange={(e) =>
-                setFormData({ ...formData, reimbursementNo: e.target.value })
-              }
-              className={`w-full p-2 border rounded-lg font-mono ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
-            />
-          </div>
-          <div>
-            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>主管审批人</label>
-            <input
-              type="text"
-              value={formData.approver}
-              onChange={(e) =>
-                setFormData({ ...formData, approver: e.target.value })
-              }
-              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
-            />
-          </div>
-          <div>
-            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>财务复核人</label>
-            <input
-              type="text"
-              value={formData.financeAuditor}
-              onChange={(e) =>
-                setFormData({ ...formData, financeAuditor: e.target.value })
-              }
-              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
-            />
-          </div>
-          <div>
-            <label className={`block mb-1 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>出纳或经办人</label>
-            <input
-              type="text"
-              value={formData.cashier}
-              onChange={(e) =>
-                setFormData({ ...formData, cashier: e.target.value })
-              }
-              className={`w-full p-2 border rounded-lg ${isDark ? "bg-slate-800 text-slate-100 border-slate-700" : "bg-white text-slate-900 border-slate-300"}`}
-            />
+        <div
+          className={`no-print p-5 rounded-2xl border space-y-4 text-xs ${
+            isDark
+              ? "bg-[#121827] border-[#1E293B] text-slate-200"
+              : "bg-white border-slate-200 text-slate-800"
+          }`}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block mb-1 font-bold">单位名称</label>
+              <input
+                type="text"
+                value={formData.companyName}
+                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-bold">报销部门</label>
+              <input
+                type="text"
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-bold">报销申请人</label>
+              <input
+                type="text"
+                value={formData.applicant}
+                onChange={(e) => setFormData({ ...formData, applicant: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-bold">报销单号</label>
+              <input
+                type="text"
+                value={formData.reimbursementNo}
+                onChange={(e) => setFormData({ ...formData, reimbursementNo: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold font-mono"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-bold">主管审批人</label>
+              <input
+                type="text"
+                value={formData.approver}
+                onChange={(e) => setFormData({ ...formData, approver: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-bold">财务复核人</label>
+              <input
+                type="text"
+                value={formData.financeAuditor}
+                onChange={(e) => setFormData({ ...formData, financeAuditor: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-bold">出纳或经办人</label>
+              <input
+                type="text"
+                value={formData.cashier}
+                onChange={(e) => setFormData({ ...formData, cashier: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block mb-1 font-bold">报销事由</label>
+              <input
+                type="text"
+                value={formData.reason}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
           </div>
         </div>
       )}
 
-      {/* Printable Paper Voucher */}
+      {/* Printable Paper Voucher (1:1 Match to Image 3) */}
       <div
-        className="a4-print-page bg-white text-slate-900 p-8 rounded-xl shadow-xl border border-slate-200 mx-auto"
+        className="a4-print-page bg-white text-slate-900 p-8 rounded-xl shadow-xl border border-slate-200 mx-auto font-sans"
         style={{ width: "210mm", boxSizing: "border-box", color: "#0f172a" }}
       >
-        {/* Paper Voucher Title */}
-        <div className="border-b-2 border-slate-900 pb-4 mb-6 text-center">
-          <h2 className="text-2xl font-extrabold tracking-widest font-serif text-slate-900" style={{ color: "#0f172a" }}>
-            {formData.companyName} 费用报销汇总单
+        {/* Title (Matching Image 3) */}
+        <div className="text-center mb-4">
+          <h2
+            className="text-2xl font-extrabold tracking-[0.2em] font-serif text-slate-900 border-b-2 border-slate-900 pb-2 inline-block px-4"
+            style={{ color: "#0f172a" }}
+          >
+            费 用 报 销 凭 证 单
           </h2>
-          <p className="text-xs text-slate-600 font-mono mt-1" style={{ color: "#475569" }}>
-            单号: {formData.reimbursementNo} | 日期: {formData.date}
-          </p>
         </div>
 
-        {/* Voucher Info Fields */}
-        <div className="grid grid-cols-3 gap-4 mb-6 text-xs border-b border-slate-200 pb-4">
+        {/* Sub-header info (Matching Image 3) */}
+        <div className="flex items-center justify-between text-xs font-semibold mb-3 border-b border-slate-800 pb-2" style={{ color: "#0f172a" }}>
           <div>
-            <span className="text-slate-600" style={{ color: "#475569" }}>报销部门: </span>
-            <span className="font-bold text-slate-900" style={{ color: "#0f172a" }}>{formData.department}</span>
+            <span>报销部门: </span>
+            <span className="font-bold">{formData.department}</span>
           </div>
           <div>
-            <span className="text-slate-600" style={{ color: "#475569" }}>报销申请人: </span>
-            <span className="font-bold text-slate-900" style={{ color: "#0f172a" }}>{formData.applicant}</span>
+            <span>报销单号: </span>
+            <span className="font-mono font-bold">{formData.reimbursementNo}</span>
           </div>
           <div>
-            <span className="text-slate-600" style={{ color: "#475569" }}>附发票张数: </span>
-            <span className="font-bold text-[#E8000A] font-mono text-sm" style={{ color: "#E8000A" }}>
-              {selectedInvoices.length} 张
-            </span>
+            <span>填单日期: </span>
+            <span className="font-mono font-bold">{formData.date}</span>
           </div>
         </div>
 
-        {/* Category breakdown table */}
-        <table className="w-full text-xs border-collapse border border-slate-400 mb-6" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-          <thead>
-            <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-400" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-              <th className="border border-slate-400 p-2 text-center w-12" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>序号</th>
-              <th className="border border-slate-400 p-2 text-left" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>费用大类</th>
-              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>包含发票张数</th>
-              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>小计金额 (元)</th>
-            </tr>
-          </thead>
+        {/* Top Summary Table (Matching Image 3) */}
+        <table className="w-full text-xs border-collapse border border-slate-800 mb-4" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
           <tbody>
-            {Object.entries(categorySummary).map(([cat, amt], idx) => {
-              const count = selectedInvoices.filter((i) => i.category === cat).length;
-              return (
-                <tr key={cat} className="border-b border-slate-400" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-                  <td className="border border-slate-400 p-2 text-center font-mono text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-                    {idx + 1}
-                  </td>
-                  <td className="border border-slate-400 p-2 font-bold text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-                    {cat}
-                  </td>
-                  <td className="border border-slate-400 p-2 text-right font-mono text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-                    {count} 张
-                  </td>
-                  <td className="border border-slate-400 p-2 text-right font-mono font-bold text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-                    ¥{(amt as number).toFixed(2)}
-                  </td>
-                </tr>
-              );
-            })}
+            <tr className="border-b border-slate-800" style={{ borderColor: "#1e293b" }}>
+              <td className="p-2 border-r border-slate-800 font-bold text-center bg-slate-100 w-20" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+                报销人
+              </td>
+              <td className="p-2 border-r border-slate-800 text-left font-bold w-48" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+                {formData.applicant}
+              </td>
+              <td className="p-2 border-r border-slate-800 font-bold text-center bg-slate-100 w-28" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+                附发票张数
+              </td>
+              <td className="p-2 text-left font-bold text-[#E8000A]" style={{ color: "#E8000A" }}>
+                {selectedInvoices.length} 张
+              </td>
+            </tr>
+            <tr>
+              <td className="p-2 border-r border-slate-800 font-bold text-center bg-slate-100" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+                报销事由
+              </td>
+              <td colSpan={3} className="p-2 text-left font-medium" style={{ color: "#0f172a" }}>
+                {formData.reason}
+              </td>
+            </tr>
           </tbody>
-          <tfoot>
-            <tr className="bg-slate-50 font-bold border-t-2 border-slate-400" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-                报销金额合计 (大写)
-              </td>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-serif text-sm text-[#E8000A] font-bold" style={{ borderColor: '#94a3b8', color: "#E8000A" }}>
-                {numberToRMB(grandTotal)}
-              </td>
-            </tr>
-            <tr className="bg-slate-50 font-bold" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
-                报销金额合计 (小写)
-              </td>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-mono text-base text-[#E8000A] font-extrabold" style={{ borderColor: '#94a3b8', color: "#E8000A" }}>
-                ¥{grandTotal.toFixed(2)}
-              </td>
-            </tr>
-          </tfoot>
         </table>
 
-        {/* Approval Signatures */}
-        <div className="grid grid-cols-4 gap-2 pt-6 text-xs text-slate-700 font-medium" style={{ color: "#334155" }}>
+        {/* Category Breakdown Table (Matching Image 3) */}
+        <div className="border border-slate-800 mb-4" style={{ borderColor: "#1e293b" }}>
+          <div className="bg-slate-100 text-center py-1.5 font-bold text-xs border-b border-slate-800 tracking-wider" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+            费 用 分 类 销 账 明 细 汇 总
+          </div>
+          <table className="w-full text-xs border-collapse" style={{ color: "#0f172a" }}>
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-50 font-bold" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+                <th className="p-2 text-left border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>费用类别</th>
+                <th className="p-2 text-center border-r border-slate-800 w-32" style={{ borderColor: "#1e293b", color: "#0f172a" }}>包含笔数</th>
+                <th className="p-2 text-right w-36" style={{ color: "#0f172a" }}>小计金额 (元)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(categorySummary).map(([cat, amt]) => {
+                const count = selectedInvoices.filter((i) => i.category === cat).length;
+                return (
+                  <tr key={cat} className="border-b border-slate-800 last:border-b-0" style={{ borderColor: "#1e293b", color: "#0f172a" }}>
+                    <td className="p-2 font-bold border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>{cat}</td>
+                    <td className="p-2 text-center font-mono border-r border-slate-800" style={{ borderColor: "#1e293b", color: "#0f172a" }}>{count} 笔</td>
+                    <td className="p-2 text-right font-mono font-bold" style={{ color: "#0f172a" }}>¥{amt.toFixed(2)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Grand Total Bar (Matching Image 3) */}
+        <div className="border-2 border-slate-900 p-2.5 flex items-center justify-between text-xs font-bold mb-5 bg-white" style={{ borderColor: "#0f172a", color: "#0f172a" }}>
+          <div>
+            <span>报销金额合计 (大写): </span>
+            <span className="text-[#E8000A] font-serif text-sm ml-1" style={{ color: "#E8000A" }}>
+              {numberToRMB(grandTotal)}
+            </span>
+          </div>
+          <div className="text-base font-mono font-extrabold" style={{ color: "#0f172a" }}>
+            ¥{grandTotal.toFixed(2)}
+          </div>
+        </div>
+
+        {/* Attachment Invoice Itemization Table (Matching Image 3) */}
+        <div className="mb-6 space-y-1">
+          <div className="text-[11px] font-bold text-slate-700" style={{ color: "#334155" }}>
+            附件发票明细清单:
+          </div>
+          <table className="w-full text-[11px] border-collapse border border-slate-300" style={{ color: "#0f172a" }}>
+            <thead>
+              <tr className="bg-slate-100 border-b border-slate-300 font-bold" style={{ color: "#0f172a" }}>
+                <th className="p-1.5 text-left border-r border-slate-300">发票号码</th>
+                <th className="p-1.5 text-left border-r border-slate-300 w-24">开票日期</th>
+                <th className="p-1.5 text-left border-r border-slate-300">开票单位</th>
+                <th className="p-1.5 text-center border-r border-slate-300 w-16">类别</th>
+                <th className="p-1.5 text-right w-20">金额 (元)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedInvoices.map((inv) => (
+                <tr key={inv.id} className="border-b border-slate-200 font-mono text-[11px]" style={{ color: "#0f172a" }}>
+                  <td className="p-1.5 border-r border-slate-200 font-bold">{inv.invoiceNumber}</td>
+                  <td className="p-1.5 border-r border-slate-200">{inv.issueDate}</td>
+                  <td className="p-1.5 border-r border-slate-200 font-sans truncate max-w-[180px]">{inv.sellerName || "-"}</td>
+                  <td className="p-1.5 border-r border-slate-200 text-center font-sans">{inv.category}</td>
+                  <td className="p-1.5 text-right font-bold">¥{inv.totalAmountWithTax.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Approval Signatures Footer (Matching Image 3) */}
+        <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-800 text-xs font-semibold text-slate-800" style={{ color: "#1e293b" }}>
           <div>
             <span>主管审批: </span>
-            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.approver}</span>
+            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.approver}</span>
           </div>
           <div>
             <span>财务复核: </span>
-            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.financeAuditor}</span>
+            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.financeAuditor}</span>
           </div>
           <div>
-            <span>出纳领款: </span>
-            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.cashier}</span>
+            <span>出纳或经办人: </span>
+            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.cashier}</span>
           </div>
           <div>
             <span>报销人签章: </span>
-            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.applicant}</span>
+            <span className="font-bold underline" style={{ color: "#0f172a" }}>{formData.applicant}</span>
           </div>
         </div>
       </div>
