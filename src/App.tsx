@@ -14,7 +14,6 @@ import { ReimbursementCover } from "./components/ReimbursementCover";
 import { BatchImportModal } from "./components/BatchImportModal";
 import { InvoiceDetailModal } from "./components/InvoiceDetailModal";
 import { SettingsModal } from "./components/SettingsModal";
-import { CustomDialogModal, DialogOptions } from "./components/CustomDialogModal";
 import { exportInvoicesToExcel } from "./utils/exportExcel";
 import { generateAndPrintPdf } from "./utils/exportPdf";
 
@@ -43,7 +42,7 @@ export const App: React.FC = () => {
   const [printConfig, setPrintConfig] = useState<PrintConfig>({
     gridMode: "4",
     paperType: "A4",
-    orientation: "landscape",
+    orientation: "portrait",
     showCropLines: true,
     showCategoryBadge: true,
     marginSize: "normal",
@@ -95,9 +94,8 @@ export const App: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(null);
-  const [dialogOptions, setDialogOptions] = useState<DialogOptions | null>(null);
 
-  // 自动将发票数据持久化到本地
+  // 自动将皮肤与发票数据持久化到本地
   useEffect(() => {
     try {
       localStorage.setItem("app_theme_v1", theme);
@@ -105,8 +103,10 @@ export const App: React.FC = () => {
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
       document.body.classList.add("theme-dark", "dark");
+      document.body.classList.remove("theme-light");
     } else {
       document.documentElement.classList.remove("dark");
+      document.body.classList.add("theme-light");
       document.body.classList.remove("theme-dark", "dark");
     }
   }, [theme]);
@@ -115,94 +115,68 @@ export const App: React.FC = () => {
     if (settings.autoSaveInvoices) {
       try {
         localStorage.setItem("invoice_app_data", JSON.stringify(invoices));
+        localStorage.setItem("system_settings_v1", JSON.stringify(settings));
       } catch (e) {
-        console.error("保存发票台账至本地失败:", e);
+        console.warn("Save failed:", e);
       }
     }
-  }, [invoices, settings.autoSaveInvoices]);
+  }, [invoices, settings]);
 
-  // 计算重复发票数量
-  const duplicateCount = useMemo(() => {
-    const numCounts = new Map<string, number>();
-    invoices.forEach((inv) => {
-      if (inv.invoiceNumber) {
-        numCounts.set(inv.invoiceNumber, (numCounts.get(inv.invoiceNumber) || 0) + 1);
-      }
-    });
-    return invoices.filter((inv) => inv.invoiceNumber && (numCounts.get(inv.invoiceNumber) || 0) > 1).length;
-  }, [invoices]);
-
-  // 计算当前拼页选择的发票列表
-  const selectedInvoices = useMemo(() => {
-    return invoices.filter((inv) => inv.selected !== false);
-  }, [invoices]);
-
-  // 业务处理器 handlers
-  const handleToggleTheme = () => {};
-
-  const handleUpdateConfig = (newConfig: Partial<PrintConfig>) => {
-    setPrintConfig((prev) => ({ ...prev, ...newConfig }));
+  // 更新排版参数
+  const handleUpdateConfig = (newCfg: Partial<PrintConfig>) => {
+    setPrintConfig((prev) => ({ ...prev, ...newCfg }));
   };
 
-  const handleAddInvoices = (newInvoices: InvoiceData[]) => {
-    setInvoices((prev) => [...newInvoices, ...prev]);
+  // 切换暗黑/白天模式
+  const handleToggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+  };
+
+  // 批量导入与台账操作
+  const handleAddInvoices = (newInvs: InvoiceData[]) => {
+    setInvoices((prev) => [...newInvs, ...prev]);
   };
 
   const handleDeleteInvoice = (id: string) => {
     setInvoices((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const handleToggleSelectInvoice = (id: string) => {
+  const handleToggleSelectForPrint = (id: string) => {
     setInvoices((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, selected: !i.selected } : i))
+      prev.map((inv) => (inv.id === id ? { ...inv, selectedForPrint: !inv.selectedForPrint } : inv))
     );
   };
 
   const handleToggleSelectAll = (select: boolean) => {
-    setInvoices((prev) => prev.map((i) => ({ ...i, selected: select })));
+    setInvoices((prev) => prev.map((inv) => ({ ...inv, selectedForPrint: select })));
   };
 
-  const handleExportExcel = () => {
-    exportInvoicesToExcel(invoices, settings, undefined, (result) => {
-      if (!result.success) {
-        setDialogOptions({
-          isOpen: true,
-          type: "warning",
-          title: "导出提示",
-          message: "当前没有可导出的发票数据！请先批量导入发票文件。",
-          onConfirm: () => setDialogOptions(null),
-          confirmText: "我知道了",
-        });
-        return;
-      }
+  // 计算排版所需的全局选中发票与合计
+  const selectedInvoices = useMemo(
+    () => invoices.filter((i) => i.selectedForPrint),
+    [invoices]
+  );
 
-      setDialogOptions({
-        isOpen: true,
-        type: "success",
-        title: "发票台账 Excel 导出成功",
-        message: `✅ 已成功导出 ${result.totalCount} 条发票台账明细至 "${result.filename}"！`,
-        subMessage: `💰 价税合计总额: ¥${result.totalAmount.toFixed(2)} | ✓ 发票全量自动校验正常`,
-        passwordNotice: result.isProtected
-          ? `🔒 已开启工作表防篡改锁定保护 (撤销保护密码: ${result.password})`
-          : undefined,
-        onConfirm: () => setDialogOptions(null),
-        confirmText: "确定",
-      });
+  const totalAmount = useMemo(
+    () => selectedInvoices.reduce((sum, i) => sum + i.totalAmountWithTax, 0),
+    [selectedInvoices]
+  );
+
+  const duplicateCount = useMemo(() => {
+    const numCounts: Record<string, number> = {};
+    invoices.forEach((i) => {
+      const numStr = (i.invoiceNumber || "").trim();
+      if (numStr) numCounts[numStr] = (numCounts[numStr] || 0) + 1;
     });
-  };
+    return Object.values(numCounts).filter((c) => c > 1).length;
+  }, [invoices]);
 
-  const handlePrint = () => {
-    if (selectedInvoices.length === 0) {
-      setDialogOptions({
-        isOpen: true,
-        type: "warning",
-        title: "打印提示",
-        message: "未找到排版页面，请先在台账中勾选需要打印排版的发票！",
-        onConfirm: () => setDialogOptions(null),
-        confirmText: "我知道了",
-      });
-      return;
-    }
+  const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
+  const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
+
+  // 高精矢量防错打印
+  const handlePrint = async () => {
     setActiveTab("layout");
     setTimeout(async () => {
       const mainEl = document.querySelector<HTMLElement>("main");
@@ -230,7 +204,7 @@ export const App: React.FC = () => {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLoadSamples={() => setInvoices(SAMPLE_INVOICES)}
         onPrint={handlePrint}
-        onExportExcel={handleExportExcel}
+        onExportExcel={() => exportInvoicesToExcel(invoices, settings)}
         selectedCount={selectedInvoices.length}
         duplicateCount={duplicateCount}
       />
@@ -245,51 +219,82 @@ export const App: React.FC = () => {
             zoom={zoom}
             setZoom={setZoom}
             totalInvoices={selectedInvoices.length}
-            totalPages={Math.ceil(selectedInvoices.length / parseInt(printConfig.gridMode || "4", 10)) || 1}
-            totalAmount={selectedInvoices.reduce((acc, curr) => acc + curr.totalAmountWithTax, 0)}
+            totalPages={totalPages}
+            totalAmount={totalAmount}
             onResetOrder={() => handleUpdateConfig({ sortBy: "category" })}
           />
-          <main className="flex-1 overflow-auto p-4 flex justify-center bg-[#0E172B]">
+          <main className="flex-1 overflow-auto bg-[#0E172B]">
+            {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
+              <div className="pt-6">
+                <ReimbursementCover
+                  invoices={invoices}
+                  defaultSettings={settings}
+                  config={printConfig}
+                  theme={theme}
+                  onOpenBatchImport={() => setIsImportOpen(true)}
+                />
+              </div>
+            )}
             <A4PagePreview
               invoices={selectedInvoices}
               config={printConfig}
               zoom={zoom}
               theme={theme}
+              showCropLines={printConfig.showCropLines}
               onEditInvoice={(inv) => setEditingInvoice(inv)}
               onDeleteInvoice={handleDeleteInvoice}
+              onOpenBatchImport={() => setIsImportOpen(true)}
             />
           </main>
         </>
       )}
 
       {activeTab === "ledger" && (
-        <main className="flex-1 overflow-auto p-6 bg-[#0E172B]">
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0E172B]" : "bg-[#F3F5F9]"}`}>
           <InvoiceLedgerTable
             invoices={invoices}
-            onToggleSelect={handleToggleSelectInvoice}
-            onToggleSelectAll={handleToggleSelectAll}
-            onDelete={handleDeleteInvoice}
-            onEdit={(inv) => setEditingInvoice(inv)}
-            onOpenBatchImport={() => setIsImportOpen(true)}
-            onLoadSamples={() => setInvoices(SAMPLE_INVOICES)}
             systemSettings={settings}
             theme={theme}
+            onToggleSelectForPrint={handleToggleSelectForPrint}
+            onToggleSelectAll={handleToggleSelectAll}
+            onDeleteInvoice={handleDeleteInvoice}
+            onEditInvoice={(inv) => setEditingInvoice(inv)}
+            onAddCustomInvoice={() => {
+              const newInv: InvoiceData = {
+                id: `custom-${Date.now()}`,
+                invoiceType: "电子发票(普通发票)",
+                invoiceNumber: String(Math.floor(Math.random() * 89999999 + 10000000)),
+                issueDate: new Date().toISOString().split("T")[0],
+                buyerName: settings.defaultCompany || "示例单位名称",
+                sellerName: "新建手工发票商户",
+                totalAmountWithoutTax: 94.34,
+                totalTaxAmount: 5.66,
+                totalAmountWithTax: 100,
+                totalAmountWithTaxCN: "壹佰元整",
+                category: "其他",
+                selectedForPrint: true,
+                items: [],
+              };
+              setInvoices([newInv, ...invoices]);
+              setEditingInvoice(newInv);
+            }}
           />
         </main>
       )}
 
       {activeTab === "cover" && (
-        <main className="flex-1 overflow-auto p-6 bg-[#0E172B]">
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0E172B]" : "bg-[#F3F5F9]"}`}>
           <ReimbursementCover
-            selectedInvoices={selectedInvoices}
-            settings={settings}
+            invoices={invoices}
+            defaultSettings={settings}
+            config={printConfig}
             theme={theme}
-            onPrintCover={handlePrint}
+            onOpenBatchImport={() => setIsImportOpen(true)}
           />
         </main>
       )}
 
-      {/* 3. 全局模态框弹窗集合 */}
+      {/* 3. 弹窗组件群 */}
       <BatchImportModal
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
@@ -322,11 +327,6 @@ export const App: React.FC = () => {
           setInvoices([]);
           localStorage.removeItem("invoice_app_data");
         }}
-      />
-
-      <CustomDialogModal
-        options={dialogOptions}
-        onClose={() => setDialogOptions(null)}
       />
     </div>
   );
