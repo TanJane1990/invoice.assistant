@@ -311,20 +311,22 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       </td>
 
                       {/* Invoice Type & Code */}
-                      <td className="p-3.5 font-sans whitespace-nowrap">
-                        <div className="font-extrabold text-slate-900">{inv.invoiceType}</div>
-                        <div className="text-[10px] font-mono mt-0.5 text-slate-400">
+                      <td className="p-3.5 font-sans whitespace-nowrap max-w-[160px]">
+                        <div className="font-extrabold text-slate-900 truncate" title={inv.invoiceType}>
+                          {inv.invoiceType}
+                        </div>
+                        <div className="text-[10px] font-mono mt-0.5 text-slate-400 truncate" title={inv.invoiceCode ? `代码: ${inv.invoiceCode}` : "电子发票(无代码)"}>
                           {inv.invoiceCode ? `代码: ${inv.invoiceCode}` : "电子发票(无代码)"}
                         </div>
                       </td>
 
                       {/* Invoice Number */}
-                      <td className="p-3.5 font-bold whitespace-nowrap">
+                      <td className="p-3.5 font-bold whitespace-nowrap max-w-[180px]">
                         <div className="flex items-center space-x-1.5">
-                          <span className="font-black text-slate-900">{inv.invoiceNumber}</span>
+                          <span className="font-black text-slate-900 truncate" title={inv.invoiceNumber}>{inv.invoiceNumber}</span>
                           {palette && (
                             <span
-                              className={`px-2 py-0.5 text-[9px] rounded-md border whitespace-nowrap ${palette.badgeBg}`}
+                              className={`px-2 py-0.5 text-[9px] rounded-md border whitespace-nowrap shrink-0 ${palette.badgeBg}`}
                               title={`相同号码发票重复出现在台账中 (重复组 #${dupInfo.groupIndex + 1})`}
                             >
                               重号组#{dupInfo.groupIndex + 1}
@@ -337,8 +339,10 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                       <td className="p-3.5 font-semibold text-slate-600 whitespace-nowrap">{inv.issueDate}</td>
 
                       {/* Seller */}
-                      <td className="p-3.5 font-sans truncate max-w-[220px] font-bold text-slate-800 whitespace-nowrap">
-                        {inv.sellerName}
+                      <td className="p-3.5 font-sans font-bold text-slate-800 whitespace-nowrap max-w-[180px]">
+                        <div className="truncate" title={inv.sellerName}>
+                          {inv.sellerName}
+                        </div>
                       </td>
 
                       {/* Category Badge */}
