@@ -215,14 +215,14 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
       {/* Printable Paper Voucher */}
       <div
         className="a4-print-page bg-white text-slate-900 p-8 rounded-xl shadow-xl border border-slate-200 mx-auto"
-        style={{ width: "210mm", boxSizing: "border-box" }}
+        style={{ width: "210mm", boxSizing: "border-box", color: "#0f172a" }}
       >
         {/* Paper Voucher Title */}
         <div className="border-b-2 border-slate-900 pb-4 mb-6 text-center">
-          <h2 className="text-2xl font-extrabold tracking-widest font-serif text-slate-900">
+          <h2 className="text-2xl font-extrabold tracking-widest font-serif text-slate-900" style={{ color: "#0f172a" }}>
             {formData.companyName} 费用报销汇总单
           </h2>
-          <p className="text-xs text-slate-500 font-mono mt-1">
+          <p className="text-xs text-slate-600 font-mono mt-1" style={{ color: "#475569" }}>
             单号: {formData.reimbursementNo} | 日期: {formData.date}
           </p>
         </div>
@@ -230,46 +230,46 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         {/* Voucher Info Fields */}
         <div className="grid grid-cols-3 gap-4 mb-6 text-xs border-b border-slate-200 pb-4">
           <div>
-            <span className="text-slate-500">报销部门: </span>
-            <span className="font-bold text-slate-800">{formData.department}</span>
+            <span className="text-slate-600" style={{ color: "#475569" }}>报销部门: </span>
+            <span className="font-bold text-slate-900" style={{ color: "#0f172a" }}>{formData.department}</span>
           </div>
           <div>
-            <span className="text-slate-500">报销申请人: </span>
-            <span className="font-bold text-slate-800">{formData.applicant}</span>
+            <span className="text-slate-600" style={{ color: "#475569" }}>报销申请人: </span>
+            <span className="font-bold text-slate-900" style={{ color: "#0f172a" }}>{formData.applicant}</span>
           </div>
           <div>
-            <span className="text-slate-500">附发票张数: </span>
-            <span className="font-bold text-red-700 font-mono text-sm">
+            <span className="text-slate-600" style={{ color: "#475569" }}>附发票张数: </span>
+            <span className="font-bold text-[#E8000A] font-mono text-sm" style={{ color: "#E8000A" }}>
               {selectedInvoices.length} 张
             </span>
           </div>
         </div>
 
         {/* Category breakdown table */}
-        <table className="w-full text-xs border-collapse border border-slate-400 mb-6" style={{ borderColor: '#94a3b8' }}>
+        <table className="w-full text-xs border-collapse border border-slate-400 mb-6" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
           <thead>
-            <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-400" style={{ borderColor: '#94a3b8' }}>
-              <th className="border border-slate-400 p-2 text-center w-12" style={{ borderColor: '#94a3b8' }}>序号</th>
-              <th className="border border-slate-400 p-2 text-left" style={{ borderColor: '#94a3b8' }}>费用大类</th>
-              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8' }}>包含发票张数</th>
-              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8' }}>小计金额 (元)</th>
+            <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-400" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
+              <th className="border border-slate-400 p-2 text-center w-12" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>序号</th>
+              <th className="border border-slate-400 p-2 text-left" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>费用大类</th>
+              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>包含发票张数</th>
+              <th className="border border-slate-400 p-2 text-right" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>小计金额 (元)</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(categorySummary).map(([cat, amt], idx) => {
               const count = selectedInvoices.filter((i) => i.category === cat).length;
               return (
-                <tr key={cat} className="border-b border-slate-400" style={{ borderColor: '#94a3b8' }}>
-                  <td className="border border-slate-400 p-2 text-center font-mono text-slate-800" style={{ borderColor: '#94a3b8' }}>
+                <tr key={cat} className="border-b border-slate-400" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
+                  <td className="border border-slate-400 p-2 text-center font-mono text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
                     {idx + 1}
                   </td>
-                  <td className="border border-slate-400 p-2 font-bold text-slate-900" style={{ borderColor: '#94a3b8' }}>
+                  <td className="border border-slate-400 p-2 font-bold text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
                     {cat}
                   </td>
-                  <td className="border border-slate-400 p-2 text-right font-mono text-slate-800" style={{ borderColor: '#94a3b8' }}>
+                  <td className="border border-slate-400 p-2 text-right font-mono text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
                     {count} 张
                   </td>
-                  <td className="border border-slate-400 p-2 text-right font-mono font-bold text-slate-900" style={{ borderColor: '#94a3b8' }}>
+                  <td className="border border-slate-400 p-2 text-right font-mono font-bold text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
                     ¥{(amt as number).toFixed(2)}
                   </td>
                 </tr>
@@ -277,19 +277,19 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-slate-50 font-bold border-t-2 border-slate-400" style={{ borderColor: '#94a3b8' }}>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8' }}>
+            <tr className="bg-slate-50 font-bold border-t-2 border-slate-400" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
                 报销金额合计 (大写)
               </td>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-serif text-sm text-[#E8000A]" style={{ borderColor: '#94a3b8' }}>
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-serif text-sm text-[#E8000A] font-bold" style={{ borderColor: '#94a3b8', color: "#E8000A" }}>
                 {numberToRMB(grandTotal)}
               </td>
             </tr>
-            <tr className="bg-slate-50 font-bold" style={{ borderColor: '#94a3b8' }}>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8' }}>
+            <tr className="bg-slate-50 font-bold" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-center text-slate-900" style={{ borderColor: '#94a3b8', color: "#0f172a" }}>
                 报销金额合计 (小写)
               </td>
-              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-mono text-base text-[#E8000A] font-extrabold" style={{ borderColor: '#94a3b8' }}>
+              <td colSpan={2} className="border border-slate-400 p-2.5 text-right font-mono text-base text-[#E8000A] font-extrabold" style={{ borderColor: '#94a3b8', color: "#E8000A" }}>
                 ¥{grandTotal.toFixed(2)}
               </td>
             </tr>
@@ -297,22 +297,22 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         </table>
 
         {/* Approval Signatures */}
-        <div className="grid grid-cols-4 gap-2 pt-6 text-xs text-slate-600 font-medium">
+        <div className="grid grid-cols-4 gap-2 pt-6 text-xs text-slate-700 font-medium" style={{ color: "#334155" }}>
           <div>
             <span>主管审批: </span>
-            <span className="font-bold underline text-slate-900">{formData.approver}</span>
+            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.approver}</span>
           </div>
           <div>
             <span>财务复核: </span>
-            <span className="font-bold underline text-slate-900">{formData.financeAuditor}</span>
+            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.financeAuditor}</span>
           </div>
           <div>
             <span>出纳领款: </span>
-            <span className="font-bold underline text-slate-900">{formData.cashier}</span>
+            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.cashier}</span>
           </div>
           <div>
             <span>报销人签章: </span>
-            <span className="font-bold underline text-slate-900">{formData.applicant}</span>
+            <span className="font-bold underline text-slate-900" style={{ color: "#0f172a" }}>{formData.applicant}</span>
           </div>
         </div>
       </div>

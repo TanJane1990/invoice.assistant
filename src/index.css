@@ -11,18 +11,36 @@ body.theme-light {
 }
 
 /* ==========================================================================
-   1. 100% High-Contrast Text Enforcement for All Light/White Cards & Modals
+   1. Universal HIGH-SPECIFICITY FORCE-DARK-TEXT Rule inside White Containers
    ========================================================================== */
 .bg-white,
-.bg-slate-50 {
+.bg-white *,
+.bg-slate-50,
+.bg-slate-50 * {
   color: #0f172a !important;
 }
 
-.bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6,
-.bg-white p, .bg-white span, .bg-white label, .bg-white th, .bg-white td, .bg-white div, .bg-white b, .bg-white strong,
-.bg-slate-50 h1, .bg-slate-50 h2, .bg-slate-50 h3, .bg-slate-50 h4, .bg-slate-50 h5, .bg-slate-50 h6,
-.bg-slate-50 p, .bg-slate-50 span, .bg-slate-50 label, .bg-slate-50 th, .bg-slate-50 td, .bg-slate-50 div, .bg-slate-50 b, .bg-slate-50 strong {
-  color: #0f172a;
+/* Re-grant bright white text ONLY to dark headers & red primary buttons inside white containers */
+.bg-white .bg-\[\#0E172B\],
+.bg-white .bg-slate-900,
+.bg-white .bg-slate-800,
+.bg-white .bg-red-600,
+.bg-white .text-white {
+  color: #ffffff !important;
+}
+
+/* Special preservation for colored badges/accents inside white containers */
+.bg-white .text-red-500,
+.bg-white .text-red-600 {
+  color: #E8000A !important;
+}
+
+.bg-white .text-emerald-600 {
+  color: #009966 !important;
+}
+
+.bg-white .text-amber-500 {
+  color: #f59e0b !important;
 }
 
 /* White card inputs & selects */
@@ -42,37 +60,7 @@ body.theme-light {
 }
 
 /* ==========================================================================
-   2. Dark Headers & Dark Modal Inputs High-Contrast Text Rules
-   ========================================================================== */
-.bg-\[\#0E172B\],
-.bg-\[\#0E172B\] *,
-.modal-dark-header,
-.modal-dark-header * {
-  color: #ffffff !important;
-}
-
-/* Dark Modal (e.g. InvoiceDetailModal) inputs */
-.bg-slate-800 input,
-.bg-slate-800 select,
-.bg-slate-800 textarea,
-.bg-slate-900 input,
-.bg-slate-900 select,
-.bg-slate-900 textarea {
-  color: #ffffff !important;
-  background-color: #1e293b !important;
-}
-
-/* Accent status text colors */
-.text-red-500, .text-red-600 {
-  color: #E8000A !important;
-}
-
-.text-emerald-600 {
-  color: #009966 !important;
-}
-
-/* ==========================================================================
-   3. Comprehensive CSS for Print Output
+   2. Comprehensive CSS for Print Output
    ========================================================================== */
 @media print {
   .no-print,
