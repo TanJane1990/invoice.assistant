@@ -195,7 +195,12 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   const mPayer = cleanText.match(/(?:购买方|交款人|客户|抬头)(?:信息|\s|\/|\(|\))*[（(]?交款人\/单位[）)]?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayer) {
-    buyerName = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").replace(/^[0-9a-zA-Z\s.]+(?=[\u4e00-\u9fa5])/, "").trim();
+    let rawPayer = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
+    // 过滤购买方名称前面的校验乱码数字串 (如 "8496 11010125 0102244139 6214f3 110100 9.52 北京市自来水集团" -> "北京市自来水集团")
+    rawPayer = rawPayer.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+    if (!rawPayer.includes("监制章") && !rawPayer.includes("税务总局")) {
+      buyerName = rawPayer;
+    }
   }
 
   if (!buyerName && (cleanText.includes("个人") || cleanText.includes("交款人"))) {
@@ -204,8 +209,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   const mPayee = cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayee) {
-    const rawPayee = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").replace(/^有限责任公司代收\s*/, "").trim();
-    if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号")) {
+    let rawPayee = mPayee[1].replace(/^(信息|名称)[:：\s]*/, "").replace(/^有限责任公司代收\s*/, "").trim();
+    rawPayee = rawPayee.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+    if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号") && !rawPayee.includes("监制章")) {
       sellerName = rawPayee;
     }
   }
@@ -220,6 +226,10 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceType.includes("客票") ||
     cleanText.includes("12306") ||
     cleanText.includes("中国铁路");
+
+  if (isTrainOrPassenger) {
+    buyerName = "个人"; // 火车票/客票购买方默认为 "个人"
+  }
 
   const mTrainRoute = cleanText.match(/([\u4e00-\u9fa5]{2,6}站)[\s\S]{0,20}?([A-Z]\d{1,5}|\d{1,5})[\s\S]{0,20}?([\u4e00-\u9fa5]{2,6}站)/);
   if (mTrainRoute) {

@@ -55,6 +55,17 @@ const cleanStr = (val?: string): string => {
   return cleaned || "-";
 };
 
+const cleanBuyerSellerName = (val?: string): string => {
+  if (!val || val.trim() === "") return "-";
+  let cleaned = val.replace(/[\x00-\x1F\x7F-\x9F]/g, "").replace(/_x[0-9a-fA-F]{4}_/g, "").trim();
+  // Strip leading noise string (like "8496 11010125 0102244139 6214f3 110100 9.52 北京市自来水集团" -> "北京市自来水集团")
+  cleaned = cleaned.replace(/^[\s0-9a-zA-Z._\-\/]{6,}\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+  if (cleaned.includes("监制章") || cleaned.includes("税务总局") || cleaned.includes("发票监制章")) {
+    return "个人";
+  }
+  return cleaned || "-";
+};
+
 const cleanItemsDetail = (items?: any[], remarks?: string): string => {
   if (!items || items.length === 0) {
     return cleanStr(remarks);
@@ -103,9 +114,9 @@ export const exportInvoicesToExcel = (
       开票日期: cleanStr(inv.issueDate),
       "乘车/出行人": isPassengerTicket ? cleanStr(inv.passengerName) : "-",
       行程路线: isPassengerTicket ? cleanStr(inv.trainRoute) : "-",
-      购买方名称: cleanStr(inv.buyerName),
+      购买方名称: isPassengerTicket ? "个人" : cleanBuyerSellerName(inv.buyerName),
       购买方税号: cleanStr(inv.buyerTaxId),
-      销售方名称: cleanStr(inv.sellerName),
+      销售方名称: cleanBuyerSellerName(inv.sellerName),
       销售方税号: cleanStr(inv.sellerTaxId),
       "商品/服务明细": cleanItemsDetail(inv.items, inv.remarks),
       不含税金额: noTaxAmt,
