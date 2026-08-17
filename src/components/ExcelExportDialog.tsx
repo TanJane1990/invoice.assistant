@@ -27,12 +27,25 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
   const handleOpenFileFolder = async () => {
     if (!lastExportInfo?.fileName) return;
     try {
-      await fetch("/api/open-file-folder", {
+      const res = await fetch("/api/open-file-folder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileName: lastExportInfo.fileName }),
       });
-    } catch (e) {}
+      const data = await res.json();
+      if (!data || !data.success) {
+        // 磁盘上找不到该文件（已被用户删除/拔出U盘/移动位置），自动清除记忆并触发【另存为新文件】
+        try {
+          localStorage.removeItem("smart_invoice_last_export_info");
+        } catch (e) {}
+        alert("未能在磁盘中找到该 Excel 文件（可能已被删除或移走），系统已为您自动重置并切换为【另存为新文件】！");
+        onSaveNewFile();
+        onClose();
+      }
+    } catch (e) {
+      onSaveNewFile();
+      onClose();
+    }
   };
 
   return (
