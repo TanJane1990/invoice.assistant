@@ -55,15 +55,25 @@ textarea::placeholder {
     margin: 0;
   }
 
+  /* 彻底屏蔽打印页面上的所有滚动条/拖条 (Scrollbars) */
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
   html,
-  body {
+  body,
+  main,
+  div,
+  section {
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 210mm !important;
-    height: auto !important;
     overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
   }
 
   /* 隐掉所有非打印区域（导航栏、顶部控制栏、表格试图、背景层、按钮、提示框、弹窗） */
