@@ -130,23 +130,7 @@ textarea::placeholder {
     display: none !important;
   }
 
-  /* 5. 页面命名与独立纸张方向规则 (CSS Paged Media Module) */
-  @page coverPage {
-    size: A4 portrait;
-    margin: 0;
-  }
-
-  @page invoicePageLandscape {
-    size: A4 landscape;
-    margin: 0;
-  }
-
-  @page invoicePagePortrait {
-    size: A4 portrait;
-    margin: 0;
-  }
-
-  /* 6. 物理打印纸张实体（.a4-print-page）：强制纯白实体背景与精准 1:1 尺寸 */
+  /* 5. 打印纸张实体（.a4-print-page）：强制纯白实体背景与精准尺寸 */
   .a4-print-page {
     background-color: #ffffff !important;
     color: #0f172a !important;
@@ -155,49 +139,36 @@ textarea::placeholder {
     print-color-adjust: exact !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    page-break-after: always !important;
-    break-after: page !important;
-    overflow: hidden !important;
-    display: block !important;
-  }
-
-  /* 最后一页绝不添加强制分页符，防止打印机在末尾多吐出一张空白页 */
-  .a4-print-page:last-child,
-  .a4-print-page:last-of-type {
+    page-break-before: always !important;
+    break-before: page !important;
     page-break-after: auto !important;
     break-after: auto !important;
+    overflow: hidden !important;
+    display: block !important;
+    box-sizing: border-box !important;
   }
 
-  /* 横向发票排版命名页 */
-  .a4-print-page.page-landscape {
-    page: invoicePageLandscape;
+  /* 打印流的第一页不向前分页，防止在最前面生成空白页 */
+  .a4-print-page:first-of-type,
+  .a4-print-cover-page:first-of-type,
+  main > div:first-child .a4-print-page,
+  main > div:first-child .a4-print-cover-page,
+  div:first-child > .a4-print-page {
+    page-break-before: auto !important;
+    break-before: auto !important;
   }
 
-  /* 纵向发票排版命名页 */
-  .a4-print-page.page-portrait {
-    page: invoicePagePortrait;
-  }
-
-  /* 7. 报销凭证封面单：独立命名为 coverPage，强制永远以 A4 物理纵向输出，彻底解决与横向发票混排时的截断与空白页问题 */
+  /* 报销凭证封面单基础打印类 */
   .a4-print-cover-page {
-    page: coverPage !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
-    min-height: 0 !important;
-    padding: 8mm 12mm !important;
     box-sizing: border-box !important;
     background-color: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    page-break-after: always !important;
-    break-after: page !important;
     overflow: hidden !important;
     display: block !important;
   }
 
-  /* 8. 强制锁死发票卡片文字深度对比度与浅灰背景 */
+  /* 6. 强制锁死发票卡片文字深度对比度与浅灰背景 */
   .invoice-card-content,
   .invoice-card-content div,
   .invoice-card-content * {

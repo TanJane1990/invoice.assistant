@@ -138,29 +138,17 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态命名页纸张规则：仅针对发票排版页命名生效，绝不污染全局报销封面单 */}
+      {/* 动态打印纸张尺寸与方向规则：直接锁定浏览器物理打印机的横向/纵向出纸尺寸 */}
       <style>{`
         @media print {
-          @page invoicePageLandscape {
+          @page {
             size: ${
               isGrid1SingleTicket
                 ? "210mm 140mm"
                 : (() => {
                     const standardNames: Record<string, string> = { A4: "A4", A5: "A5", B5: "JIS-B5" };
                     const stdName = standardNames[paperKey];
-                    return stdName ? `${stdName} landscape` : `${paperSize.height} ${paperSize.width}`;
-                  })()
-            };
-            margin: 0;
-          }
-          @page invoicePagePortrait {
-            size: ${
-              isGrid1SingleTicket
-                ? "210mm 140mm"
-                : (() => {
-                    const standardNames: Record<string, string> = { A4: "A4", A5: "A5", B5: "JIS-B5" };
-                    const stdName = standardNames[paperKey];
-                    return stdName ? `${stdName} portrait` : `${paperSize.width} ${paperSize.height}`;
+                    return stdName ? `${stdName} ${isLandscape ? "landscape" : "portrait"}` : isLandscape ? `${paperSize.height} ${paperSize.width}` : `${paperSize.width} ${paperSize.height}`;
                   })()
             };
             margin: 0;
@@ -175,7 +163,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         {pages.map((pageData, pageIdx) => {
           const pageInvoices = pageData.invoices;
           return (
-            <div key={`page-${pageIdx}`} className="relative flex flex-col items-center z-0">
+            <div key={`page-${pageIdx}`} className="relative flex flex-col items-center z-0 print:m-0 print:p-0">
               {/* On-screen Page Badge (hidden in print) */}
               <div
                 className={`no-print mb-2 flex items-center justify-between text-xs font-semibold px-2 py-1 rounded-md ${
@@ -202,9 +190,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
               {/* Pixel-Accurate Printable Sheet */}
               <div
-                className={`mx-auto bg-white transition-all print:shadow-none a4-print-page ${
-                  isLandscape ? "page-landscape" : "page-portrait"
-                } relative z-0 ${
+                className={`mx-auto bg-white transition-all print:shadow-none a4-print-page relative z-0 ${
                   isDark
                     ? "shadow-[0_10px_30px_rgba(0,0,0,0.6)] ring-1 ring-slate-800"
                     : "shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-slate-200"
@@ -216,8 +202,6 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                   maxHeight: pageHeight,
                   padding: paddingValue,
                   boxSizing: "border-box",
-                  pageBreakAfter: pageIdx === pages.length - 1 ? "auto" : "always",
-                  breakAfter: pageIdx === pages.length - 1 ? "auto" : "page",
                   overflow: "hidden",
                 }}
               >
