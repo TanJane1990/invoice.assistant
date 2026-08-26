@@ -161,20 +161,34 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         {/* 卡片 4: 相同发票号查重预警 */}
         <div
           onClick={() => setFilterDuplicateOnly((prev) => !prev)}
-          className={`p-5 rounded-2xl border cursor-pointer transition-all shadow-sm flex flex-col justify-between ${
+          className={`p-5 rounded-2xl border cursor-pointer transition-all shadow-sm flex flex-col justify-between relative group ${
             duplicateCount > 0
-              ? "bg-amber-50 border-amber-300"
-              : "bg-white border-slate-200/80"
+              ? "bg-red-50/60 border-red-300 hover:border-red-400"
+              : "bg-white border-slate-200/80 hover:border-slate-300"
           }`}
-          style={{ backgroundColor: duplicateCount > 0 ? "#fffbeb" : "#ffffff" }}
+          style={{ backgroundColor: duplicateCount > 0 ? "#fff5f5" : "#ffffff" }}
+          title={duplicateCount > 0 ? "点击快速仅筛选重复发票" : "当前无重复发票"}
         >
           <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#64748b" }}>
-            <span style={{ color: "#64748b" }}>相同发票号查重预警</span>
-            {duplicateCount > 0 && <ShieldAlert className="w-4 h-4 animate-pulse text-amber-600" />}
+            <span style={{ color: duplicateCount > 0 ? "#b91c1c" : "#64748b" }}>相同发票号查重预警</span>
+            {duplicateCount > 0 ? (
+              <div className="relative flex items-center justify-center">
+                {/* 红色外层光晕扩散闪动 */}
+                <span className="animate-ping absolute inline-flex h-8 w-8 rounded-xl bg-red-400 opacity-60"></span>
+                {/* 红色主体闪动图标徽章 */}
+                <div className="relative p-1.5 bg-red-500 text-white rounded-xl shadow-md border border-red-600 animate-pulse flex items-center justify-center">
+                  <ShieldAlert className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            ) : (
+              <div className="p-1.5 bg-slate-100 text-slate-400 rounded-xl border border-slate-200">
+                <ShieldAlert className="w-4 h-4 text-slate-400" />
+              </div>
+            )}
           </div>
-          <div className="text-2xl font-black mt-2 flex items-baseline space-x-1.5" style={{ color: "#0f172a" }}>
-            <span style={{ color: "#0f172a" }}>{duplicateCount}</span>
-            <span className="text-xs font-bold" style={{ color: "#64748b" }}>
+          <div className="text-2xl font-black mt-2 flex items-baseline space-x-1.5" style={{ color: duplicateCount > 0 ? "#b91c1c" : "#0f172a" }}>
+            <span style={{ color: duplicateCount > 0 ? "#b91c1c" : "#0f172a" }}>{duplicateCount}</span>
+            <span className="text-xs font-bold" style={{ color: duplicateCount > 0 ? "#dc2626" : "#64748b" }}>
               {duplicateCount > 0 ? `张发票存在重复 (${duplicateGroupCount}组相同色块标出)` : "无重复发票"}
             </span>
           </div>

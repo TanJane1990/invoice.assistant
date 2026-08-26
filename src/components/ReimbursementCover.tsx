@@ -204,6 +204,18 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         </div>
       )}
 
+      {/* 仅在纵向或单独打印封面单时，确保打印机锁定标准 A4 纵向出纸 */}
+      {!isLandscape && (
+        <style>{`
+          @media print {
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+          }
+        `}</style>
+      )}
+
       {/* Printable Paper Voucher (Dual Portrait / Landscape A4 Layout) */}
       {isLandscape ? (
         /* LANDSCAPE A4 COVER (297mm × 210mm) - 左右双栏高效排版 */
