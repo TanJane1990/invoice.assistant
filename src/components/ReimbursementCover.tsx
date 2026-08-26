@@ -207,9 +207,11 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         className="a4-print-page a4-print-cover-page bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative"
         style={{
           width: "210mm",
+          maxWidth: "210mm",
           height: "auto",
-          minHeight: "270mm",
-          padding: "10mm 12mm",
+          minHeight: "260mm",
+          maxHeight: "297mm",
+          padding: "8mm 12mm",
           boxSizing: "border-box",
           color: "#000000",
           backgroundColor: "#ffffff",
@@ -217,6 +219,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           breakInside: "avoid",
           pageBreakAfter: "always",
           breakAfter: "page",
+          overflow: "hidden",
         }}
       >
         {/* Title */}

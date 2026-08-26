@@ -176,7 +176,21 @@ export const App: React.FC = () => {
   }, [invoices]);
 
   const itemsPerPage = parseInt(printConfig.gridMode, 10) || 4;
-  const totalPages = Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
+  const totalPages = useMemo(() => {
+    if (printConfig.sortBy === "category") {
+      // 按票种分类时，每个分类独立分页，总页数 = 各分类页数之和
+      const grouped: Record<string, number> = {};
+      selectedInvoices.forEach((inv) => {
+        const cat = inv.category || "其他";
+        grouped[cat] = (grouped[cat] || 0) + 1;
+      });
+      return Object.values(grouped).reduce(
+        (sum, count) => sum + Math.ceil(count / itemsPerPage),
+        0
+      ) || 1;
+    }
+    return Math.ceil(selectedInvoices.length / itemsPerPage) || 1;
+  }, [selectedInvoices, itemsPerPage, printConfig.sortBy]);
 
   const handleTopNavExportExcel = async () => {
     const historicalInfo = await getLastExportInfoAsync();
@@ -188,12 +202,30 @@ export const App: React.FC = () => {
     }
   };
 
-  // 调起标准系统直接打印（直接选择打印机物理打印，不强制下载 PDF）
+  // 调起标准系统直接打印（智能判断当前 Tab：cover/layout 直接打印，ledger 切到 layout 后打印）
   const handlePrint = () => {
-    setActiveTab("layout");
-    setTimeout(() => {
+    if (activeTab === "layout" || activeTab === "cover") {
+      // 在排版视图或报销封面视图，直接调起打印
       window.print();
-    }, 200);
+    } else {
+      // 在台账等其他视图，先切换到排版页再打印
+      setActiveTab("layout");
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    }
+  };
+
+  // 独立打印报销封面单：切到 cover Tab 后调起打印
+  const handlePrintCover = () => {
+    if (activeTab === "cover") {
+      window.print();
+    } else {
+      setActiveTab("cover");
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    }
   };
 
   return (
@@ -242,6 +274,7 @@ export const App: React.FC = () => {
                   config={printConfig}
                   theme={theme}
                   onOpenBatchImport={() => setIsImportOpen(true)}
+                  onPrintCover={handlePrintCover}
                 />
               </div>
             )}
@@ -302,6 +335,7 @@ export const App: React.FC = () => {
             config={printConfig}
             theme={theme}
             onOpenBatchImport={() => setIsImportOpen(true)}
+            onPrintCover={handlePrintCover}
           />
         </main>
       )}

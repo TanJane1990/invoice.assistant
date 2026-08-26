@@ -61,11 +61,10 @@ textarea::placeholder {
     height: 0 !important;
   }
 
+  /* 仅对根级容器清除边距，不再对所有 div 清零 padding（保留 .a4-print-page 的动态页边距） */
   html,
   body,
-  main,
-  div,
-  section {
+  main {
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
@@ -101,7 +100,36 @@ textarea::placeholder {
   main {
     transform: none !important;
     transform-origin: top left !important;
+  }
+
+  /* 仅对非打印内容容器清除背景色，保留 .a4-print-page 及其内部发票卡片的背景色 */
+  body > div:not(.a4-print-page),
+  main {
     background-color: transparent !important;
+  }
+
+  /* 发票卡片内部浅灰底色需保留打印 */
+  .a4-print-page .invoice-card-content,
+  .a4-print-page .invoice-card-content div,
+  .a4-print-cover-page {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 页面命名与独立纸张方向规则 (CSS Paged Media Module) */
+  @page coverPage {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  @page invoicePageLandscape {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  @page invoicePagePortrait {
+    size: A4 portrait;
+    margin: 0;
   }
 
   /* 强制打印卡片白底黑字并保持精细 1:1 物理像素尺寸 */
@@ -109,24 +137,49 @@ textarea::placeholder {
     box-shadow: none !important;
     border: none !important;
     margin: 0 auto !important;
-    page-break-after: always !important;
-    break-after: page !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  /* 报销凭证封面单：强制锁定为 210mm×297mm 物理纵向 A4，绝不可与横向发票拼接，并强制分页 */
-  .a4-print-cover-page {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: auto !important;
-    min-height: 270mm !important;
-    page-break-after: always !important;
-    break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
+  }
+
+  /* 最后一页绝不添加强制分页符，防止打印机多吐出一张空白页 */
+  .a4-print-page:last-child,
+  .a4-print-page:last-of-type {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  /* 横向发票排版命名页 */
+  .a4-print-page.page-landscape {
+    page: invoicePageLandscape;
+  }
+
+  /* 纵向发票排版命名页 */
+  .a4-print-page.page-portrait {
+    page: invoicePagePortrait;
+  }
+
+  /* 报销凭证封面单：独立命名为 coverPage，强制永远以 A4 物理纵向输出，彻底解决与横向发票混排时的截断与空白页问题 */
+  .a4-print-cover-page {
+    page: coverPage !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    min-height: 0 !important;
+    padding: 8mm 12mm !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
   }
 
   /* 强制锁死发票卡片文字深度对比度，防止黑色模式遗留影响物理打印 */

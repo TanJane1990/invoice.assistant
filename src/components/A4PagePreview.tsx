@@ -138,11 +138,26 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态物理打印方向控制：4张/页自动锁定 A4 横向 (297x210mm)，2张/页自动锁定 A4 纵向 (210x297mm) */}
+      {/* 动态物理打印方向控制：根据用户选择的纸张类型和方向生成 @page 规则 */}
       <style>{`
         @media print {
           @page {
-            size: ${isLandscape ? "A4 landscape" : "A4 portrait"};
+            size: ${
+              isGrid1SingleTicket
+                ? "210mm 140mm"
+                : (() => {
+                    // 标准纸张使用 CSS 命名
+                    const standardNames: Record<string, string> = { A4: "A4", A5: "A5", B5: "JIS-B5" };
+                    const stdName = standardNames[paperKey];
+                    if (stdName) {
+                      return `${stdName} ${isLandscape ? "landscape" : "portrait"}`;
+                    }
+                    // 非标纸张使用精确物理尺寸 (宽 x 高)
+                    const w = paperSize.width;
+                    const h = paperSize.height;
+                    return isLandscape ? `${h} ${w}` : `${w} ${h}`;
+                  })()
+            };
             margin: 0;
           }
         }
@@ -182,18 +197,23 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
               {/* Pixel-Accurate Printable Sheet */}
               <div
-                className={`mx-auto bg-white transition-all print:shadow-none a4-print-page relative z-0 ${
+                className={`mx-auto bg-white transition-all print:shadow-none a4-print-page ${
+                  isLandscape ? "page-landscape" : "page-portrait"
+                } relative z-0 ${
                   isDark
                     ? "shadow-[0_10px_30px_rgba(0,0,0,0.6)] ring-1 ring-slate-800"
                     : "shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-slate-200"
                 }`}
                 style={{
                   width: pageWidth,
+                  height: pageHeight,
                   minHeight: pageHeight,
+                  maxHeight: pageHeight,
                   padding: paddingValue,
                   boxSizing: "border-box",
-                  pageBreakAfter: "always",
-                  breakAfter: "page",
+                  pageBreakAfter: pageIdx === pages.length - 1 ? "auto" : "always",
+                  breakAfter: pageIdx === pages.length - 1 ? "auto" : "page",
+                  overflow: "hidden",
                 }}
               >
                 {/* 1:1 剪裁线：居中穿过页面中轴线的分割虚线 (1:1 匹配 media_1786901840126.png) */}
