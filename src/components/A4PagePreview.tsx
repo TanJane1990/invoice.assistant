@@ -231,16 +231,18 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                 <div
                   className={`w-full h-full relative z-0 ${
                     pageInvoices.length > 4
-                      ? "grid grid-cols-2 grid-rows-3 gap-3"
+                      ? "grid grid-cols-2 grid-rows-3 gap-2"
                       : config.gridMode === "1"
                       ? "flex flex-col items-stretch justify-stretch w-full h-full"
                       : config.gridMode === "2"
-                      ? "grid grid-cols-1 grid-rows-2 gap-4"
-                      : "grid grid-cols-2 grid-rows-2 gap-4"
+                      ? "grid grid-cols-1 grid-rows-2 gap-2.5"
+                      : "grid grid-cols-2 grid-rows-2 gap-2.5"
                   }`}
                   style={{
-                    minHeight: `calc(${pageHeight} - (${paddingValue} * 2))`,
-                    height: `calc(${pageHeight} - (${paddingValue} * 2))`,
+                    minHeight: `calc(${printSheetHeight} - (${paddingValue} * 2))`,
+                    height: `calc(${printSheetHeight} - (${paddingValue} * 2))`,
+                    maxHeight: `calc(${printSheetHeight} - (${paddingValue} * 2))`,
+                    boxSizing: "border-box",
                   }}
                 >
                   {pageInvoices.map((invoice, idx) => (

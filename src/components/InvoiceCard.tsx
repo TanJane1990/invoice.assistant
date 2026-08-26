@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { InvoiceData, GridMode } from "../types";
 import { Trash2 } from "lucide-react";
-import { convertPdfToImageDataUrl } from "../utils/pdfToImage";
+import { convertPdfToImageDataUrl, cropWhitespaceFromCanvas } from "../utils/pdfToImage";
 
 interface InvoiceCardProps {
   invoice: InvoiceData;
@@ -30,12 +30,6 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     let isMounted = true;
     if (invoice.fileUrl) {
       if (
-        invoice.fileUrl.startsWith("data:image/") ||
-        invoice.fileUrl.startsWith("blob:") ||
-        invoice.fileUrl.startsWith("http")
-      ) {
-        setRenderedImgUrl(invoice.fileUrl);
-      } else if (
         invoice.fileUrl.startsWith("data:application/pdf") ||
         invoice.fileUrl.includes("pdf")
       ) {
@@ -47,6 +41,33 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
             console.warn("Failed to render PDF to image:", err);
             if (isMounted) setRenderedImgUrl(invoice.fileUrl);
           });
+      } else if (
+        invoice.fileUrl.startsWith("data:image/") ||
+        invoice.fileUrl.startsWith("blob:") ||
+        invoice.fileUrl.startsWith("http")
+      ) {
+        // 对图片发票进行智能检测并裁切四周多余空白边
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const cropped = cropWhitespaceFromCanvas(canvas);
+              if (isMounted) setRenderedImgUrl(cropped);
+              return;
+            }
+          } catch {}
+          if (isMounted) setRenderedImgUrl(invoice.fileUrl);
+        };
+        img.onerror = () => {
+          if (isMounted) setRenderedImgUrl(invoice.fileUrl);
+        };
+        img.src = invoice.fileUrl;
       } else {
         setRenderedImgUrl(invoice.fileUrl);
       }
