@@ -63,10 +63,14 @@ export function cropWhitespaceFromCanvas(canvas: HTMLCanvasElement): string {
     const imgData = ctx.getImageData(0, 0, w, h);
     const data = imgData.data;
 
-    let minY = h, maxY = 0, minX = w, maxX = 0;
-    let found = false;
+    // 1. 如果是标准的 A4 纵向文档 (h > w * 0.95)，且为电子发票（发票票面通常集中在上半部 50%~60%）
+    // 统计每一行的非白色像素数量（行密度检测）
+    const isPortrait = h > w * 0.95;
+    const rowCounts = new Array(h).fill(0);
+    const colCounts = new Array(w).fill(0);
 
-    // 采样步长 2px，极速高精度扫描非白色内容 (RGB 阈值 240)
+    let minY = h, maxY = 0, minX = w, maxX = 0;
+
     for (let y = 0; y < h; y += 2) {
       for (let x = 0; x < w; x += 2) {
         const idx = (y * w + x) * 4;
@@ -75,8 +79,10 @@ export function cropWhitespaceFromCanvas(canvas: HTMLCanvasElement): string {
         const b = data[idx + 2];
         const a = data[idx + 3];
 
-        if (a > 30 && (r < 240 || g < 240 || b < 240)) {
-          found = true;
+        // 非纯白且非透明 (RGB < 235)
+        if (a > 30 && (r < 235 || g < 235 || b < 235)) {
+          rowCounts[y] += 1;
+          colCounts[x] += 1;
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -85,11 +91,36 @@ export function cropWhitespaceFromCanvas(canvas: HTMLCanvasElement): string {
       }
     }
 
-    if (!found) {
+    if (minY >= maxY || minX >= maxX) {
       return canvas.toDataURL("image/png");
     }
 
-    // 增加 1.5% 安全微边距，防止切到印章或边缘字迹
+    // 2. 如果是 A4 纵向页面，检测发票主体结束位置
+    // 发票票面主体（抬头、表格、金额、开票人）通常在 y = 0 到 y = h * 0.6 之间
+    if (isPortrait) {
+      let mainContentMaxY = maxY;
+      // 从 55% 高度开始向下检查是否有大段空白（如连续 30px 空行）
+      let emptyStreak = 0;
+      let lastSignificantRow = Math.round(h * 0.45);
+      
+      for (let y = Math.round(h * 0.2); y < h; y += 2) {
+        if (rowCounts[y] > (w / 100)) {
+          // 该行有显著内容
+          lastSignificantRow = y;
+          emptyStreak = 0;
+        } else {
+          emptyStreak += 2;
+          // 如果在 45% 高度之后出现了连续超过 5% 高度的空白区，说明发票主体已经在此结束
+          if (y > h * 0.45 && emptyStreak > h * 0.05) {
+            mainContentMaxY = lastSignificantRow;
+            break;
+          }
+        }
+      }
+      maxY = Math.min(maxY, mainContentMaxY);
+    }
+
+    // 增加 1.5% 安全微边距，防止贴边切到印章或字迹
     const paddingX = Math.round(w * 0.015);
     const paddingY = Math.round(h * 0.015);
 
@@ -98,8 +129,8 @@ export function cropWhitespaceFromCanvas(canvas: HTMLCanvasElement): string {
     const cropW = Math.min(w - cropX, (maxX - minX) + paddingX * 2);
     const cropH = Math.min(h - cropY, (maxY - minY) + paddingY * 2);
 
-    // 如果有效区域高度或宽度小于原本画面的 85%（即存在大面积无用留白），则裁切至有效票面
-    if (cropH < h * 0.88 || cropW < w * 0.88) {
+    // 只要有 10% 以上的多余空白边，就执行裁切以放大票面
+    if (cropH < h * 0.92 || cropW < w * 0.92) {
       const croppedCanvas = document.createElement("canvas");
       croppedCanvas.width = cropW;
       croppedCanvas.height = cropH;
