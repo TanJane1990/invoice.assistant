@@ -61,20 +61,56 @@ textarea::placeholder {
     height: 0 !important;
   }
 
-  /* 仅对根级容器清除边距，不再对所有 div 清零 padding（保留 .a4-print-page 的动态页边距） */
+  /* 1. 全局重置：默认所有元素背景完全透明、无阴影、无文本阴影，彻底消除暗黑模式背景色 */
+  * {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* 2. 根级与页面基础容器：纯白底色，去除溢出与固定高度 */
   html,
-  body,
-  main {
-    background: #ffffff !important;
+  body {
+    background-color: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
-    overflow-x: visible !important;
-    overflow-y: visible !important;
   }
 
-  /* 隐掉所有非打印区域（导航栏、顶部控制栏、表格试图、背景层、按钮、提示框、弹窗） */
+  /* 3. 彻底重置屏幕外层布局容器（去除 min-h-screen、py-6、pt-6、space-y、transform、flex 居中等），防止生成大块深蓝页面与多余空白页 */
+  #root,
+  #root > div,
+  main,
+  section,
+  article,
+  .min-h-screen,
+  .overflow-auto,
+  .overflow-x-auto,
+  .overflow-y-auto {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    display: block !important;
+  }
+
+  /* 消除 Tailwind 的 space-y / space-x 在打印时产生的空行与跨页空白 */
+  [class*="space-y-"] > * + *,
+  [class*="space-x-"] > * + * {
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  /* 4. 隐藏所有屏幕 UI 控件（导航栏、工具条、按钮、弹窗等） */
   .no-print,
   .print\:hidden,
   [data-no-print="true"],
@@ -94,29 +130,7 @@ textarea::placeholder {
     display: none !important;
   }
 
-  /* 消除屏幕缩放 (zoom transform) 造成的物理打印排版偏斜与边框撕裂 */
-  div,
-  section,
-  main {
-    transform: none !important;
-    transform-origin: top left !important;
-  }
-
-  /* 仅对非打印内容容器清除背景色，保留 .a4-print-page 及其内部发票卡片的背景色 */
-  body > div:not(.a4-print-page),
-  main {
-    background-color: transparent !important;
-  }
-
-  /* 发票卡片内部浅灰底色需保留打印 */
-  .a4-print-page .invoice-card-content,
-  .a4-print-page .invoice-card-content div,
-  .a4-print-cover-page {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  /* 页面命名与独立纸张方向规则 (CSS Paged Media Module) */
+  /* 5. 页面命名与独立纸张方向规则 (CSS Paged Media Module) */
   @page coverPage {
     size: A4 portrait;
     margin: 0;
@@ -132,13 +146,11 @@ textarea::placeholder {
     margin: 0;
   }
 
-  /* 强制打印卡片白底黑字并保持精细 1:1 物理像素尺寸 */
+  /* 6. 物理打印纸张实体（.a4-print-page）：强制纯白实体背景与精准 1:1 尺寸 */
   .a4-print-page {
-    box-shadow: none !important;
-    border: none !important;
-    margin: 0 auto !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
+    margin: 0 auto !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     page-break-inside: avoid !important;
@@ -146,9 +158,10 @@ textarea::placeholder {
     page-break-after: always !important;
     break-after: page !important;
     overflow: hidden !important;
+    display: block !important;
   }
 
-  /* 最后一页绝不添加强制分页符，防止打印机多吐出一张空白页 */
+  /* 最后一页绝不添加强制分页符，防止打印机在末尾多吐出一张空白页 */
   .a4-print-page:last-child,
   .a4-print-page:last-of-type {
     page-break-after: auto !important;
@@ -165,7 +178,7 @@ textarea::placeholder {
     page: invoicePagePortrait;
   }
 
-  /* 报销凭证封面单：独立命名为 coverPage，强制永远以 A4 物理纵向输出，彻底解决与横向发票混排时的截断与空白页问题 */
+  /* 7. 报销凭证封面单：独立命名为 coverPage，强制永远以 A4 物理纵向输出，彻底解决与横向发票混排时的截断与空白页问题 */
   .a4-print-cover-page {
     page: coverPage !important;
     width: 210mm !important;
@@ -175,15 +188,18 @@ textarea::placeholder {
     min-height: 0 !important;
     padding: 8mm 12mm !important;
     box-sizing: border-box !important;
+    background-color: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     page-break-after: always !important;
     break-after: page !important;
     overflow: hidden !important;
+    display: block !important;
   }
 
-  /* 强制锁死发票卡片文字深度对比度，防止黑色模式遗留影响物理打印 */
+  /* 8. 强制锁死发票卡片文字深度对比度与浅灰背景 */
   .invoice-card-content,
+  .invoice-card-content div,
   .invoice-card-content * {
     color: #0f172a !important;
     -webkit-print-color-adjust: exact !important;

@@ -134,28 +134,33 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
   return (
     <div
-      className={`w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen relative z-0 transition-colors ${
+      className={`w-full flex flex-col items-center py-6 px-4 overflow-x-auto min-h-screen relative z-0 transition-colors print:p-0 print:m-0 print:min-h-0 print:bg-transparent ${
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态物理打印方向控制：根据用户选择的纸张类型和方向生成 @page 规则 */}
+      {/* 动态命名页纸张规则：仅针对发票排版页命名生效，绝不污染全局报销封面单 */}
       <style>{`
         @media print {
-          @page {
+          @page invoicePageLandscape {
             size: ${
               isGrid1SingleTicket
                 ? "210mm 140mm"
                 : (() => {
-                    // 标准纸张使用 CSS 命名
                     const standardNames: Record<string, string> = { A4: "A4", A5: "A5", B5: "JIS-B5" };
                     const stdName = standardNames[paperKey];
-                    if (stdName) {
-                      return `${stdName} ${isLandscape ? "landscape" : "portrait"}`;
-                    }
-                    // 非标纸张使用精确物理尺寸 (宽 x 高)
-                    const w = paperSize.width;
-                    const h = paperSize.height;
-                    return isLandscape ? `${h} ${w}` : `${w} ${h}`;
+                    return stdName ? `${stdName} landscape` : `${paperSize.height} ${paperSize.width}`;
+                  })()
+            };
+            margin: 0;
+          }
+          @page invoicePagePortrait {
+            size: ${
+              isGrid1SingleTicket
+                ? "210mm 140mm"
+                : (() => {
+                    const standardNames: Record<string, string> = { A4: "A4", A5: "A5", B5: "JIS-B5" };
+                    const stdName = standardNames[paperKey];
+                    return stdName ? `${stdName} portrait` : `${paperSize.width} ${paperSize.height}`;
                   })()
             };
             margin: 0;
@@ -164,7 +169,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
       `}</style>
       {/* Pages Container with Scaling Zoom */}
       <div
-        className="transition-transform origin-top flex flex-col items-center space-y-10 relative z-0"
+        className="transition-transform origin-top flex flex-col items-center space-y-10 relative z-0 print:space-y-0 print:m-0 print:p-0 print:transform-none"
         style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
       >
         {pages.map((pageData, pageIdx) => {

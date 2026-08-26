@@ -59,7 +59,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
   );
 
   return (
-    <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
+    <div className="max-w-4xl mx-auto py-6 px-4 space-y-6 print:p-0 print:m-0 print:max-w-none print:space-y-0">
       {/* Action Header */}
       <div
         className={`no-print p-4 rounded-2xl border flex items-center justify-between shadow-md transition-colors ${

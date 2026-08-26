@@ -265,7 +265,7 @@ export const App: React.FC = () => {
           />
           <main className="flex-1 overflow-auto bg-[#0E172B]">
             {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
-              <div className="pt-6">
+              <div className="pt-6 print:pt-0 print:m-0 print:p-0">
                 <ReimbursementCover
                   selectedInvoices={selectedInvoices}
                   invoices={invoices}
