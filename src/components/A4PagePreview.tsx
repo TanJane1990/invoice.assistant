@@ -162,8 +162,11 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
       >
         {pages.map((pageData, pageIdx) => {
           const pageInvoices = pageData.invoices;
+          const isLastPage = pageIdx === pages.length - 1;
+          const printSheetHeight = isLandscape ? "208mm" : "295mm";
+
           return (
-            <div key={`page-${pageIdx}`} className="relative flex flex-col items-center z-0 print:m-0 print:p-0">
+            <div key={`page-${pageIdx}`} className="a4-print-page-wrapper relative flex flex-col items-center z-0 print:m-0 print:p-0">
               {/* On-screen Page Badge (hidden in print) */}
               <div
                 className={`no-print mb-2 flex items-center justify-between text-xs font-semibold px-2 py-1 rounded-md ${
@@ -197,11 +200,13 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                 }`}
                 style={{
                   width: pageWidth,
-                  height: pageHeight,
-                  minHeight: pageHeight,
-                  maxHeight: pageHeight,
+                  height: printSheetHeight,
+                  minHeight: printSheetHeight,
+                  maxHeight: printSheetHeight,
                   padding: paddingValue,
                   boxSizing: "border-box",
+                  pageBreakAfter: isLastPage ? "auto" : "always",
+                  breakAfter: isLastPage ? "auto" : "page",
                   overflow: "hidden",
                 }}
               >

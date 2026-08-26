@@ -82,7 +82,7 @@ textarea::placeholder {
     overflow: visible !important;
   }
 
-  /* 3. 彻底重置屏幕外层布局容器（去除 min-h-screen、py-6、pt-6、space-y、transform、flex 居中等），防止生成大块深蓝页面与多余空白页 */
+  /* 3. 彻底重置屏幕外层布局容器，防止生成多余空白页 */
   #root,
   #root > div,
   main,
@@ -103,11 +103,9 @@ textarea::placeholder {
     display: block !important;
   }
 
-  /* 消除 Tailwind 的 space-y / space-x 在打印时产生的空行与跨页空白 */
-  [class*="space-y-"] > * + *,
-  [class*="space-x-"] > * + * {
-    margin-top: 0 !important;
-    margin-left: 0 !important;
+  /* 消除包装层在打印时的空白占位 */
+  .a4-print-page-wrapper {
+    display: contents !important;
   }
 
   /* 4. 隐藏所有屏幕 UI 控件（导航栏、工具条、按钮、弹窗等） */
@@ -130,7 +128,7 @@ textarea::placeholder {
     display: none !important;
   }
 
-  /* 5. 打印纸张实体（.a4-print-page）：强制纯白实体背景与精准尺寸 */
+  /* 5. 物理打印纸张实体（.a4-print-page）：强制纯白实体背景与精准尺寸 */
   .a4-print-page {
     background-color: #ffffff !important;
     color: #0f172a !important;
@@ -139,31 +137,36 @@ textarea::placeholder {
     print-color-adjust: exact !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    page-break-before: always !important;
-    break-before: page !important;
-    page-break-after: auto !important;
-    break-after: auto !important;
+    page-break-before: auto !important;
+    break-before: auto !important;
+    page-break-after: always !important;
+    break-after: page !important;
     overflow: hidden !important;
     display: block !important;
     box-sizing: border-box !important;
   }
 
-  /* 打印流的第一页不向前分页，防止在最前面生成空白页 */
-  .a4-print-page:first-of-type,
-  .a4-print-cover-page:first-of-type,
-  main > div:first-child .a4-print-page,
-  main > div:first-child .a4-print-cover-page,
-  div:first-child > .a4-print-page {
-    page-break-before: auto !important;
-    break-before: auto !important;
+  /* 最后一页绝不强制换页，防止末尾多吐空白页 */
+  .a4-print-page:last-of-type,
+  .a4-print-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 
-  /* 报销凭证封面单基础打印类 */
+  /* 报销凭证封面单固定纵向规范 */
   .a4-print-cover-page {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 295mm !important;
+    max-height: 295mm !important;
+    min-height: 295mm !important;
+    padding: 8mm 12mm !important;
     box-sizing: border-box !important;
     background-color: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
     overflow: hidden !important;
     display: block !important;
   }
