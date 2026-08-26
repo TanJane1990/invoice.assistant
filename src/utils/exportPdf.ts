@@ -32,6 +32,13 @@ export async function generateAndPrintPdf(
         backgroundColor: "#ffffff",
         logging: false,
         imageTimeout: 15000,
+        ignoreElements: (element) => {
+          return (
+            element.classList.contains("no-print") ||
+            element.classList.contains("print:hidden") ||
+            element.getAttribute("data-no-print") === "true"
+          );
+        },
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.98);

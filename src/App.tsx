@@ -202,29 +202,27 @@ export const App: React.FC = () => {
     }
   };
 
-  // 调起标准系统直接打印（智能判断当前 Tab：cover/layout 直接打印，ledger 切到 layout 后打印）
-  const handlePrint = () => {
+  // 调起 100% 所见即所得高清 PDF 打印与导出
+  const handlePrint = async () => {
     if (activeTab === "layout" || activeTab === "cover") {
-      // 在排版视图或报销封面视图，直接调起打印
-      window.print();
+      await generateAndPrintPdf(document.body);
     } else {
-      // 在台账等其他视图，先切换到排版页再打印
       setActiveTab("layout");
-      setTimeout(() => {
-        window.print();
-      }, 300);
+      setTimeout(async () => {
+        await generateAndPrintPdf(document.body);
+      }, 400);
     }
   };
 
-  // 独立打印报销封面单：切到 cover Tab 后调起打印
-  const handlePrintCover = () => {
+  // 独立打印报销封面单：切到 cover Tab 后调起高清所见即所得打印
+  const handlePrintCover = async () => {
     if (activeTab === "cover") {
-      window.print();
+      await generateAndPrintPdf(document.body);
     } else {
       setActiveTab("cover");
-      setTimeout(() => {
-        window.print();
-      }, 300);
+      setTimeout(async () => {
+        await generateAndPrintPdf(document.body);
+      }, 400);
     }
   };
 
