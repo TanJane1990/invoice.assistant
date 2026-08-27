@@ -127,6 +127,15 @@ function createWindow() {
     mainWindow.focus();
   });
 
+  mainWindow.on("close", async () => {
+    try {
+      if (mainWindow && mainWindow.webContents && mainWindow.webContents.session) {
+        // 清理临时网络与图片缓存，释放系统内存，保留 localStorage 本地台账数据库
+        await mainWindow.webContents.session.clearCache();
+      }
+    } catch (e) {}
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });

@@ -73,14 +73,17 @@ export const App: React.FC = () => {
     }
   });
 
-  // 3. 发票列表状态：默认干净的空列表 []，用户未导入前绝不填充示例发票
+  // 3. 发票列表状态：开机加载本地台账数据，排版勾选状态默认重置为 false（启动时保持干净的排版就绪状态，台账数据 100% 完整保留）
   const [invoices, setInvoices] = useState<InvoiceData[]>(() => {
     try {
       const saved = localStorage.getItem("saved_invoices_v1");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed;
+          return parsed.map((inv) => ({
+            ...inv,
+            selectedForPrint: false, // 每次重新打开软件时，默认不勾选任何旧发票，保持排版区干净
+          }));
         }
       }
       return [];
@@ -129,9 +132,10 @@ export const App: React.FC = () => {
     setTheme(nextTheme);
   };
 
-  // 批量导入与台账操作
+  // 批量导入与台账操作：新导入的发票自动选中以方便直接排版
   const handleAddInvoices = (newInvs: InvoiceData[]) => {
-    setInvoices((prev) => [...newInvs, ...prev]);
+    const markedInvs = newInvs.map((inv) => ({ ...inv, selectedForPrint: true }));
+    setInvoices((prev) => [...markedInvs, ...prev]);
   };
 
   const handleDeleteInvoice = (id: string) => {
