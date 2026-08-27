@@ -399,12 +399,18 @@ export const exportInvoicesToExcel = async (
           serverMessage = saveData.message;
         }
       }
+    } else {
+      console.error("save-excel-direct HTTP error:", saveRes.status, saveRes.statusText);
     }
   } catch (e) {
-    console.error("save-excel-direct error:", e);
+    console.error("save-excel-direct fetch error:", e);
   }
 
   if (!directSaved) {
+    // 后端不可用时的 fallback：如果是 Electron 打包环境 (file:// 协议)，直接提示用户后端服务未启动
+    if (typeof window !== "undefined" && !window.location.protocol.startsWith("http")) {
+      alert("⚠️ 后端服务未响应，无法直接保存到磁盘。\n\n请确保通过 npm run dev 或 npm run electron:dev 启动应用。\n\n本次将使用浏览器下载方式保存文件。");
+    }
     XLSX.writeFile(workbook, fileName);
   }
 
