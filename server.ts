@@ -504,4 +504,7 @@ async function startServer() {
   });
 }
 
+export { XLSX };
+export default startServer;
+
 startServer();

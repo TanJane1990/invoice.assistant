@@ -12,16 +12,40 @@ let serverProcess = null;
 
 const PORT = process.env.PORT || 3000;
 
-// Helper: 智能定位本地电脑（桌面/下载/文档/U盘）真实存在的发票台账 Excel 文件
+// Helper: 智能定位本地电脑（桌面/下载/文档/U盘/OneDrive）真实存在的发票台账 Excel 文件
 function findInvoiceFileOnDisk(preferredFileName) {
   const homeDir = os.homedir();
-  const searchDirs = [
-    path.join(homeDir, "Desktop"),
-    path.join(homeDir, "Downloads"),
-    path.join(homeDir, "Documents"),
-  ];
+  const searchDirs = [];
 
-  if (fs.existsSync("/Volumes")) {
+  try {
+    if (app.isReady()) {
+      searchDirs.push(app.getPath("desktop"));
+      searchDirs.push(app.getPath("downloads"));
+      searchDirs.push(app.getPath("documents"));
+    }
+  } catch (e) {}
+
+  searchDirs.push(path.join(homeDir, "Desktop"));
+  searchDirs.push(path.join(homeDir, "Downloads"));
+  searchDirs.push(path.join(homeDir, "Documents"));
+
+  // Windows 系统特有支持：OneDrive 桌面、D盘/E盘/U盘根目录
+  if (process.platform === "win32") {
+    const oneDriveDesktop = path.join(homeDir, "OneDrive", "Desktop");
+    const oneDriveDocs = path.join(homeDir, "OneDrive", "Documents");
+    if (fs.existsSync(oneDriveDesktop)) searchDirs.push(oneDriveDesktop);
+    if (fs.existsSync(oneDriveDocs)) searchDirs.push(oneDriveDocs);
+
+    const winDrives = ["D:\\", "E:\\", "F:\\", "G:\\"];
+    winDrives.forEach((drv) => {
+      if (fs.existsSync(drv)) {
+        searchDirs.push(drv);
+      }
+    });
+  }
+
+  // macOS 系统特有支持：外接硬盘 /Volumes
+  if (process.platform === "darwin" && fs.existsSync("/Volumes")) {
     try {
       const vols = fs.readdirSync("/Volumes");
       vols.forEach((v) => {
@@ -30,8 +54,11 @@ function findInvoiceFileOnDisk(preferredFileName) {
     } catch (e) {}
   }
 
+  // 去重搜索路径
+  const uniqueDirs = Array.from(new Set(searchDirs.filter(Boolean)));
+
   if (preferredFileName) {
-    for (const d of searchDirs) {
+    for (const d of uniqueDirs) {
       if (fs.existsSync(d)) {
         const target = path.join(d, preferredFileName);
         if (fs.existsSync(target)) {
@@ -41,7 +68,7 @@ function findInvoiceFileOnDisk(preferredFileName) {
     }
   }
 
-  for (const d of searchDirs) {
+  for (const d of uniqueDirs) {
     if (fs.existsSync(d)) {
       try {
         const files = fs.readdirSync(d);
@@ -58,7 +85,15 @@ function findInvoiceFileOnDisk(preferredFileName) {
     }
   }
 
-  return { exists: false, filePath: null, fileName: preferredFileName || "发票台账明细表.xlsx" };
+  const defaultDesktop = (() => {
+    try {
+      return app.isReady() ? app.getPath("desktop") : path.join(homeDir, "Desktop");
+    } catch (e) {
+      return path.join(homeDir, "Desktop");
+    }
+  })();
+
+  return { exists: false, filePath: path.join(defaultDesktop, preferredFileName || "发票台账明细表.xlsx"), fileName: preferredFileName || "发票台账明细表.xlsx" };
 }
 
 // 注册原生 IPC 通信：彻底摆脱网络端口与跨域限制，100% 毫秒级原生读写本地 Excel
@@ -92,19 +127,28 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
     let targetPath = diskCheck.exists ? diskCheck.filePath : null;
 
     if (!targetPath) {
-      const homeDir = os.homedir();
-      const desktopPath = path.join(homeDir, "Desktop");
+      let desktopPath;
+      try {
+        desktopPath = app.getPath("desktop");
+      } catch (e) {
+        desktopPath = path.join(os.homedir(), "Desktop");
+      }
       if (fs.existsSync(desktopPath)) {
         targetPath = path.join(desktopPath, fileName || "发票台账明细表.xlsx");
       } else {
-        targetPath = path.join(homeDir, "Downloads", fileName || "发票台账明细表.xlsx");
+        targetPath = path.join(os.homedir(), "Downloads", fileName || "发票台账明细表.xlsx");
       }
     }
 
     let XLSX;
     try {
       XLSX = require("xlsx-js-style");
-    } catch (e) {}
+    } catch (e) {
+      try {
+        const srv = require(path.join(__dirname, "../dist/server.cjs"));
+        XLSX = srv.XLSX || srv.default?.XLSX;
+      } catch (e2) {}
+    }
 
     if (mode === "append" && diskCheck.exists && targetPath && fs.existsSync(targetPath) && XLSX) {
       try {
