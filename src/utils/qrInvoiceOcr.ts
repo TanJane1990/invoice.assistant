@@ -23,27 +23,65 @@ export function parseInvoiceQrString(qrText: string): QrInvoiceResult | null {
   const cleanText = qrText.trim();
   const parts = cleanText.split(",");
 
-  // 1. 标准 8 字段防伪发票二维码 (01,10,代码,号码,不含税金额,日期,校验码,税额)
-  if (parts.length >= 6 && (parts[0] === "01" || parts[0] === "02" || parts[0] === "03" || parts[0] === "04")) {
+  // 1. 标准防伪发票二维码 (01, xx, 代码, 号码, 金额, 日期, 校验码, 税额)
+  // parts[1]: 51=铁路客票, 10/31/32=数电票, 01/04=增值税专票/普票
+  if (parts.length >= 6 && parts[0] === "01") {
+    const invoiceTypeKind = parts[1] || "";
     const invoiceCode = parts[2] || "";
     const invoiceNumber = parts[3] || "";
-    const withoutTax = parseFloat(parts[4]) || 0;
+    const rawAmountStr = parts[4] || "0";
+    const rawAmt = /^[0-9]+(\.[0-9]+)?$/.test(rawAmountStr.trim()) ? parseFloat(rawAmountStr) : 0;
+
     const rawDate = parts[5] || "";
     let issueDate = "";
     if (rawDate.length === 8 && /^\d{8}$/.test(rawDate)) {
       issueDate = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
     }
 
-    const checksum = parts[6] || "";
-    const taxAmount = parts[7] ? parseFloat(parts[7]) || 0 : 0;
-    const totalAmountWithTax = Math.round((withoutTax + taxAmount) * 100) / 100;
+    // 校验码判定
+    let checksum = parts[6] || "";
+    if (!checksum && parts[7] && !/^[0-9]+(\.[0-9]{1,2})?$/.test(parts[7])) {
+      checksum = parts[7]; // 例如 铁路客票的 "5db2"
+    }
+
+    // 税额判定：只有当 parts[7] 是纯数字（并且不是 hex 校验码）时，才作为税额
+    let taxAmount = 0;
+    const isHexOrChecksum = parts[7] && (/[a-zA-Z]/.test(parts[7]) || parts[7].length <= 6);
+    if (parts[7] && /^[0-9]+\.[0-9]{1,2}$/.test(parts[7]) && !isHexOrChecksum) {
+      taxAmount = parseFloat(parts[7]);
+    }
+
+    let totalAmountWithTax = rawAmt;
+    let totalAmountWithoutTax = rawAmt;
+
+    // 铁路电子客票 (01, 51) 或 数电票 (01, 10 / 31 / 32 / 51): parts[4] 本身就是价税合计票价 (如 11.00)
+    if (invoiceTypeKind === "51" || !invoiceCode || invoiceTypeKind === "10" || invoiceTypeKind === "31" || invoiceTypeKind === "32") {
+      totalAmountWithTax = rawAmt;
+      // 铁路客票税率 9%
+      if (invoiceTypeKind === "51") {
+        totalAmountWithoutTax = Math.round((rawAmt / 1.09) * 100) / 100;
+        taxAmount = Math.round((rawAmt - totalAmountWithoutTax) * 100) / 100;
+      } else {
+        totalAmountWithoutTax = rawAmt;
+        taxAmount = 0;
+      }
+    } else {
+      // 传统增值税发票：parts[4] 是不含税金额，加上 taxAmount 为价税合计
+      if (taxAmount > 0) {
+        totalAmountWithoutTax = rawAmt;
+        totalAmountWithTax = Math.round((rawAmt + taxAmount) * 100) / 100;
+      } else {
+        totalAmountWithTax = rawAmt;
+        totalAmountWithoutTax = rawAmt;
+      }
+    }
 
     return {
       invoiceCode,
       invoiceNumber,
-      totalAmountWithoutTax: withoutTax,
+      totalAmountWithoutTax,
       totalTaxAmount: taxAmount,
-      totalAmountWithTax: totalAmountWithTax > 0 ? totalAmountWithTax : withoutTax,
+      totalAmountWithTax,
       issueDate,
       checksum,
       rawQrText: cleanText,
