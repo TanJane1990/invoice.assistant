@@ -152,8 +152,41 @@ async function startServer() {
           const incomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet);
 
           if (existingRows.length > 0 && incomingRows.length > 0) {
-            // 合并已有数据与新数据
-            const combinedRows = [...existingRows, ...incomingRows];
+            // 建立已有 Excel 历史发票的唯一指纹索引 (发票号码 + 开票日期 + 金额)
+            const existingKeyCount = new Map<string, number>();
+            existingRows.forEach((r) => {
+              const num = String(r["发票号码"] || "").trim();
+              const date = String(r["开票日期"] || "").trim();
+              const amt = String(r["价税合计(元)"] || r["价税合计"] || r["含税金额(元)"] || "").trim();
+              if (num && num !== "-") {
+                const key = `${num}_${date}_${amt}`;
+                existingKeyCount.set(key, (existingKeyCount.get(key) || 0) + 1);
+              }
+            });
+
+            // 智能识别新数据中需要追加到末尾的行（避免软件中已有老数据导致全表重复翻倍）
+            const incomingKeyCount = new Map<string, number>();
+            const rowsToAppend: any[] = [];
+
+            incomingRows.forEach((r) => {
+              const num = String(r["发票号码"] || "").trim();
+              const date = String(r["开票日期"] || "").trim();
+              const amt = String(r["价税合计(元)"] || r["价税合计"] || r["含税金额(元)"] || "").trim();
+              const key = `${num}_${date}_${amt}`;
+              const seen = (incomingKeyCount.get(key) || 0) + 1;
+              incomingKeyCount.set(key, seen);
+
+              const existingSeen = existingKeyCount.get(key) || 0;
+              // 如果新数据中该发票出现的次数大于旧文件中已有的次数，说明是新增发票，追加到末尾
+              if (seen > existingSeen) {
+                rowsToAppend.push(r);
+              }
+            });
+
+            // 合并已有数据与新追加的数据
+            const combinedRows = rowsToAppend.length > 0
+              ? [...existingRows, ...rowsToAppend]
+              : incomingRows;
 
             // 重新编排序号 (1, 2, 3, 4, ...)
             combinedRows.forEach((row, idx) => {
