@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import XLSX from "xlsx-js-style";
 import { InvoiceData, SystemSettings } from "../types";
 
 const LAST_EXPORT_KEY = "smart_invoice_last_export_info";
@@ -229,6 +229,73 @@ export const exportInvoicesToExcel = (
   });
 
   worksheet["!cols"] = dynamicCols;
+
+  // 为 Excel 单元格上色：重复发票整行醒目标黄高亮 (RGB: FFFF00)
+  const headerStyle = {
+    fill: { fgColor: { rgb: "F1F5F9" } },
+    font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "0F172A" } },
+    alignment: { vertical: "center", horizontal: "center" },
+    border: {
+      top: { style: "thin", color: { rgb: "94A3B8" } },
+      bottom: { style: "medium", color: { rgb: "475569" } },
+      left: { style: "thin", color: { rgb: "CBD5E1" } },
+      right: { style: "thin", color: { rgb: "CBD5E1" } },
+    },
+  };
+
+  const duplicateRowStyle = {
+    fill: { fgColor: { rgb: "FFFF00" } }, // 明黄色高亮
+    font: { name: "Microsoft YaHei", sz: 10, bold: true, color: { rgb: "000000" } },
+    alignment: { vertical: "center", horizontal: "left" },
+    border: {
+      top: { style: "thin", color: { rgb: "D4D4D8" } },
+      bottom: { style: "thin", color: { rgb: "D4D4D8" } },
+      left: { style: "thin", color: { rgb: "D4D4D8" } },
+      right: { style: "thin", color: { rgb: "D4D4D8" } },
+    },
+  };
+
+  const normalRowStyle = {
+    font: { name: "Microsoft YaHei", sz: 10, color: { rgb: "18181B" } },
+    alignment: { vertical: "center", horizontal: "left" },
+    border: {
+      top: { style: "thin", color: { rgb: "E4E4E7" } },
+      bottom: { style: "thin", color: { rgb: "E4E4E7" } },
+      left: { style: "thin", color: { rgb: "E4E4E7" } },
+      right: { style: "thin", color: { rgb: "E4E4E7" } },
+    },
+  };
+
+  // 1. 设置表头样式
+  colKeys.forEach((key, colIdx) => {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIdx });
+    if (worksheet[cellRef]) {
+      worksheet[cellRef].s = headerStyle;
+    }
+  });
+
+  // 2. 设置数据行样式（重复发票整行标黄高亮）
+  invoices.forEach((inv, rowIdx) => {
+    const r = rowIdx + 1;
+    const isDup = Boolean(duplicateMap[inv.id] || inv.duplicateWarning);
+
+    colKeys.forEach((key, colIdx) => {
+      const cellRef = XLSX.utils.encode_cell({ r, c: colIdx });
+      if (worksheet[cellRef]) {
+        const baseStyle = isDup ? { ...duplicateRowStyle } : { ...normalRowStyle };
+        const isCenterCol = key === "序号" || key === "开票日期" || key === "分类" || key === "查重状态" || key === "发票代码";
+        const isRightCol = key.includes("金额") || key.includes("税额") || key.includes("价税合计");
+
+        worksheet[cellRef].s = {
+          ...baseStyle,
+          alignment: {
+            vertical: "center",
+            horizontal: isRightCol ? "right" : isCenterCol ? "center" : "left",
+          },
+        };
+      }
+    });
+  });
 
   // Apply SheetJS Worksheet Protection if configured or password set
   if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {
