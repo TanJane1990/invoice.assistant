@@ -43,9 +43,7 @@ jobs:
         run: npm run build
 
       - name: Build Electron Package
-        run: npx electron-builder --config electron-builder.json
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --config electron-builder.json --publish never
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
