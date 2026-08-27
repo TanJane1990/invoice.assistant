@@ -1,5 +1,6 @@
 import React from "react";
 import { FileSpreadsheet, X, FilePlus, RefreshCw, Clock, FolderOpen } from "lucide-react";
+import { getBackendApiUrl } from "../utils/exportExcel";
 
 interface LastExportInfo {
   fileName: string;
@@ -27,7 +28,7 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
   const handleOpenFileFolder = async () => {
     if (!lastExportInfo?.fileName) return;
     try {
-      const res = await fetch("/api/open-file-folder", {
+      const res = await fetch(getBackendApiUrl("/api/open-file-folder"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fileName: lastExportInfo.fileName }),

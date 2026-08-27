@@ -26,9 +26,16 @@ export const getLastExportInfo = (): LastExportInfo | null => {
   }
 };
 
+export const getBackendApiUrl = (endpoint: string): string => {
+  if (typeof window !== "undefined" && window.location.protocol.startsWith("http")) {
+    return endpoint;
+  }
+  return `http://127.0.0.1:3000${endpoint}`;
+};
+
 export const checkDiskFileExists = async (fileName: string): Promise<boolean> => {
   try {
-    const res = await fetch("/api/check-file-exists", {
+    const res = await fetch(getBackendApiUrl("/api/check-file-exists"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileName }),
@@ -50,7 +57,7 @@ export const clearLastExportInfo = () => {
 export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> => {
   const local = getLastExportInfo();
   try {
-    const res = await fetch("/api/check-file-exists", {
+    const res = await fetch(getBackendApiUrl("/api/check-file-exists"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileName: local?.fileName || "发票台账明细表.xlsx" }),
@@ -370,7 +377,7 @@ export const exportInvoicesToExcel = async (
   let directSaved = false;
   try {
     const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
-    const saveRes = await fetch("/api/save-excel-direct", {
+    const saveRes = await fetch(getBackendApiUrl("/api/save-excel-direct"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileName, base64Data }),
