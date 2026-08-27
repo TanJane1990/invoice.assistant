@@ -163,7 +163,11 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         {pages.map((pageData, pageIdx) => {
           const pageInvoices = pageData.invoices;
           const isLastPage = pageIdx === pages.length - 1;
-          const printSheetHeight = isLandscape ? "208mm" : "295mm";
+          const printSheetHeight = isGrid1SingleTicket
+            ? "140mm"
+            : isLandscape
+            ? paperSize.width
+            : paperSize.height;
 
           return (
             <div key={`page-${pageIdx}`} className="a4-print-page-wrapper relative flex flex-col items-center z-0 print:m-0 print:p-0">

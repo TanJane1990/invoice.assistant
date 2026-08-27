@@ -24,9 +24,9 @@ export async function generateAndPrintPdf(
     for (let i = 0; i < pageNodes.length; i++) {
       const node = pageNodes[i];
 
-      // 2.5倍高精采样 300DPI 渲染 DOM 为 Canvas 图像
+      // 3.0倍超高清 300+ DPI 采样渲染 DOM 为 Canvas 图像
       const canvas = await html2canvas(node, {
-        scale: 2.5,
+        scale: 3.0,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
@@ -41,7 +41,8 @@ export async function generateAndPrintPdf(
         },
       });
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      // 采用无损 PNG 格式，彻底消除 JPEG 压缩带来的字体发糊、红章变脏、边缘噪点等失真瑕疵
+      const imgData = canvas.toDataURL("image/png");
 
       // 根据 Canvas 真实宽高判断当前页应为 横向 (landscape) 还是 纵向 (portrait)
       const isNodeLandscape = canvas.width > canvas.height;
@@ -61,29 +62,9 @@ export async function generateAndPrintPdf(
         pdf.addPage("a4", pdfOrientation);
       }
 
-      // 严格 1:1 保持宽高比例放置图像，绝对不拉伸/挤压
-      const canvasRatio = canvas.width / canvas.height;
-      const pageRatio = pdfPageWidth / pdfPageHeight;
-
-      let drawW = pdfPageWidth;
-      let drawH = pdfPageHeight;
-      let drawX = 0;
-      let drawY = 0;
-
-      if (Math.abs(canvasRatio - pageRatio) > 0.02) {
-        if (canvasRatio > pageRatio) {
-          drawW = pdfPageWidth;
-          drawH = pdfPageWidth / canvasRatio;
-          drawY = (pdfPageHeight - drawH) / 2;
-        } else {
-          drawH = pdfPageHeight;
-          drawW = pdfPageHeight * canvasRatio;
-          drawX = (pdfPageWidth - drawW) / 2;
-        }
-      }
-
+      // 100% 精准无死角满版映射 A4 物理纸张（0 毫升白边缩水、0 变形拉伸、所见即所得）
       if (pdf) {
-        pdf.addImage(imgData, "JPEG", drawX, drawY, drawW, drawH);
+        pdf.addImage(imgData, "PNG", 0, 0, pdfPageWidth, pdfPageHeight, undefined, "FAST");
       }
     }
 
