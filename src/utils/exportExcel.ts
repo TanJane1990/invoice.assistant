@@ -378,6 +378,8 @@ export const exportInvoicesToExcel = async (
   try {
     const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
     let totalMergedCount = invoices.length;
+    let appendedCount = invoices.length;
+    let serverMessage = "";
     const saveRes = await fetch(getBackendApiUrl("/api/save-excel-direct"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -387,12 +389,20 @@ export const exportInvoicesToExcel = async (
       const saveData = await saveRes.json();
       if (saveData.success) {
         directSaved = true;
-        if (saveData.totalCount) {
+        if (saveData.totalCount != null) {
           totalMergedCount = saveData.totalCount;
+        }
+        if (saveData.appendedCount != null) {
+          appendedCount = saveData.appendedCount;
+        }
+        if (saveData.message) {
+          serverMessage = saveData.message;
         }
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("save-excel-direct error:", e);
+  }
 
   if (!directSaved) {
     XLSX.writeFile(workbook, fileName);
@@ -403,7 +413,7 @@ export const exportInvoicesToExcel = async (
   const exportRecord: LastExportInfo = {
     fileName,
     lastExportTime: nowStr,
-    count: invoices.length,
+    count: totalMergedCount,
   };
   try {
     localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify(exportRecord));
@@ -412,7 +422,13 @@ export const exportInvoicesToExcel = async (
   }
 
   if (mode === "append") {
-    alert(`成功追加 ${invoices.length} 张发票数据至：${fileName}！`);
+    if (serverMessage) {
+      alert(serverMessage);
+    } else if (appendedCount > 0) {
+      alert(`成功追加 ${appendedCount} 张新发票至：${fileName}\n文件中共 ${totalMergedCount} 条记录。`);
+    } else {
+      alert(`已导出 ${invoices.length} 张发票至：${fileName}`);
+    }
   }
 
   if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {

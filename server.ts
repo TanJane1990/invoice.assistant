@@ -183,10 +183,22 @@ async function startServer() {
               }
             });
 
+            console.log(`[追加] 已有行数: ${existingRows.length}, 传入行数: ${incomingRows.length}, 真正新增: ${rowsToAppend.length}`);
+
+            // 如果没有真正的新行需要追加（全部都是已有数据），保持原文件不变
+            if (rowsToAppend.length === 0) {
+              return res.json({
+                success: true,
+                filePath: targetPath,
+                fileName: path.basename(targetPath),
+                totalCount: existingRows.length,
+                appendedCount: 0,
+                message: "所有发票均已存在于文件中，无需重复追加",
+              });
+            }
+
             // 合并已有数据与新追加的数据
-            const combinedRows = rowsToAppend.length > 0
-              ? [...existingRows, ...rowsToAppend]
-              : incomingRows;
+            const combinedRows = [...existingRows, ...rowsToAppend];
 
             // 重新编排序号 (1, 2, 3, 4, ...)
             combinedRows.forEach((row, idx) => {
