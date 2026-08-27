@@ -152,40 +152,41 @@ async function startServer() {
           const incomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet);
 
           if (existingRows.length > 0 && incomingRows.length > 0) {
-            // 建立已有 Excel 历史发票的唯一指纹索引 (发票号码 + 开票日期 + 金额)
-            const existingKeyCount = new Map<string, number>();
+            // 对齐旧发票软件 (Python pd.concat) 的追加策略：
+            // 1. 用「导出批次时间」区分「旧文件中已有的历史记录」和「本次新传入的记录」
+            // 2. 重复发票（相同发票号码）照样追加进去，但整行标黄高亮警示
+            // 3. 已经在旧文件中存在的相同行不重复追加（防止翻倍）
+
+            // 收集旧文件中所有行的「行指纹」(序号+发票号码+导出批次时间+导入时间)
+            const existingRowFingerprints = new Set<string>();
             existingRows.forEach((r) => {
+              // 综合多个字段做指纹，区分"同一条记录的重复发送" vs "同一发票号的不同次导入"
               const num = String(r["发票号码"] || "").trim();
-              const date = String(r["开票日期"] || "").trim();
+              const importTime = String(r["导入时间"] || "").trim();
+              const batchTime = String(r["导出批次时间"] || "").trim();
               const amt = String(r["价税合计(元)"] || r["价税合计"] || r["含税金额(元)"] || "").trim();
-              if (num && num !== "-") {
-                const key = `${num}_${date}_${amt}`;
-                existingKeyCount.set(key, (existingKeyCount.get(key) || 0) + 1);
-              }
+              const fp = `${num}|${importTime}|${batchTime}|${amt}`;
+              existingRowFingerprints.add(fp);
             });
 
-            // 智能识别新数据中需要追加到末尾的行（避免软件中已有老数据导致全表重复翻倍）
-            const incomingKeyCount = new Map<string, number>();
+            // 筛选出「本次真正需要追加的新行」
             const rowsToAppend: any[] = [];
-
             incomingRows.forEach((r) => {
               const num = String(r["发票号码"] || "").trim();
-              const date = String(r["开票日期"] || "").trim();
+              const importTime = String(r["导入时间"] || "").trim();
+              const batchTime = String(r["导出批次时间"] || "").trim();
               const amt = String(r["价税合计(元)"] || r["价税合计"] || r["含税金额(元)"] || "").trim();
-              const key = `${num}_${date}_${amt}`;
-              const seen = (incomingKeyCount.get(key) || 0) + 1;
-              incomingKeyCount.set(key, seen);
+              const fp = `${num}|${importTime}|${batchTime}|${amt}`;
 
-              const existingSeen = existingKeyCount.get(key) || 0;
-              // 如果新数据中该发票出现的次数大于旧文件中已有的次数，说明是新增发票，追加到末尾
-              if (seen > existingSeen) {
+              if (!existingRowFingerprints.has(fp)) {
+                // 该行在旧文件中不存在 → 追加
                 rowsToAppend.push(r);
               }
             });
 
             console.log(`[追加] 已有行数: ${existingRows.length}, 传入行数: ${incomingRows.length}, 真正新增: ${rowsToAppend.length}`);
 
-            // 如果没有真正的新行需要追加（全部都是已有数据），保持原文件不变
+            // 如果没有真正的新行需要追加
             if (rowsToAppend.length === 0) {
               return res.json({
                 success: true,
@@ -197,7 +198,7 @@ async function startServer() {
               });
             }
 
-            // 合并已有数据与新追加的数据
+            // 合并已有数据与新追加的数据（跟旧软件 pd.concat 一致）
             const combinedRows = [...existingRows, ...rowsToAppend];
 
             // 重新编排序号 (1, 2, 3, 4, ...)
@@ -205,21 +206,18 @@ async function startServer() {
               row["序号"] = idx + 1;
             });
 
-            // 重新做全量重复发票检测
-            const counts: Record<string, number[]> = {};
+            // 全量重复发票检测：发票号码相同 → 全部标黄（跟旧软件一致，重复发票照样追加，但标黄警示）
+            const invoiceNumCounts: Record<string, number[]> = {};
             combinedRows.forEach((row, idx) => {
               const num = String(row["发票号码"] || "").trim();
-              const check = String(row["校验码"] || row["防伪校验码"] || "").trim();
-              const amt = String(row["价税合计(元)"] || row["价税合计"] || row["含税金额(元)"] || "").trim();
               if (num && num !== "-") {
-                const key = check ? `${num}_${check}_${amt}` : `${num}_${amt}`;
-                if (!counts[key]) counts[key] = [];
-                counts[key].push(idx);
+                if (!invoiceNumCounts[num]) invoiceNumCounts[num] = [];
+                invoiceNumCounts[num].push(idx);
               }
             });
 
             const dupRowIndices = new Set<number>();
-            Object.values(counts).forEach((indices) => {
+            Object.values(invoiceNumCounts).forEach((indices) => {
               if (indices.length > 1) {
                 indices.forEach((i) => dupRowIndices.add(i));
               }
@@ -324,7 +322,7 @@ async function startServer() {
               filePath: targetPath,
               fileName: path.basename(targetPath),
               totalCount: combinedRows.length,
-              appendedCount: incomingRows.length,
+              appendedCount: rowsToAppend.length,
             });
           }
         } catch (mergeErr) {
