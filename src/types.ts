@@ -37,6 +37,7 @@ export interface InvoiceData {
   totalAmountWithTax: number;
   totalAmountWithTaxCN: string;
   category: InvoiceCategory;
+  taxRate?: string; // 税率 (如 13%, 9%, 6%, 3%, 0%, 免税)
   remarks?: string;
   drawer?: string;
   taxRegion?: string;

@@ -13,6 +13,7 @@ export interface ParsedInvoiceResult {
   totalTaxAmount: number;
   totalAmountWithTax: number;
   totalAmountWithTaxCN: string;
+  taxRate?: string;
   category: "餐饮费" | "交通费" | "住宿费" | "办公用品" | "通讯费" | "会议费" | "软件服务" | "培训费" | "租金" | "其他";
   remarks: string;
   taxRegion?: string;
@@ -118,7 +119,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   } else if (/非税收入|统一票据|财政电子|医疗收费|学杂费/.test(cleanText)) {
     const matchType = cleanText.match(/([\u4e00-\u9fa5]+非税收入[\u4e00-\u9fa5（）()]*)|\b财政电子票据\b/);
     invoiceType = matchType ? matchType[0] : "财政电子票据";
-  } else if (/铁路电子客票|火车票|铁路电子|电子客票/.test(cleanText)) {
+  } else if (/铁路电子客票|火车票|铁路电子|电子客票|12306/.test(cleanText)) {
     invoiceType = "电子发票（铁路电子客票）";
   } else if (/航空运输电子客票行程单|航空客票|行程单/.test(cleanText)) {
     invoiceType = "航空运输电子客票行程单";
@@ -130,9 +131,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceType = "增值税电子普通发票";
   }
 
-  // 2. 发票/收据号码 (优先强匹配 "票据号码:" 或 "发票号码:"，绝对防止把 "交款人统一社会信用代码: 11100358496" 错认成单号)
+  // 2. 发票/收据号码
   let invoiceNumber = "";
-  const mInvDirect = cleanText.match(/(?:票据号码|发票号码|发票号)[:：\s]*([0-9A-Za-z-]+)/);
+  const mInvDirect = cleanText.match(/(?:票据号码|发票号码|发票号|客票号)[:：\s]*([0-9A-Za-z-]+)/);
   if (mInvDirect) {
     invoiceNumber = mInvDirect[1].trim();
   } else {
@@ -175,7 +176,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     invoiceCode = mCode[1];
   }
 
-  // 3.5 校验码 (如 6214f3 或 20位防伪校验码)
+  // 3.5 校验码
   let checkCode = "";
   const mCheck = cleanText.match(/(?:校验码|校\s*验\s*码)[:：\s]*([0-9a-zA-Z]{6,20})/);
   if (mCheck) {
@@ -194,7 +195,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 5. 公司/主体名称正则抽取 (强匹配中文字符为主的公司主体名)
+  // 5. 主体公司提取
   const companyPattern = /([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|集团|公司|水务|自来水|供电|电力))/g;
   const companies: string[] = [];
   const compMatches = cleanText.matchAll(companyPattern);
@@ -222,11 +223,11 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let passengerName = "";
   let passengerId = "";
   let trainRoute = "";
+  let trainSeat = "";
 
   const mPayer = cleanText.match(/(?:购买方|交款人|客户|抬头)(?:信息|\s|\/|\(|\))*[（(]?交款人\/单位[）)]?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayer) {
     let rawPayer = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
-    // 过滤购买方名称前面的校验乱码数字串
     rawPayer = rawPayer.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
     if (!rawPayer.includes("监制章") && !rawPayer.includes("税务总局")) {
       buyerName = rawPayer;
@@ -245,12 +246,12 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       .replace(/^有限责任公司代收\s*/, "")
       .trim();
     rawPayee = rawPayee.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
-    if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号") && !rawPayee.includes("监制章")) {
+    if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号") && !rawPayee.includes("监制章") && !rawPayee.includes("统一社会信用")) {
       sellerName = rawPayee;
     }
   }
 
-  // 公用事业/服务商主体名称智能角色防误翻转引擎：如自来水、供电、燃气、通信、京东等商户被误抓为购买方，自动矫正归纳为销售方
+  // 公用事业/服务商智能判定
   const utilityKeywords = ["自来水", "供水", "水务", "电力", "供电", "燃气", "热力", "电信", "联通", "移动", "铁塔", "京东", "美团", "滴滴"];
   if (utilityKeywords.some((k) => buyerName.includes(k))) {
     if (!sellerName || sellerName.includes("代收") || sellerName.includes("服务单位") || sellerName === "示例服务提供商") {
@@ -259,14 +260,10 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     buyerName = "个人";
   }
 
-  // =========================================================================
-  // 🏛️ 5 大标准发票/票据结构化锚点识别引擎 (Structured Anchor Layout Engine)
-  // =========================================================================
-
   // 模式 1: 电子发票（铁路电子客票）
   if (invoiceType.includes("铁路") || invoiceType.includes("客票") || cleanText.includes("12306") || cleanText.includes("电子客票号")) {
     invoiceType = "电子发票（铁路电子客票）";
-    sellerName = "中国铁路";
+    sellerName = "中国国家铁路集团有限公司";
     sellerTaxId = "-";
 
     const mTrainBuyer = cleanText.match(/(?:购买方名称|购买方)[:：\s]*([^\n\r\t]{2,50})/);
@@ -281,20 +278,34 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       buyerName = "个人";
     }
 
-    const mPassengerId = cleanText.match(/(\d{6,10}\*+\d{4}|\d{18}|\d{15})/);
-    if (mPassengerId) passengerId = mPassengerId[1];
+    const mDirectPassenger = cleanText.match(/(?:乘车人|旅客姓名|姓名|乘机人|出行人)[:：\s]*([\u4e00-\u9fa5]{2,4})/);
+    if (mDirectPassenger) {
+      passengerName = mDirectPassenger[1];
+    } else {
+      const mPassengerName = cleanText.match(/(?:\d{6,10}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
+      if (mPassengerName) passengerName = mPassengerName[1];
+    }
 
-    const mPassengerName = cleanText.match(/(?:\d{6,10}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
-    if (mPassengerName) passengerName = mPassengerName[1];
+    const mPassengerId = cleanText.match(/(\d{6,10}\*+\d{4}|\d{18}|\d{17}[0-9Xx]|\d{15})/);
+    if (mPassengerId) {
+      // 避免误抓客票号/发票号为身份证
+      const idVal = mPassengerId[1];
+      if (!idVal.startsWith("26119") && !idVal.startsWith("26329") && idVal !== invoiceNumber) {
+        passengerId = idVal;
+      }
+    }
+
+    const mSeat = cleanText.match(/(二等座|一等座|商务座|特等座|硬卧|软卧|硬座|软座|无座)/);
+    if (mSeat) trainSeat = mSeat[1];
 
     const mTrainRoute =
       cleanText.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)\s*([A-Z0-9]{1,6})\s*([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)/) ||
       cleanText.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)[\s\S]{0,40}?([A-Z0-9]{1,6})[\s\S]{0,40}?([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)/) ||
-      cleanText.match(/([\u4e00-\u9fa5]{2,15}站?)\s*(?:至|➔|->|--)\s*([\u4e00-\u9fa5]{2,15}站?)/);
+      cleanText.match(/([\u4e00-\u9fa5]{2,15}站?)\s*(?:至|➔|->|--|-)\s*([\u4e00-\u9fa5]{2,15}站?)/);
     if (mTrainRoute) {
       trainRoute = mTrainRoute[3]
-        ? `${mTrainRoute[1]} ${mTrainRoute[2]} ${mTrainRoute[3]}`
-        : `${mTrainRoute[1]} ➔ ${mTrainRoute[2]}`;
+        ? `${mTrainRoute[1]}-${mTrainRoute[3]} ${mTrainRoute[2]}`
+        : `${mTrainRoute[1]}-${mTrainRoute[2]}`;
     }
   }
   // 模式 2: 航空运输电子客票行程单
@@ -348,7 +359,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
   }
-  // 模式 4: 数电发票 / 增值税电子发票 (结构化买卖双方区块强提取)
+  // 模式 4: 数电发票 / 增值税电子发票
   else {
     const mDigitalBuyer = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方\s*名\s*称|购\s*买\s*方)[\s\S]{0,35}?名\s*称\s*[:：]?\s*([^\n\r\t]{2,50})/);
     if (mDigitalBuyer && !mDigitalBuyer[1].includes("纳税人识别") && !mDigitalBuyer[1].includes("项目名称")) {
@@ -368,7 +379,6 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     const mDigitalSellerTaxId = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方)[\s\S]{0,50}?(?:纳税人识别号|统一社会信用代码)\s*[:：]?\s*([A-Za-z0-9]{15,20})/);
     if (mDigitalSellerTaxId) sellerTaxId = mDigitalSellerTaxId[1];
 
-    // 如果 PDF 矢量文本流将标签与值分离 (如 Part A 全是标签，Part B 全是值)
     if (!sellerName || sellerName.includes("纳税人识别") || sellerName.includes("项目名称") || sellerName === "出票服务单位") {
       if (companies.length > 0) {
         sellerName = companies[0];
@@ -384,7 +394,6 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 极简页眉商户主体抽取补全 (如 "北京智慧生活有限公司 电子收据" -> 提取 "北京智慧生活有限公司" 为销售方)
   if (!sellerName || sellerName === "出票服务单位") {
     const mHeaderCompany = cleanText.match(/^([^\n\r\t]{3,40}(?:公司|单位|中心|集团))/);
     if (mHeaderCompany) {
@@ -426,8 +435,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   if (totalAmountWithTax === 0) {
     const totalPatterns = [
       /(?:票价|车票票价)\s*[:：]?\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
-      /(?:价税合计|价税\s*合\s*计)[^0-9¥￥]*[¥￥]?\s*[:：]?\s*([0-9,，]+\.?\d*)/,
-      /(?:（小写）|\(小写\)|小写)[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d{2})/,
+      /(?:价税合计|价税\s*合\s*计)[^0-9¥￥\n\r]*[¥￥]?\s*[:：]?\s*([0-9,，]+\.?\d*)/,
+      /(?:（小写）|\(小写\)|小写)[^0-9¥￥\n\r]*[¥￥]?\s*([0-9,，]+\.?\d{2})/,
       /小写[）\)]?\s*[¥￥]?\s*([0-9,，]+\.?\d{2})/,
       /(?:金额|合计|小写)\s*[:：\s]*[¥￥]?\s*([0-9,，]+\.\d{2})/,
       /[¥￥]\s*([0-9,，]+\.\d{2})/,
@@ -456,33 +465,89 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 大写金额提取
-  const cnMatch = cleanText.match(/(?:价税合计\(大写\)|价税合计（大写）|大写|金额大写|金额合计\(大写\))[:：\s\S]{0,10}?([\u4e00-\u9fa5]{2,20})/);
+  // 大写金额提取（严格白名单校验）
+  const VALID_CN_AMOUNT_REGEX = /^[零壹贰叁参肆伍陆柒捌玖拾佰仟万亿角分整元圆〇\s]+$/;
+  const cnMatch = cleanText.match(/(?:价税合计\(大写\)|价税合计（大写）|大写|金额大写|金额合计\(大写\))[:：\s\S]{0,10}?([零壹贰叁参肆伍陆柒捌玖拾佰仟万亿角分整元圆〇\s]{2,25})/);
   if (cnMatch) {
-    totalAmountWithTaxCN = cnMatch[1].replace(/[ⓧ\s]/g, "").trim();
+    const rawCn = cnMatch[1].replace(/[ⓧ\s]/g, "").trim();
+    if (VALID_CN_AMOUNT_REGEX.test(rawCn) && rawCn.length >= 2 && !rawCn.includes("代码") && !rawCn.includes("识别")) {
+      totalAmountWithTaxCN = rawCn;
+    }
   }
   if (!totalAmountWithTaxCN && totalAmountWithTax > 0) {
     totalAmountWithTaxCN = numberToRMB(totalAmountWithTax);
   }
 
-  // 8. 不含税金额与税额
-  let totalAmountWithoutTax = totalAmountWithTax;
+  // 8. 不含税金额与税额、税率提取与财税强勾稽
+  let totalAmountWithoutTax = 0;
   let totalTaxAmount = 0;
+  let taxRate = "";
 
-  const mWithoutTax = cleanText.match(/(?<!价税)合\s*计[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d*)/);
-  if (mWithoutTax) {
-    const val = parseFloat(mWithoutTax[1].replace(/[,，]/g, ""));
-    if (!isNaN(val) && val < 1000000) totalAmountWithoutTax = val;
+  // 提取税率 (如 13%, 9%, 6%, 3%, 1%, 0%, 免税, 不征税)
+  const mRate = cleanText.match(/(?:税\s*率|征收率)[:：\s]*(\d{1,2}%|免税|不征税|0%)/i) ||
+                cleanText.match(/\b(13%|9%|6%|5%|3%|1%|0%)\b/);
+  if (mRate) {
+    taxRate = mRate[1].toUpperCase();
   }
 
-  const mTax = cleanText.match(/税\s*额[^0-9¥￥]*[¥￥]?\s*([0-9,，]+\.?\d*)/);
+  // 严格匹配税额：必须在“税额”标签附近的数字，且不能是 6 位纯整数年月（如 202512）或 1 位纯整数数量（如 1）
+  const mTax = cleanText.match(/(?:合\s*计\s*税\s*额|税\s*额)[：:\s]*[¥￥]?\s*([0-9,，]+\.\d{2})/);
   if (mTax) {
     const val = parseFloat(mTax[1].replace(/[,，]/g, ""));
-    if (!isNaN(val) && val < 1000000) totalTaxAmount = val;
+    if (!isNaN(val) && val < totalAmountWithTax && val > 0) {
+      totalTaxAmount = val;
+    }
+  } else {
+    const mTaxZero = cleanText.match(/(?:合\s*计\s*税\s*额|税\s*额)[：:\s]*[¥￥]?\s*(0|0\.00|免税|不征税|\*+|-)/);
+    if (mTaxZero) {
+      totalTaxAmount = 0;
+      if (!taxRate) taxRate = "0%";
+    }
   }
 
-  if (totalAmountWithoutTax === totalAmountWithTax && totalTaxAmount > 0 && totalAmountWithTax > totalTaxAmount) {
-    totalAmountWithoutTax = Math.round((totalAmountWithTax - totalTaxAmount) * 100) / 100;
+  // 提取不含税金额
+  const mWithoutTax = cleanText.match(/(?:(?:不含税金额|合\s*计|金\s*额)[：:\s]*[¥￥]?\s*([0-9,，]+\.\d{2}))/);
+  if (mWithoutTax) {
+    const val = parseFloat(mWithoutTax[1].replace(/[,，]/g, ""));
+    if (!isNaN(val) && val < 1000000 && val > 0 && val <= totalAmountWithTax) {
+      totalAmountWithoutTax = val;
+    }
+  }
+
+  // 财税数学勾稽关系强校验与自动平衡引擎
+  if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
+    taxRate = taxRate || "0%";
+    totalAmountWithoutTax = totalAmountWithTax;
+    totalTaxAmount = 0;
+  } else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
+    taxRate = taxRate || "0%";
+    totalAmountWithoutTax = totalAmountWithTax;
+    totalTaxAmount = 0;
+  } else if (invoiceType.includes("非税") || invoiceType.includes("收据") || invoiceType.includes("财政")) {
+    taxRate = "免税";
+    totalTaxAmount = 0;
+    totalAmountWithoutTax = totalAmountWithTax;
+  } else {
+    // 增值税普通发票 / 专票
+    if (totalTaxAmount > 0 && totalAmountWithTax > 0) {
+      if (totalAmountWithoutTax === 0 || totalAmountWithoutTax >= totalAmountWithTax || Math.abs((totalAmountWithoutTax + totalTaxAmount) - totalAmountWithTax) > 0.05) {
+        totalAmountWithoutTax = Math.round((totalAmountWithTax - totalTaxAmount) * 100) / 100;
+      }
+    } else if (totalAmountWithoutTax > 0 && totalAmountWithTax > 0 && totalAmountWithTax > totalAmountWithoutTax) {
+      totalTaxAmount = Math.round((totalAmountWithTax - totalAmountWithoutTax) * 100) / 100;
+    } else if (totalAmountWithTax > 0 && totalAmountWithoutTax === 0) {
+      totalAmountWithoutTax = totalAmountWithTax;
+      totalTaxAmount = 0;
+    }
+
+    if (!taxRate) {
+      if (totalTaxAmount > 0 && totalAmountWithoutTax > 0) {
+        const calcRate = Math.round((totalTaxAmount / totalAmountWithoutTax) * 100);
+        taxRate = `${calcRate}%`;
+      } else {
+        taxRate = "0%";
+      }
+    }
   }
 
   // 9. 费用类别智能归类
@@ -514,11 +579,17 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     drawer = mDrawer[1];
   }
 
-  // 11. 备注与订单号
+  // 11. 备注与行程结构化
   let remarks = fileName || "发票识别";
   const mOrder = cleanText.match(/订单号[:：\s]*([0-9A-Za-z]+)/);
-  if (trainRoute) {
-    remarks = `行程: ${trainRoute}`;
+
+  if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
+    const seatStr = trainSeat || "二等座";
+    const pName = passengerName || "-";
+    remarks = `${seatStr} 乘车: ${pName}`;
+  } else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
+    const pName = passengerName || "-";
+    remarks = `乘机人: ${pName}`;
   } else if (mOrder) {
     remarks = `订单号: ${mOrder[1]}`;
   } else {
@@ -531,46 +602,80 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  // 12. 明细商品全量抽取 (支持标准星号商品、非税票规费名、智能剔除密文乱码串)
+  // 12. 明细商品全量抽取 (深度清洗截断，剔除数量、单价、大写、小写、备注乱串)
   const items: ParsedInvoiceResult["items"] = [];
-  const itemMatches = Array.from(cleanText.matchAll(/\*([^*\n\r]{1,30})\*([^\n\r]{1,50})/g));
-  if (itemMatches.length > 0) {
-    itemMatches.forEach((mIt, idx) => {
-      const rawName = `*${mIt[1]}*${mIt[2].trim()}`;
-      if (!isGarbledCipher(rawName)) {
-        items.push({
-          id: `item-${Date.now()}-${idx + 1}`,
-          name: rawName,
-          amount: totalAmountWithTax,
-          quantity: 1,
-        });
-      }
-    });
-  }
 
-  // 针对非税收入票据，专项提取规费项目名称 (如 "污水处理费（居民）")
-  if (items.length === 0 && (invoiceType.includes("非税") || invoiceType.includes("财政") || cleanText.includes("非税"))) {
-    const mNonTaxItem = cleanText.match(/([\u4e00-\u9fa5（）()]{2,25}(?:费|水费|电费|气费|管理费|服务费|规费|基金|附加))/);
-    if (mNonTaxItem) {
-      const feeName = mNonTaxItem[1].trim();
-      if (!isGarbledCipher(feeName) && !feeName.includes("收据") && !feeName.includes("票据")) {
-        items.push({
-          id: `item-${Date.now()}-1`,
-          name: `*规费*${feeName}`,
-          amount: totalAmountWithTax,
-          quantity: 1,
-        });
-      }
-    }
-  }
-
-  if (items.length === 0) {
+  if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
+    const routeText = trainRoute || "铁路客票";
     items.push({
       id: `item-${Date.now()}-1`,
-      name: sellerName && sellerName !== "出票服务单位" ? `*${category}*${sellerName}规费/服务` : `*${category}*物品/服务`,
+      name: totalAmountWithTax > 0 ? `${totalAmountWithTax} ${routeText}` : routeText,
       amount: totalAmountWithTax,
       quantity: 1,
+      taxRate: taxRate || "0%",
+      taxAmount: 0,
     });
+  } else {
+    const itemMatches = Array.from(cleanText.matchAll(/\*([^*\n\r\t]{1,30})\*([^\n\r\t]{1,100})/g));
+    if (itemMatches.length > 0) {
+      itemMatches.forEach((mIt, idx) => {
+        const cat = mIt[1].trim();
+        let namePart = mIt[2].trim();
+
+        // 深度截断清洗：剔除数量、单价、年月、金额、大写、备注等
+        namePart = namePart
+          .replace(/\s+(?:20\d{4}|\d{4}-\d{2}|\d{6})[月期\s].*/, "")
+          .replace(/\s+\d+(\.\d+)?\s+\d+(\.\d+)?(?:\s+\d+(\.\d+)?)?.*/, "")
+          .replace(/(?:合\s*计|价税合计|（大写）|\(大写\)|大写|小写|备\s*注|开票人|纳税人|统一社会信用|购买方|销售方|税率|税额).*/, "")
+          .replace(/[;；*¥￥]+.*/, "")
+          .trim();
+
+        if (namePart.length > 35) {
+          namePart = namePart.slice(0, 35).trim();
+        }
+
+        const cleanName = `*${cat}*${namePart}`;
+        if (!isGarbledCipher(cleanName) && namePart.length > 0) {
+          items.push({
+            id: `item-${Date.now()}-${idx + 1}`,
+            name: cleanName,
+            amount: totalAmountWithTax,
+            quantity: 1,
+            taxRate,
+            taxAmount: totalTaxAmount,
+          });
+        }
+      });
+    }
+
+    // 针对非税收入票据，专项提取规费项目名称
+    if (items.length === 0 && (invoiceType.includes("非税") || invoiceType.includes("财政") || cleanText.includes("非税"))) {
+      const mNonTaxItem = cleanText.match(/([\u4e00-\u9fa5（）()]{2,25}(?:费|水费|电费|气费|管理费|服务费|规费|基金|附加))/);
+      if (mNonTaxItem) {
+        const feeName = mNonTaxItem[1].trim();
+        if (!isGarbledCipher(feeName) && !feeName.includes("收据") && !feeName.includes("票据")) {
+          items.push({
+            id: `item-${Date.now()}-1`,
+            name: `*规费*${feeName}`,
+            amount: totalAmountWithTax,
+            quantity: 1,
+            taxRate: "免税",
+            taxAmount: 0,
+          });
+        }
+      }
+    }
+
+    if (items.length === 0) {
+      items.push({
+        id: `item-${Date.now()}-1`,
+        name: sellerName && sellerName !== "出票服务单位" ? `*${category}*${sellerName}服务` : `*${category}*物品/服务`,
+        amount: totalAmountWithTax,
+        quantity: 1,
+        taxRate,
+        taxAmount: totalTaxAmount,
+      });
+    }
   }
 
   return {
@@ -586,6 +691,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     totalTaxAmount,
     totalAmountWithTax,
     totalAmountWithTaxCN: totalAmountWithTaxCN || numberToRMB(totalAmountWithTax),
+    taxRate,
     category,
     remarks,
     drawer,
@@ -596,3 +702,4 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     items,
   };
 }
+

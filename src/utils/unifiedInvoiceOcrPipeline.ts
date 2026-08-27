@@ -120,6 +120,17 @@ export async function processInvoiceFileUnified(
     engineUsed = "【百度云发票OCR】";
   }
 
+  let taxAmt = qrData?.totalTaxAmount != null ? qrData.totalTaxAmount : Number(rawData.totalTaxAmount || 0);
+  let noTaxAmt = qrData?.totalAmountWithoutTax != null ? qrData.totalAmountWithoutTax : Number(rawData.totalAmountWithoutTax || totalAmt);
+
+  if (totalAmt > 0) {
+    if (taxAmt > 0 && noTaxAmt > 0 && Math.abs((noTaxAmt + taxAmt) - totalAmt) > 0.05) {
+      noTaxAmt = Math.round((totalAmt - taxAmt) * 100) / 100;
+    } else if (taxAmt === 0 && noTaxAmt === 0) {
+      noTaxAmt = totalAmt;
+    }
+  }
+
   const finalInvoice: InvoiceData = {
     id: `inv-uploaded-${Date.now()}-${index}`,
     invoiceType: rawData.invoiceType || "电子发票(普通发票)",
@@ -129,12 +140,13 @@ export async function processInvoiceFileUnified(
     checkCode: qrData?.checksum || rawData.checkCode || "",
     buyerName: rawData.buyerName || settings?.defaultCompany || "个人",
     buyerTaxId: rawData.buyerTaxId || "",
-    sellerName: rawData.sellerName || "示例服务提供商",
+    sellerName: rawData.sellerName || "出票服务单位",
     sellerTaxId: rawData.sellerTaxId || "",
-    totalAmountWithoutTax: Number(qrData?.totalAmountWithoutTax || rawData.totalAmountWithoutTax || totalAmt * 0.94),
-    totalTaxAmount: Number(qrData?.totalTaxAmount || rawData.totalTaxAmount || totalAmt * 0.06),
+    totalAmountWithoutTax: noTaxAmt,
+    totalTaxAmount: taxAmt,
     totalAmountWithTax: totalAmt,
     totalAmountWithTaxCN: rawData.totalAmountWithTaxCN || numberToRMB(totalAmt),
+    taxRate: rawData.taxRate || (taxAmt > 0 && noTaxAmt > 0 ? `${Math.round((taxAmt / noTaxAmt) * 100)}%` : "0%"),
     category: (rawData.category as any) || "其他",
     remarks: rawData.remarks || fileName,
     drawer: rawData.drawer || "",
@@ -150,8 +162,8 @@ export async function processInvoiceFileUnified(
           spec: it.spec,
           unit: it.unit,
           price: it.price ? Number(it.price) : undefined,
-          taxRate: it.taxRate,
-          taxAmount: it.taxAmount ? Number(it.taxAmount) : undefined,
+          taxRate: it.taxRate || rawData.taxRate,
+          taxAmount: it.taxAmount != null ? Number(it.taxAmount) : taxAmt,
         }))
       : [
           {
@@ -159,6 +171,8 @@ export async function processInvoiceFileUnified(
             name: rawData.remarks || fileName,
             amount: totalAmt,
             quantity: 1,
+            taxRate: rawData.taxRate,
+            taxAmount: taxAmt,
           },
         ],
     fileUrl: previewFileUrl,

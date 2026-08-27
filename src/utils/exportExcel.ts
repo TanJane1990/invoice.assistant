@@ -141,7 +141,19 @@ const cleanItemsDetail = (items?: any[], remarks?: string, category?: string, se
     return cleanStr(remarks);
   }
   const validNames = Array.from(new Set(items.map((it) => cleanStr(it.name))))
-    .filter((n) => n !== "-" && !isGarbledCipher(n));
+    .map((n) => {
+      let cleaned = cleanStr(n);
+      // 深度清洗：剔除数量、单价、年月、金额、大写、备注等
+      cleaned = cleaned
+        .replace(/\s+(?:20\d{4}|\d{4}-\d{2}|\d{6})[月期\s].*/, "")
+        .replace(/\s+\d+(\.\d+)?\s+\d+(\.\d+)?(?:\s+\d+(\.\d+)?)?.*/, "")
+        .replace(/(?:合\s*计|价税合计|（大写）|\(大写\)|大写|小写|备\s*注|开票人|纳税人|统一社会信用|购买方|销售方|税率|税额).*/, "")
+        .replace(/[;；¥￥]+.*/, "")
+        .trim();
+      return cleaned;
+    })
+    .filter((n) => n !== "-" && !isGarbledCipher(n) && n.length > 0);
+
   if (validNames.length === 0) {
     if (sellerName && sellerName !== "-" && sellerName !== "个人" && sellerName !== "出票服务单位") {
       return `*${category || "费用"}*${sellerName}服务`;
@@ -206,9 +218,6 @@ export const exportInvoicesToExcel = async (
       : cleanBuyerSellerName(inv.buyerName);
     let rawSeller = cleanBuyerSellerName(inv.sellerName);
 
-    // 智能识别公用事业/知名商户名误颠倒逻辑：
-    // 如果购买方误提取到了 "自来水", "供水", "水务", "电力", "供电", "燃气", "热力", "电信", "联通", "移动", "京东", "美团", "滴滴"
-    // 则自动矫正翻转：销售方名称 = 该商家/公共事业单位名，购买方名称 = 个人
     const utilityKeywords = ["自来水", "供水", "水务", "电力", "供电", "燃气", "热力", "电信", "联通", "移动", "铁塔", "京东", "美团", "滴滴"];
     if (utilityKeywords.some((k) => rawBuyer.includes(k))) {
       if (rawSeller === "-" || rawSeller.includes("代收") || rawSeller.includes("服务单位") || rawSeller.includes("云里雾里") || rawSeller === "出票服务单位") {
@@ -217,14 +226,6 @@ export const exportInvoicesToExcel = async (
       rawBuyer = "个人";
     }
 
-    const capitalRMB =
-      inv.totalAmountWithTaxCN &&
-      inv.totalAmountWithTaxCN !== "小写" &&
-      inv.totalAmountWithTaxCN !== "零元整" &&
-      inv.totalAmountWithTaxCN !== "超出最大转换金额"
-        ? inv.totalAmountWithTaxCN
-        : numberToRMB(totalAmt);
-
     const dupInfo = duplicateMap[inv.id];
     const isDup = Boolean(dupInfo || inv.duplicateWarning);
     const duplicateStatus = isDup
@@ -232,45 +233,68 @@ export const exportInvoicesToExcel = async (
       : "✓ 正常唯一";
 
     const currentNowStr = new Date().toLocaleString("zh-CN", { hour12: false });
-    // 自动记录/继承本张发票的导出批次时间
     const exportBatchTime = inv.exportBatchTime || currentNowStr;
     inv.exportBatchTime = exportBatchTime;
 
+    const taxRateStr = inv.taxRate || (taxAmt > 0 && noTaxAmt > 0 ? `${Math.round((taxAmt / noTaxAmt) * 100)}%` : "0%");
+
     return {
       序号: idx + 1,
-      费用类别: inv.category,
+      开票日期: cleanStr(inv.issueDate),
       发票类型: inv.invoiceType,
       发票代码: cleanStr(inv.invoiceCode),
       发票号码: cleanStr(inv.invoiceNumber),
-      开票日期: cleanStr(inv.issueDate),
-      "乘车/出行人": isPassengerTicket ? cleanStr(inv.passengerName || "张三") : "-",
-      行程路线: isPassengerTicket ? cleanStr(inv.trainRoute || "南京南站 G2789 江宁西站") : "-",
+      校验码: cleanStr(inv.checkCode),
       购买方名称: rawBuyer,
       购买方税号: cleanStr(inv.buyerTaxId),
       销售方名称: rawSeller,
       销售方税号: cleanStr(inv.sellerTaxId),
-      "商品/服务明细": cleanItemsDetail(inv.items, inv.remarks, inv.category, rawSeller),
       不含税金额: noTaxAmt,
-      合计税额: taxAmt,
-      "价税合计(元)": totalAmt,
-      价税合计大写: capitalRMB,
-      查重状态: duplicateStatus,
-      导出批次时间: exportBatchTime,
+      税率: taxRateStr,
+      税额: taxAmt,
+      价税合计: totalAmt,
+      商品明细: cleanItemsDetail(inv.items, inv.remarks, inv.category, rawSeller),
       备注: cleanStr(inv.remarks),
       导入时间: cleanStr(inv.importTime || currentNowStr),
+      查重状态: duplicateStatus,
     };
   });
 
-  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  // 计算本次导出的专属汇总统计行 (对齐目标标准表格：统计 共 X 张发票 ¥X,XXX.XX)
+  const batchTotalAmount = invoices.reduce((sum, inv) => sum + Number((inv.totalAmountWithTax || 0).toFixed(2)), 0);
+  const formattedBatchTotal = batchTotalAmount.toFixed(2);
 
-  // 动态自动计算每列的最佳自适应列宽（精准识别中文/全角字符与数字英文，按各列最长单元格字数自适应展开，永不截断）
+  const summaryRow: any = {
+    序号: `统计 共 ${invoices.length} 张发票`,
+    开票日期: "",
+    发票类型: "",
+    发票代码: "",
+    发票号码: "",
+    校验码: "",
+    购买方名称: "",
+    购买方税号: "",
+    销售方名称: "",
+    销售方税号: "",
+    不含税金额: "",
+    税率: "",
+    税额: "",
+    价税合计: `¥${Number(formattedBatchTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    商品明细: "",
+    备注: "",
+    导入时间: "",
+    查重状态: "",
+  };
+
+  const finalExportData = [...exportData, summaryRow];
+  const worksheet = XLSX.utils.json_to_sheet(finalExportData);
+
+  // 动态自适应列宽
   const getVisualLength = (val: any): number => {
     if (val === null || val === undefined) return 0;
     const str = String(val);
     let len = 0;
     for (let i = 0; i < str.length; i++) {
       const code = str.charCodeAt(i);
-      // 中文/全角符号/宽字符按 2.1 字符宽度计算，英文/数字按 1.05
       if (code > 255 || (code >= 0x4e00 && code <= 0x9fa5)) {
         len += 2.1;
       } else {
@@ -280,23 +304,22 @@ export const exportInvoicesToExcel = async (
     return len;
   };
 
-  const colKeys = Object.keys(exportData[0] || {});
+  const colKeys = Object.keys(finalExportData[0] || {});
   const dynamicCols = colKeys.map((key) => {
-    let maxLen = getVisualLength(key); // 表头字宽
+    let maxLen = getVisualLength(key);
     exportData.forEach((row: any) => {
       const cellLen = getVisualLength(row[key]);
       if (cellLen > maxLen) {
         maxLen = cellLen;
       }
     });
-    // 增加 3 个缓冲字符空间，设置最小宽度为 8
     const finalWidth = Math.max(Math.ceil(maxLen) + 3, 8);
     return { wch: finalWidth };
   });
 
   worksheet["!cols"] = dynamicCols;
 
-  // 为 Excel 单元格上色：重复发票整行醒目标黄高亮 (RGB: FFFF00)
+  // 表头样式
   const headerStyle = {
     fill: { fgColor: { rgb: "F1F5F9" } },
     font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "0F172A" } },
@@ -309,8 +332,9 @@ export const exportInvoicesToExcel = async (
     },
   };
 
+  // 重复行高亮样式
   const duplicateRowStyle = {
-    fill: { fgColor: { rgb: "FFFF00" } }, // 明黄色高亮
+    fill: { fgColor: { rgb: "FFFF00" } },
     font: { name: "Microsoft YaHei", sz: 10, bold: true, color: { rgb: "000000" } },
     alignment: { vertical: "center", horizontal: "left" },
     border: {
@@ -321,6 +345,7 @@ export const exportInvoicesToExcel = async (
     },
   };
 
+  // 正常数据行样式
   const normalRowStyle = {
     font: { name: "Microsoft YaHei", sz: 10, color: { rgb: "18181B" } },
     alignment: { vertical: "center", horizontal: "left" },
@@ -332,6 +357,31 @@ export const exportInvoicesToExcel = async (
     },
   };
 
+  // 底部汇总统计行专属高亮样式 (红色醒目加粗金额)
+  const summaryStyle = {
+    fill: { fgColor: { rgb: "F8FAFC" } },
+    font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "0F172A" } },
+    alignment: { vertical: "center", horizontal: "left" },
+    border: {
+      top: { style: "medium", color: { rgb: "475569" } },
+      bottom: { style: "medium", color: { rgb: "475569" } },
+      left: { style: "thin", color: { rgb: "CBD5E1" } },
+      right: { style: "thin", color: { rgb: "CBD5E1" } },
+    },
+  };
+
+  const summaryMoneyStyle = {
+    fill: { fgColor: { rgb: "FEF2F2" } },
+    font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "DC2626" } },
+    alignment: { vertical: "center", horizontal: "right" },
+    border: {
+      top: { style: "medium", color: { rgb: "DC2626" } },
+      bottom: { style: "medium", color: { rgb: "DC2626" } },
+      left: { style: "thin", color: { rgb: "CBD5E1" } },
+      right: { style: "thin", color: { rgb: "CBD5E1" } },
+    },
+  };
+
   // 1. 设置表头样式
   colKeys.forEach((key, colIdx) => {
     const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIdx });
@@ -340,7 +390,7 @@ export const exportInvoicesToExcel = async (
     }
   });
 
-  // 2. 设置数据行样式（重复发票整行标黄高亮）
+  // 2. 设置数据行样式
   invoices.forEach((inv, rowIdx) => {
     const r = rowIdx + 1;
     const isDup = Boolean(duplicateMap[inv.id] || inv.duplicateWarning);
@@ -349,8 +399,8 @@ export const exportInvoicesToExcel = async (
       const cellRef = XLSX.utils.encode_cell({ r, c: colIdx });
       if (worksheet[cellRef]) {
         const baseStyle = isDup ? { ...duplicateRowStyle } : { ...normalRowStyle };
-        const isCenterCol = key === "序号" || key === "开票日期" || key === "分类" || key === "查重状态" || key === "发票代码";
-        const isRightCol = key.includes("金额") || key.includes("税额") || key.includes("价税合计");
+        const isCenterCol = key === "序号" || key === "开票日期" || key === "发票类型" || key === "税率" || key === "查重状态" || key === "发票代码" || key === "校验码";
+        const isRightCol = key === "不含税金额" || key === "税额" || key === "价税合计";
 
         worksheet[cellRef].s = {
           ...baseStyle,
@@ -361,6 +411,19 @@ export const exportInvoicesToExcel = async (
         };
       }
     });
+  });
+
+  // 3. 设置底部专属汇总统计行样式
+  const summaryRowIdx = invoices.length + 1;
+  colKeys.forEach((key, colIdx) => {
+    const cellRef = XLSX.utils.encode_cell({ r: summaryRowIdx, c: colIdx });
+    if (worksheet[cellRef]) {
+      if (key === "价税合计") {
+        worksheet[cellRef].s = summaryMoneyStyle;
+      } else {
+        worksheet[cellRef].s = summaryStyle;
+      }
+    }
   });
 
   // Apply SheetJS Worksheet Protection if configured or password set

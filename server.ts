@@ -155,22 +155,17 @@ async function startServer() {
           const existingWb = XLSX.readFile(targetPath);
           const firstSheetName = existingWb.SheetNames[0];
           const existingSheet = existingWb.Sheets[firstSheetName];
-          const existingRows: any[] = XLSX.utils.sheet_to_json(existingSheet);
+          const rawExistingRows: any[] = XLSX.utils.sheet_to_json(existingSheet);
+          const rawIncomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet);
 
-          const incomingWb = XLSX.read(incomingBuffer, { type: "buffer" });
-          const incomingSheet = incomingWb.Sheets[incomingWb.SheetNames[0]];
-          const incomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet);
+          // 过滤掉原本末尾的统计汇总行，提取纯发票数据
+          const existingRows = rawExistingRows.filter((r) => !String(r["序号"] || "").startsWith("统计"));
+          const incomingRows = rawIncomingRows.filter((r) => !String(r["序号"] || "").startsWith("统计"));
 
           if (existingRows.length > 0 && incomingRows.length > 0) {
-            // 对齐旧发票软件 (Python pd.concat) 的追加策略：
-            // 1. 用「导出批次时间」区分「旧文件中已有的历史记录」和「本次新传入的记录」
-            // 2. 重复发票（相同发票号码）照样追加进去，但整行标黄高亮警示
-            // 3. 已经在旧文件中存在的相同行不重复追加（防止翻倍）
-
             // 收集旧文件中所有行的「行指纹」(序号+发票号码+导出批次时间+导入时间)
             const existingRowFingerprints = new Set<string>();
             existingRows.forEach((r) => {
-              // 综合多个字段做指纹，区分"同一条记录的重复发送" vs "同一发票号的不同次导入"
               const num = String(r["发票号码"] || "").trim();
               const importTime = String(r["导入时间"] || "").trim();
               const batchTime = String(r["导出批次时间"] || "").trim();
@@ -189,14 +184,12 @@ async function startServer() {
               const fp = `${num}|${importTime}|${batchTime}|${amt}`;
 
               if (!existingRowFingerprints.has(fp)) {
-                // 该行在旧文件中不存在 → 追加
                 rowsToAppend.push(r);
               }
             });
 
             console.log(`[追加] 已有行数: ${existingRows.length}, 传入行数: ${incomingRows.length}, 真正新增: ${rowsToAppend.length}`);
 
-            // 如果没有真正的新行需要追加
             if (rowsToAppend.length === 0) {
               return res.json({
                 success: true,
@@ -208,7 +201,7 @@ async function startServer() {
               });
             }
 
-            // 合并已有数据与新追加的数据（跟旧软件 pd.concat 一致）
+            // 合并已有数据与新追加的数据
             const combinedRows = [...existingRows, ...rowsToAppend];
 
             // 重新编排序号 (1, 2, 3, 4, ...)
@@ -216,7 +209,7 @@ async function startServer() {
               row["序号"] = idx + 1;
             });
 
-            // 全量重复发票检测：发票号码相同 → 全部标黄（跟旧软件一致，重复发票照样追加，但标黄警示）
+            // 全量重复发票检测
             const invoiceNumCounts: Record<string, number[]> = {};
             combinedRows.forEach((row, idx) => {
               const num = String(row["发票号码"] || "").trim();
@@ -240,9 +233,38 @@ async function startServer() {
               }
             });
 
+            // 底部添加全表统计汇总行
+            const allTotalAmount = combinedRows.reduce((sum, r) => {
+              const amt = parseFloat(String(r["价税合计"] || r["价税合计(元)"] || 0).replace(/[^0-9.]/g, ""));
+              return sum + (isNaN(amt) ? 0 : amt);
+            }, 0);
+
+            const summaryRow: any = {
+              序号: `统计 共 ${combinedRows.length} 张发票`,
+              开票日期: "",
+              发票类型: "",
+              发票代码: "",
+              发票号码: "",
+              校验码: "",
+              购买方名称: "",
+              购买方税号: "",
+              销售方名称: "",
+              销售方税号: "",
+              不含税金额: "",
+              税率: "",
+              税额: "",
+              价税合计: `¥${Number(allTotalAmount.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              商品明细: "",
+              备注: "",
+              导入时间: "",
+              查重状态: "",
+            };
+
+            const finalRowsWithSummary = [...combinedRows, summaryRow];
+
             // 生成新的 Worksheet
-            const colKeys = Object.keys(combinedRows[0] || {});
-            const mergedWorksheet = XLSX.utils.json_to_sheet(combinedRows, { header: colKeys });
+            const colKeys = Object.keys(finalRowsWithSummary[0] || {});
+            const mergedWorksheet = XLSX.utils.json_to_sheet(finalRowsWithSummary, { header: colKeys });
 
             // 自适应计算列宽
             const dynamicCols = colKeys.map((key) => {
@@ -250,7 +272,7 @@ async function startServer() {
               for (let i = 0; i < key.length; i++) {
                 maxLen += key.charCodeAt(i) > 255 ? 2.1 : 1.05;
               }
-              combinedRows.forEach((item) => {
+              finalRowsWithSummary.forEach((item) => {
                 const val = String(item[key] ?? "");
                 let len = 0;
                 for (let i = 0; i < val.length; i++) {
@@ -298,6 +320,30 @@ async function startServer() {
               },
             };
 
+            const summaryStyle = {
+              fill: { fgColor: { rgb: "F8FAFC" } },
+              font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "0F172A" } },
+              alignment: { vertical: "center", horizontal: "left" },
+              border: {
+                top: { style: "medium", color: { rgb: "475569" } },
+                bottom: { style: "medium", color: { rgb: "475569" } },
+                left: { style: "thin", color: { rgb: "CBD5E1" } },
+                right: { style: "thin", color: { rgb: "CBD5E1" } },
+              },
+            };
+
+            const summaryMoneyStyle = {
+              fill: { fgColor: { rgb: "FEF2F2" } },
+              font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "DC2626" } },
+              alignment: { vertical: "center", horizontal: "right" },
+              border: {
+                top: { style: "medium", color: { rgb: "DC2626" } },
+                bottom: { style: "medium", color: { rgb: "DC2626" } },
+                left: { style: "thin", color: { rgb: "CBD5E1" } },
+                right: { style: "thin", color: { rgb: "CBD5E1" } },
+              },
+            };
+
             colKeys.forEach((_, colIdx) => {
               const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIdx });
               if (mergedWorksheet[cellRef]) mergedWorksheet[cellRef].s = headerStyle;
@@ -310,8 +356,8 @@ async function startServer() {
                 const cellRef = XLSX.utils.encode_cell({ r, c: colIdx });
                 if (mergedWorksheet[cellRef]) {
                   const baseStyle = isDup ? { ...duplicateRowStyle } : { ...normalRowStyle };
-                  const isCenterCol = key === "序号" || key === "开票日期" || key === "分类" || key === "查重状态" || key === "发票代码";
-                  const isRightCol = key.includes("金额") || key.includes("税额") || key.includes("价税合计");
+                  const isCenterCol = key === "序号" || key === "开票日期" || key === "发票类型" || key === "税率" || key === "查重状态" || key === "发票代码" || key === "校验码";
+                  const isRightCol = key === "不含税金额" || key === "税额" || key === "价税合计";
                   mergedWorksheet[cellRef].s = {
                     ...baseStyle,
                     alignment: {
@@ -321,6 +367,19 @@ async function startServer() {
                   };
                 }
               });
+            });
+
+            // 统计汇总行样式
+            const summaryRowIdx = combinedRows.length + 1;
+            colKeys.forEach((key, colIdx) => {
+              const cellRef = XLSX.utils.encode_cell({ r: summaryRowIdx, c: colIdx });
+              if (mergedWorksheet[cellRef]) {
+                if (key === "价税合计") {
+                  mergedWorksheet[cellRef].s = summaryMoneyStyle;
+                } else {
+                  mergedWorksheet[cellRef].s = summaryStyle;
+                }
+              }
             });
 
             const mergedWorkbook = XLSX.utils.book_new();
