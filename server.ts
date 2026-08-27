@@ -113,25 +113,35 @@ async function startServer() {
     }
   });
 
-  // API Endpoint: 打开 Mac Finder 或 Windows 资源管理器中的文件目录并选中文件
-  app.post("/api/open-file-folder", (req, res) => {
+  // API Endpoint: 直接将导出的 Excel 二进制数据精准写入到本地电脑（桌面/现有发票台账文件）
+  app.post("/api/save-excel-direct", (req, res) => {
     try {
-      const { fileName } = req.body;
-      const result = findInvoiceFileOnDisk(fileName);
-      if (!result.exists || !result.filePath) {
-        return res.json({ success: false, message: "未能在磁盘中找到该文件" });
+      const { fileName, base64Data } = req.body;
+      if (!base64Data) {
+        return res.status(400).json({ success: false, message: "缺少 Excel 数据" });
       }
 
-      if (process.platform === "darwin") {
-        child_process.exec(`open -R "${result.filePath}"`);
-      } else if (process.platform === "win32") {
-        child_process.exec(`explorer.exe /select,"${result.filePath}"`);
-      } else {
-        child_process.exec(`xdg-open "${path.dirname(result.filePath)}"`);
+      const buffer = Buffer.from(base64Data, "base64");
+      const diskCheck = findInvoiceFileOnDisk(fileName);
+
+      let targetPath = diskCheck.exists ? diskCheck.filePath : null;
+
+      if (!targetPath) {
+        // 如果文件不存在，默认保存到 Mac 桌面 (Desktop)
+        const homeDir = os.homedir();
+        const desktopPath = path.join(homeDir, "Desktop");
+        if (fs.existsSync(desktopPath)) {
+          targetPath = path.join(desktopPath, fileName || "发票台账明细表.xlsx");
+        } else {
+          targetPath = path.join(homeDir, "Downloads", fileName || "发票台账明细表.xlsx");
+        }
       }
-      return res.json({ success: true, filePath: result.filePath, fileName: result.fileName });
+
+      fs.writeFileSync(targetPath, buffer);
+      return res.json({ success: true, filePath: targetPath, fileName: path.basename(targetPath) });
     } catch (e) {
-      return res.json({ success: false });
+      console.error("Direct save excel error:", e);
+      return res.status(500).json({ success: false, error: String(e) });
     }
   });
 

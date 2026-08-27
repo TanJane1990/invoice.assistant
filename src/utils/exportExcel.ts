@@ -117,7 +117,7 @@ const cleanItemsDetail = (items?: any[], remarks?: string, category?: string, se
   return validNames.join("；");
 };
 
-export const exportInvoicesToExcel = (
+export const exportInvoicesToExcel = async (
   invoices: InvoiceData[],
   settings?: SystemSettings,
   mode: "default" | "append" | "new" = "default",
@@ -366,7 +366,26 @@ export const exportInvoicesToExcel = (
     fileName = "发票台账明细表.xlsx";
   }
 
-  XLSX.writeFile(workbook, fileName);
+  // 核心：优先直接精准写入 Mac 磁盘目标文件（桌面/下载），彻底杜绝浏览器生成 (1).xlsx 或未覆盖的问题
+  let directSaved = false;
+  try {
+    const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
+    const saveRes = await fetch("/api/save-excel-direct", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName, base64Data }),
+    });
+    if (saveRes.ok) {
+      const saveData = await saveRes.json();
+      if (saveData.success) {
+        directSaved = true;
+      }
+    }
+  } catch (e) {}
+
+  if (!directSaved) {
+    XLSX.writeFile(workbook, fileName);
+  }
 
   // Save last export file info to localStorage
   const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
