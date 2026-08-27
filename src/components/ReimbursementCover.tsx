@@ -213,7 +213,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           height: "296mm",
           minHeight: "296mm",
           maxHeight: "296mm",
-          padding: "10mm 14mm",
+          padding: "14mm 15mm",
           boxSizing: "border-box",
           color: "#000000",
           backgroundColor: "#ffffff",
@@ -222,11 +222,11 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           overflow: "hidden",
         }}
       >
-        <div className="flex flex-col space-y-3.5">
+        <div className="flex flex-col space-y-4">
           {/* Title */}
-          <div className="text-center mb-1">
+          <div className="text-center pt-2 pb-2 mb-2">
             <h2
-              className="text-3xl font-extrabold tracking-[0.2em] font-serif text-slate-900 border-b-2 border-slate-900 pb-1.5 inline-block px-6"
+              className="text-3xl font-extrabold tracking-[0.2em] font-serif text-slate-900 border-b-2 border-slate-900 pb-2 inline-block px-8"
               style={{ color: "#000000" }}
             >
               费 用 报 销 凭 证 单
@@ -234,7 +234,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
           </div>
 
           {/* Sub-header info */}
-          <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-800 pb-1.5" style={{ color: "#000000" }}>
+          <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-800 pb-2 mb-1" style={{ color: "#000000" }}>
             <div>
               <span>报销部门: </span>
               <span className="font-bold">{formData.department}</span>
