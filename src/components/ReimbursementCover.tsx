@@ -161,6 +161,16 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               />
             </div>
             <div>
+              <label className="block mb-1 font-bold">填单日期</label>
+              <input
+                type="date"
+                value={formData.date || new Date().toISOString().split("T")[0]}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold font-mono"
+                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              />
+            </div>
+            <div>
               <label className="block mb-1 font-bold">主管审批人</label>
               <input
                 type="text"
@@ -252,7 +262,7 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
             </div>
             <div>
               <span>填单日期: </span>
-              <span className="font-mono font-bold">{formData.date}</span>
+              <span className="font-mono font-bold">{formData.date || new Date().toISOString().split("T")[0]}</span>
             </div>
           </div>
 
