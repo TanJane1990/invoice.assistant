@@ -13,7 +13,14 @@ export const getLastExportInfo = (): LastExportInfo | null => {
   try {
     const raw = localStorage.getItem(LAST_EXPORT_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.fileName && /_\d{8}_\d{6}\.xlsx$/i.test(parsed.fileName)) {
+      parsed.fileName = "发票台账明细表.xlsx";
+      try {
+        localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify(parsed));
+      } catch (e) {}
+    }
+    return parsed;
   } catch (e) {
     return null;
   }
@@ -41,9 +48,32 @@ export const clearLastExportInfo = () => {
 };
 
 export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> => {
-  const info = getLastExportInfo();
-  if (!info) return null;
-  return info;
+  const local = getLastExportInfo();
+  try {
+    const res = await fetch("/api/check-file-exists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: local?.fileName }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.exists && data.fileName) {
+        const actualFileName = data.fileName;
+        const updatedInfo: LastExportInfo = {
+          fileName: actualFileName,
+          lastExportTime: local?.lastExportTime || new Date().toLocaleString("zh-CN", { hour12: false }),
+          count: local?.count || 0,
+        };
+        try {
+          localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify(updatedInfo));
+        } catch (e) {}
+        return updatedInfo;
+      }
+    }
+  } catch (e) {}
+
+  clearLastExportInfo();
+  return null;
 };
 
 import { numberToRMB } from "./numberToRMB";
@@ -322,18 +352,14 @@ export const exportInvoicesToExcel = (
   XLSX.utils.book_append_sheet(workbook, worksheet, "发票台账数据");
 
   const lastInfo = getLastExportInfo();
-  let fileName = "";
+  let fileName = "发票台账明细表.xlsx";
 
   if (overrideFilename) {
     fileName = overrideFilename;
-  } else if (mode === "append" && lastInfo?.fileName) {
+  } else if (lastInfo?.fileName) {
     fileName = lastInfo.fileName;
-  } else if (mode === "new") {
-    const now = new Date();
-    const timestampStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
-    fileName = `发票台账明细表_${timestampStr}.xlsx`;
   } else {
-    fileName = lastInfo?.fileName || "发票台账明细表.xlsx";
+    fileName = "发票台账明细表.xlsx";
   }
 
   XLSX.writeFile(workbook, fileName);

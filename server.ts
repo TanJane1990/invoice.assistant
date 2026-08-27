@@ -37,38 +37,79 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // API Endpoint: 检查上次导出的 Excel 文件是否仍然真实存在于 Mac 磁盘 Downloads/Desktop 中
+  // Helper: 智能定位本地电脑（桌面/下载/文档/U盘）真实存在的发票台账 Excel 文件
+  const findInvoiceFileOnDisk = (preferredFileName?: string) => {
+    const homeDir = os.homedir();
+    const searchDirs = [
+      path.join(homeDir, "Desktop"),
+      path.join(homeDir, "Downloads"),
+      path.join(homeDir, "Documents"),
+    ];
+
+    if (fs.existsSync("/Volumes")) {
+      try {
+        const vols = fs.readdirSync("/Volumes");
+        vols.forEach((v) => {
+          searchDirs.push(path.join("/Volumes", v));
+        });
+      } catch (e) {}
+    }
+
+    // 1. 优先找传入的文件名
+    if (preferredFileName) {
+      for (const dir of searchDirs) {
+        const full = path.join(dir, preferredFileName);
+        if (fs.existsSync(full)) {
+          return { exists: true, filePath: full, fileName: path.basename(full) };
+        }
+      }
+    }
+
+    // 2. 查找标准名称 “发票台账明细表.xlsx” 或常见名称
+    const fixedNames = ["发票台账明细表.xlsx", "发票台账明细表_2026.xlsx", "发票台账.xlsx"];
+    for (const name of fixedNames) {
+      for (const dir of searchDirs) {
+        const full = path.join(dir, name);
+        if (fs.existsSync(full)) {
+          return { exists: true, filePath: full, fileName: path.basename(full) };
+        }
+      }
+    }
+
+    // 3. 扫描目录下以 “发票台账” 开头的最新修改的 .xlsx 文件
+    let latestFile: { filePath: string; fileName: string; mtime: number } | null = null;
+    for (const dir of searchDirs) {
+      if (fs.existsSync(dir)) {
+        try {
+          const files = fs.readdirSync(dir);
+          for (const f of files) {
+            if (f.startsWith("发票台账") && f.endsWith(".xlsx") && !f.startsWith("~$")) {
+              const full = path.join(dir, f);
+              const stat = fs.statSync(full);
+              if (!latestFile || stat.mtimeMs > latestFile.mtime) {
+                latestFile = { filePath: full, fileName: f, mtime: stat.mtimeMs };
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (latestFile) {
+      return { exists: true, filePath: latestFile.filePath, fileName: latestFile.fileName };
+    }
+
+    return { exists: false, filePath: "", fileName: preferredFileName || "发票台账明细表.xlsx" };
+  };
+
+  // API Endpoint: 检查本地电脑上是否存在发票台账文件
   app.post("/api/check-file-exists", (req, res) => {
     try {
       const { fileName } = req.body;
-      if (!fileName) {
-        return res.json({ exists: false });
-      }
-
-      const homeDir = os.homedir();
-      const possiblePaths = [
-        path.join(homeDir, "Downloads", fileName),
-        path.join(homeDir, "Desktop", fileName),
-        path.join(homeDir, "Documents", fileName),
-      ];
-
-      // 自动检索 macOS 外接移动硬盘 / U盘挂载点 (/Volumes/*)
-      if (fs.existsSync("/Volumes")) {
-        try {
-          const vols = fs.readdirSync("/Volumes");
-          vols.forEach((v) => {
-            possiblePaths.push(path.join("/Volumes", v, fileName));
-          });
-        } catch (e) {}
-      }
-
-      const foundPath = possiblePaths.find((p) => fs.existsSync(p));
-      if (foundPath) {
-        return res.json({ exists: true, filePath: foundPath });
-      }
-      return res.json({ exists: false });
+      const result = findInvoiceFileOnDisk(fileName);
+      return res.json(result);
     } catch (e) {
-      return res.json({ exists: false });
+      return res.json({ exists: false, filePath: "", fileName: "发票台账明细表.xlsx" });
     }
   });
 
@@ -76,35 +117,19 @@ async function startServer() {
   app.post("/api/open-file-folder", (req, res) => {
     try {
       const { fileName } = req.body;
-      if (!fileName) return res.json({ success: false });
-
-      const homeDir = os.homedir();
-      const possiblePaths = [
-        path.join(homeDir, "Downloads", fileName),
-        path.join(homeDir, "Desktop", fileName),
-        path.join(homeDir, "Documents", fileName),
-      ];
-
-      if (fs.existsSync("/Volumes")) {
-        try {
-          const vols = fs.readdirSync("/Volumes");
-          vols.forEach((v) => {
-            possiblePaths.push(path.join("/Volumes", v, fileName));
-          });
-        } catch (e) {}
+      const result = findInvoiceFileOnDisk(fileName);
+      if (!result.exists || !result.filePath) {
+        return res.json({ success: false, message: "未能在磁盘中找到该文件" });
       }
-
-      const foundPath = possiblePaths.find((p) => fs.existsSync(p));
-      if (!foundPath) return res.json({ success: false, message: "未能在磁盘中找到该文件" });
 
       if (process.platform === "darwin") {
-        child_process.exec(`open -R "${foundPath}"`);
+        child_process.exec(`open -R "${result.filePath}"`);
       } else if (process.platform === "win32") {
-        child_process.exec(`explorer.exe /select,"${foundPath}"`);
+        child_process.exec(`explorer.exe /select,"${result.filePath}"`);
       } else {
-        child_process.exec(`xdg-open "${path.dirname(foundPath)}"`);
+        child_process.exec(`xdg-open "${path.dirname(result.filePath)}"`);
       }
-      return res.json({ success: true, filePath: foundPath });
+      return res.json({ success: true, filePath: result.filePath, fileName: result.fileName });
     } catch (e) {
       return res.json({ success: false });
     }
