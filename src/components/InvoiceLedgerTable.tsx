@@ -128,7 +128,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* 卡片 1: 台账总发票数 */}
         <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: "#ffffff" }}>
-          <div className="text-xs font-bold" style={{ color: "#64748b" }}>
+          <div className="text-sm font-extrabold tracking-tight" style={{ color: "#334155" }}>
             台账总发票数
           </div>
           <div className="text-2xl font-black mt-2 flex items-baseline space-x-1" style={{ color: "#0f172a" }}>
@@ -139,7 +139,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
         {/* 卡片 2: 拟排版打印数 */}
         <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: "#ffffff" }}>
-          <div className="text-xs font-bold" style={{ color: "#64748b" }}>
+          <div className="text-sm font-extrabold tracking-tight" style={{ color: "#334155" }}>
             拟排版打印数
           </div>
           <div className="text-2xl font-black mt-2 flex items-baseline space-x-1" style={{ color: "#E8000A" }}>
@@ -150,7 +150,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
         {/* 卡片 3: 总金额合计 */}
         <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: "#ffffff" }}>
-          <div className="text-xs font-bold" style={{ color: "#64748b" }}>
+          <div className="text-sm font-extrabold tracking-tight" style={{ color: "#334155" }}>
             总金额合计
           </div>
           <div className="text-2xl font-black mt-2 font-mono" style={{ color: "#009966" }}>
@@ -163,26 +163,35 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           onClick={() => setFilterDuplicateOnly((prev) => !prev)}
           className={`p-5 rounded-2xl border cursor-pointer transition-all shadow-sm flex flex-col justify-between relative group ${
             duplicateCount > 0
-              ? "bg-red-50/60 border-red-300 hover:border-red-400"
+              ? "bg-red-50/70 border-red-300 hover:border-red-400"
               : "bg-white border-slate-200/80 hover:border-slate-300"
           }`}
           style={{ backgroundColor: duplicateCount > 0 ? "#fff5f5" : "#ffffff" }}
           title={duplicateCount > 0 ? "点击快速仅筛选重复发票" : "当前无重复发票"}
         >
-          <div className="flex items-center justify-between text-xs font-bold" style={{ color: "#64748b" }}>
-            <span style={{ color: duplicateCount > 0 ? "#b91c1c" : "#64748b" }}>相同发票号查重预警</span>
+          <div className="flex items-center justify-between text-sm font-extrabold" style={{ color: duplicateCount > 0 ? "#b91c1c" : "#334155" }}>
+            <span style={{ color: duplicateCount > 0 ? "#b91c1c" : "#334155" }}>相同发票号查重预警</span>
             {duplicateCount > 0 ? (
-              <div className="relative flex items-center justify-center">
+              <div className="relative flex items-center justify-center w-7 h-7">
                 {/* 红色外层光晕扩散闪动 */}
-                <span className="animate-ping absolute inline-flex h-8 w-8 rounded-xl bg-red-400 opacity-60"></span>
+                <span
+                  className="animate-ping absolute inline-flex h-6 w-6 rounded-full opacity-75"
+                  style={{ backgroundColor: "#ef4444" }}
+                ></span>
                 {/* 红色主体闪动图标徽章 */}
-                <div className="relative p-1.5 bg-red-500 text-white rounded-xl shadow-md border border-red-600 animate-pulse flex items-center justify-center">
-                  <ShieldAlert className="w-4 h-4 text-white" />
+                <div
+                  className="relative flex items-center justify-center w-7 h-7 rounded-full shadow-md animate-pulse"
+                  style={{ backgroundColor: "#dc2626", color: "#ffffff" }}
+                >
+                  <ShieldAlert className="w-4 h-4 text-white" style={{ color: "#ffffff" }} />
                 </div>
               </div>
             ) : (
-              <div className="p-1.5 bg-slate-100 text-slate-400 rounded-xl border border-slate-200">
-                <ShieldAlert className="w-4 h-4 text-slate-400" />
+              <div
+                className="flex items-center justify-center w-7 h-7 rounded-full border"
+                style={{ backgroundColor: "#f1f5f9", borderColor: "#e2e8f0" }}
+              >
+                <ShieldAlert className="w-4 h-4" style={{ color: "#94a3b8" }} />
               </div>
             )}
           </div>
