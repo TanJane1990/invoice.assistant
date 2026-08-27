@@ -53,7 +53,7 @@ export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> =
     const res = await fetch("/api/check-file-exists", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName: local?.fileName }),
+      body: JSON.stringify({ fileName: local?.fileName || "发票台账明细表.xlsx" }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -72,7 +72,11 @@ export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> =
     }
   } catch (e) {}
 
-  clearLastExportInfo();
+  // 只要本地有历史导出记录，始终保留并返回，绝对不误删！确保弹窗始终能弹出让用户选择【追加 / 更新至现有文件】
+  if (local) {
+    return local;
+  }
+
   return null;
 };
 
