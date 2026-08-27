@@ -52,15 +52,14 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [lastExportInfo, setLastExportInfo] = useState<LastExportInfo | null>(null);
 
-  // 1. 发票重复计算引擎（优先匹配【防伪校验码+发票号码+金额】防重强校验）
+  // 1. 发票重复计算引擎（纯粹精准匹配【相同发票号码】，相同号码同色标出）
   const duplicateMap = React.useMemo(() => {
     const counts: Record<string, InvoiceData[]> = {};
     invoices.forEach((inv) => {
-      if (inv.invoiceNumber && inv.invoiceNumber.trim()) {
+      if (inv.invoiceNumber && inv.invoiceNumber.trim() && inv.invoiceNumber.trim() !== "-") {
         const num = inv.invoiceNumber.trim();
-        const amt = Number((inv.totalAmountWithTax || 0).toFixed(2));
-        const check = (inv.checkCode || "").trim();
-        const key = check ? `${num}_${check}_${amt}` : `${num}_${amt}`;
+        // 核心：严格按发票号码查重（发票号码相同即视为重号发票）
+        const key = num;
         if (!counts[key]) counts[key] = [];
         counts[key].push(inv);
       }

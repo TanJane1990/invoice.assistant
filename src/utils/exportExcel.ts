@@ -162,14 +162,12 @@ export const exportInvoicesToExcel = async (
     return;
   }
 
-  // 1. 动态精准计算全量发票的重复查重映射（发票号码 + 防伪校验码 + 金额）
+  // 1. 动态精准计算全量发票的重复查重映射（严格按相同发票号码）
   const counts: Record<string, InvoiceData[]> = {};
   invoices.forEach((inv) => {
-    if (inv.invoiceNumber && inv.invoiceNumber.trim()) {
+    if (inv.invoiceNumber && inv.invoiceNumber.trim() && inv.invoiceNumber.trim() !== "-") {
       const num = inv.invoiceNumber.trim();
-      const amt = Number((inv.totalAmountWithTax || 0).toFixed(2));
-      const check = (inv.checkCode || "").trim();
-      const key = check ? `${num}_${check}_${amt}` : `${num}_${amt}`;
+      const key = num;
       if (!counts[key]) counts[key] = [];
       counts[key].push(inv);
     }
