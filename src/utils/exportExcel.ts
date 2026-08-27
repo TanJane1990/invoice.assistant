@@ -375,11 +375,11 @@ export const exportInvoicesToExcel = async (
 
   // 核心：优先直接精准写入 Mac 磁盘目标文件（桌面/下载），彻底杜绝浏览器生成 (1).xlsx 或未覆盖的问题
   let directSaved = false;
+  let totalMergedCount = invoices.length;
+  let appendedCount = invoices.length;
+  let serverMessage = "";
   try {
     const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
-    let totalMergedCount = invoices.length;
-    let appendedCount = invoices.length;
-    let serverMessage = "";
     const saveRes = await fetch(getBackendApiUrl("/api/save-excel-direct"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
