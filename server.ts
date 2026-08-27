@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import child_process from "child_process";
+import XLSX from "xlsx-js-style";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { parseInvoiceTextWithRules } from "./src/utils/localPdfInvoiceOcr";
@@ -116,12 +117,12 @@ async function startServer() {
   // API Endpoint: 直接将导出的 Excel 二进制数据精准写入到本地电脑（桌面/现有发票台账文件）
   app.post("/api/save-excel-direct", (req, res) => {
     try {
-      const { fileName, base64Data } = req.body;
+      const { fileName, base64Data, mode = "default" } = req.body;
       if (!base64Data) {
         return res.status(400).json({ success: false, message: "缺少 Excel 数据" });
       }
 
-      const buffer = Buffer.from(base64Data, "base64");
+      const incomingBuffer = Buffer.from(base64Data, "base64");
       const diskCheck = findInvoiceFileOnDisk(fileName);
 
       let targetPath = diskCheck.exists ? diskCheck.filePath : null;
@@ -137,7 +138,156 @@ async function startServer() {
         }
       }
 
-      fs.writeFileSync(targetPath, buffer);
+      // 真正对齐旧发票软件的【追加数据】核心算法：
+      // 如果模式为 append 且目标文件已存在于磁盘中：读取磁盘已有历史数据 + 本次新数据拼接到末尾 (pd.concat)
+      if (mode === "append" && diskCheck.exists && targetPath && fs.existsSync(targetPath)) {
+        try {
+          const existingWb = XLSX.readFile(targetPath);
+          const firstSheetName = existingWb.SheetNames[0];
+          const existingSheet = existingWb.Sheets[firstSheetName];
+          const existingRows: any[] = XLSX.utils.sheet_to_json(existingSheet);
+
+          const incomingWb = XLSX.read(incomingBuffer, { type: "buffer" });
+          const incomingSheet = incomingWb.Sheets[incomingWb.SheetNames[0]];
+          const incomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet);
+
+          if (existingRows.length > 0 && incomingRows.length > 0) {
+            // 合并已有数据与新数据
+            const combinedRows = [...existingRows, ...incomingRows];
+
+            // 重新编排序号 (1, 2, 3, 4, ...)
+            combinedRows.forEach((row, idx) => {
+              row["序号"] = idx + 1;
+            });
+
+            // 重新做全量重复发票检测
+            const counts: Record<string, number[]> = {};
+            combinedRows.forEach((row, idx) => {
+              const num = String(row["发票号码"] || "").trim();
+              const check = String(row["校验码"] || row["防伪校验码"] || "").trim();
+              const amt = String(row["价税合计(元)"] || row["价税合计"] || row["含税金额(元)"] || "").trim();
+              if (num && num !== "-") {
+                const key = check ? `${num}_${check}_${amt}` : `${num}_${amt}`;
+                if (!counts[key]) counts[key] = [];
+                counts[key].push(idx);
+              }
+            });
+
+            const dupRowIndices = new Set<number>();
+            Object.values(counts).forEach((indices) => {
+              if (indices.length > 1) {
+                indices.forEach((i) => dupRowIndices.add(i));
+              }
+            });
+
+            // 更新查重状态文字
+            combinedRows.forEach((row, idx) => {
+              if (dupRowIndices.has(idx)) {
+                row["查重状态"] = "⚠️ 发票重复";
+              }
+            });
+
+            // 生成新的 Worksheet
+            const colKeys = Object.keys(combinedRows[0] || {});
+            const mergedWorksheet = XLSX.utils.json_to_sheet(combinedRows, { header: colKeys });
+
+            // 自适应计算列宽
+            const dynamicCols = colKeys.map((key) => {
+              let maxLen = 0;
+              for (let i = 0; i < key.length; i++) {
+                maxLen += key.charCodeAt(i) > 255 ? 2.1 : 1.05;
+              }
+              combinedRows.forEach((item) => {
+                const val = String(item[key] ?? "");
+                let len = 0;
+                for (let i = 0; i < val.length; i++) {
+                  len += val.charCodeAt(i) > 255 ? 2.1 : 1.05;
+                }
+                if (len > maxLen) maxLen = len;
+              });
+              return { wch: Math.max(Math.ceil(maxLen) + 3, 10) };
+            });
+            mergedWorksheet["!cols"] = dynamicCols;
+
+            // 设置表头样式
+            const headerStyle = {
+              fill: { fgColor: { rgb: "F1F5F9" } },
+              font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "0F172A" } },
+              alignment: { vertical: "center", horizontal: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "94A3B8" } },
+                bottom: { style: "medium", color: { rgb: "475569" } },
+                left: { style: "thin", color: { rgb: "CBD5E1" } },
+                right: { style: "thin", color: { rgb: "CBD5E1" } },
+              },
+            };
+
+            const duplicateRowStyle = {
+              fill: { fgColor: { rgb: "FFFF00" } }, // 明黄色整行高亮
+              font: { name: "Microsoft YaHei", sz: 10, bold: true, color: { rgb: "000000" } },
+              alignment: { vertical: "center", horizontal: "left" },
+              border: {
+                top: { style: "thin", color: { rgb: "D4D4D8" } },
+                bottom: { style: "thin", color: { rgb: "D4D4D8" } },
+                left: { style: "thin", color: { rgb: "D4D4D8" } },
+                right: { style: "thin", color: { rgb: "D4D4D8" } },
+              },
+            };
+
+            const normalRowStyle = {
+              font: { name: "Microsoft YaHei", sz: 10, color: { rgb: "18181B" } },
+              alignment: { vertical: "center", horizontal: "left" },
+              border: {
+                top: { style: "thin", color: { rgb: "E4E4E7" } },
+                bottom: { style: "thin", color: { rgb: "E4E4E7" } },
+                left: { style: "thin", color: { rgb: "E4E4E7" } },
+                right: { style: "thin", color: { rgb: "E4E4E7" } },
+              },
+            };
+
+            colKeys.forEach((_, colIdx) => {
+              const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIdx });
+              if (mergedWorksheet[cellRef]) mergedWorksheet[cellRef].s = headerStyle;
+            });
+
+            combinedRows.forEach((_, rowIdx) => {
+              const r = rowIdx + 1;
+              const isDup = dupRowIndices.has(rowIdx);
+              colKeys.forEach((key, colIdx) => {
+                const cellRef = XLSX.utils.encode_cell({ r, c: colIdx });
+                if (mergedWorksheet[cellRef]) {
+                  const baseStyle = isDup ? { ...duplicateRowStyle } : { ...normalRowStyle };
+                  const isCenterCol = key === "序号" || key === "开票日期" || key === "分类" || key === "查重状态" || key === "发票代码";
+                  const isRightCol = key.includes("金额") || key.includes("税额") || key.includes("价税合计");
+                  mergedWorksheet[cellRef].s = {
+                    ...baseStyle,
+                    alignment: {
+                      vertical: "center",
+                      horizontal: isRightCol ? "right" : isCenterCol ? "center" : "left",
+                    },
+                  };
+                }
+              });
+            });
+
+            const mergedWorkbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(mergedWorkbook, mergedWorksheet, "发票台账数据");
+            XLSX.writeFile(mergedWorkbook, targetPath);
+
+            return res.json({
+              success: true,
+              filePath: targetPath,
+              fileName: path.basename(targetPath),
+              totalCount: combinedRows.length,
+              appendedCount: incomingRows.length,
+            });
+          }
+        } catch (mergeErr) {
+          console.warn("Append merge error, falling back to direct write:", mergeErr);
+        }
+      }
+
+      fs.writeFileSync(targetPath, incomingBuffer);
       return res.json({ success: true, filePath: targetPath, fileName: path.basename(targetPath) });
     } catch (e) {
       console.error("Direct save excel error:", e);

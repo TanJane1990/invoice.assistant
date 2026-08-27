@@ -377,15 +377,19 @@ export const exportInvoicesToExcel = async (
   let directSaved = false;
   try {
     const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
+    let totalMergedCount = invoices.length;
     const saveRes = await fetch(getBackendApiUrl("/api/save-excel-direct"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName, base64Data }),
+      body: JSON.stringify({ fileName, base64Data, mode }),
     });
     if (saveRes.ok) {
       const saveData = await saveRes.json();
       if (saveData.success) {
         directSaved = true;
+        if (saveData.totalCount) {
+          totalMergedCount = saveData.totalCount;
+        }
       }
     }
   } catch (e) {}
@@ -408,7 +412,7 @@ export const exportInvoicesToExcel = async (
   }
 
   if (mode === "append") {
-    alert(`成功追加/更新 ${invoices.length} 张发票数据至：${fileName}！`);
+    alert(`成功追加 ${invoices.length} 张发票数据至：${fileName}！`);
   }
 
   if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {
