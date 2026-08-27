@@ -224,13 +224,20 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
       >
         <div className="flex flex-col space-y-4">
           {/* Title */}
-          <div className="text-center pt-2 pb-2 mb-2">
-            <h2
-              className="text-3xl font-extrabold tracking-[0.2em] font-serif text-slate-900 border-b-2 border-slate-900 pb-2 inline-block px-8"
-              style={{ color: "#000000" }}
-            >
-              费 用 报 销 凭 证 单
-            </h2>
+          <div className="text-center pt-2 pb-1 mb-2 flex flex-col items-center">
+            <div className="inline-flex flex-col items-center">
+              <h2
+                className="text-3xl font-extrabold tracking-[0.2em] font-serif text-slate-900 leading-tight px-6"
+                style={{ color: "#000000" }}
+              >
+                费 用 报 销 凭 证 单
+              </h2>
+              {/* 独立标题下划线：与汉字底部拉开明显舒适的间距，绝对不紧贴文字 */}
+              <div
+                className="w-full border-b-2 border-slate-900 mt-2.5"
+                style={{ borderColor: "#000000" }}
+              />
+            </div>
           </div>
 
           {/* Sub-header info */}
