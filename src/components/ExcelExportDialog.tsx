@@ -135,7 +135,7 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
               <span className="text-xs font-black" style={{ color: "#ffffff" }}>➔</span>
             </button>
 
-            {/* Option B: Save as New File */}
+            {/* Option B: Save as New File / Custom Location */}
             <button
               onClick={() => {
                 onSaveNewFile();
@@ -147,8 +147,8 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
               <div className="flex items-center space-x-2.5">
                 <FilePlus className="w-4 h-4 text-white" style={{ color: "#ffffff" }} />
                 <div className="text-left">
-                  <div className="font-extrabold" style={{ color: "#ffffff" }}>保存为全新的 Excel 文件...</div>
-                  <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>另存为带时间戳的新独立文件</div>
+                  <div className="font-extrabold" style={{ color: "#ffffff" }}>保存为全新的 Excel 文件 / 另存为...</div>
+                  <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>弹出文件选择窗口，自由选择任意文件夹/磁盘路径保存</div>
                 </div>
               </div>
               <span className="text-xs font-black" style={{ color: "#ffffff" }}>➔</span>

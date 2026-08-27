@@ -453,8 +453,13 @@ export const exportInvoicesToExcel = async (
   const lastInfo = getLastExportInfo();
   let fileName = "发票台账明细表.xlsx";
 
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+
   if (overrideFilename) {
     fileName = overrideFilename;
+  } else if (mode === "new") {
+    fileName = `发票台账明细表_${dateStr}.xlsx`;
   } else if (lastInfo?.fileName) {
     fileName = lastInfo.fileName;
   } else {
@@ -463,6 +468,7 @@ export const exportInvoicesToExcel = async (
 
   // 核心：优先直接通过 Electron IPC 原生保存写入 Mac/Windows 目标文件，次选本地 HTTP 服务，最后降级浏览器另存为
   let directSaved = false;
+  let isCanceled = false;
   let totalMergedCount = invoices.length;
   let appendedCount = invoices.length;
   let serverMessage = "";
@@ -472,22 +478,25 @@ export const exportInvoicesToExcel = async (
   if (typeof window !== "undefined" && (window as any).electronAPI?.saveExcelDirect) {
     try {
       const saveData = await (window as any).electronAPI.saveExcelDirect({ fileName, base64Data, mode });
-      if (saveData && saveData.success) {
-        directSaved = true;
-        if (saveData.totalCount != null) {
-          totalMergedCount = saveData.totalCount;
+      if (saveData) {
+        if (saveData.canceled) {
+          isCanceled = true;
+          return;
         }
-        if (saveData.appendedCount != null) {
-          appendedCount = saveData.appendedCount;
-        }
-        if (saveData.message) {
-          serverMessage = saveData.message;
+        if (saveData.success) {
+          directSaved = true;
+          if (saveData.fileName) fileName = saveData.fileName;
+          if (saveData.totalCount != null) totalMergedCount = saveData.totalCount;
+          if (saveData.appendedCount != null) appendedCount = saveData.appendedCount;
+          if (saveData.message) serverMessage = saveData.message;
         }
       }
     } catch (e) {
       console.warn("Electron IPC save error:", e);
     }
   }
+
+  if (isCanceled) return;
 
   if (!directSaved) {
     try {
@@ -498,16 +507,17 @@ export const exportInvoicesToExcel = async (
       });
       if (saveRes.ok) {
         const saveData = await saveRes.json();
-        if (saveData.success) {
-          directSaved = true;
-          if (saveData.totalCount != null) {
-            totalMergedCount = saveData.totalCount;
+        if (saveData) {
+          if (saveData.canceled) {
+            isCanceled = true;
+            return;
           }
-          if (saveData.appendedCount != null) {
-            appendedCount = saveData.appendedCount;
-          }
-          if (saveData.message) {
-            serverMessage = saveData.message;
+          if (saveData.success) {
+            directSaved = true;
+            if (saveData.fileName) fileName = saveData.fileName;
+            if (saveData.totalCount != null) totalMergedCount = saveData.totalCount;
+            if (saveData.appendedCount != null) appendedCount = saveData.appendedCount;
+            if (saveData.message) serverMessage = saveData.message;
           }
         }
       } else {
@@ -517,6 +527,8 @@ export const exportInvoicesToExcel = async (
       console.error("save-excel-direct fetch error:", e);
     }
   }
+
+  if (isCanceled) return;
 
   if (!directSaved) {
     XLSX.writeFile(workbook, fileName);
@@ -535,14 +547,16 @@ export const exportInvoicesToExcel = async (
     console.warn("Save export info error:", e);
   }
 
-  if (mode === "append") {
-    if (serverMessage) {
-      alert(serverMessage);
-    } else if (appendedCount > 0) {
+  if (serverMessage) {
+    alert(serverMessage);
+  } else if (mode === "append") {
+    if (appendedCount > 0) {
       alert(`成功追加 ${appendedCount} 张新发票至：${fileName}\n文件中共 ${totalMergedCount} 条记录。`);
     } else {
       alert(`已导出 ${invoices.length} 张发票至：${fileName}`);
     }
+  } else if (mode === "new") {
+    alert(`成功另存为全新 Excel 发票台账至：${fileName}`);
   }
 
   if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {

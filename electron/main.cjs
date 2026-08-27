@@ -1,8 +1,13 @@
-const { app, BrowserWindow, Menu, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, nativeImage, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const child_process = require("child_process");
+
+// 关键：Windows 系统任务栏图标绑定与识别（彻底解决 Win 打开后任务栏图标不全/空白/默认图标问题）
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.invoice.assistant");
+}
 
 // 兼容 Win7 老旧 GPU 显卡，避免黑屏与白屏崩溃
 app.disableHardwareAcceleration();
@@ -11,6 +16,32 @@ let mainWindow = null;
 let serverProcess = null;
 
 const PORT = process.env.PORT || 3000;
+
+// Helper: 多重路径兜底定位应用高清图标（支持开发环境、ASAR打包、生产资源目录）
+function getAppIcon() {
+  const possiblePaths = [
+    path.join(__dirname, "../assets/icon.png"),
+    path.join(__dirname, "../dist/icon.png"),
+    path.join(__dirname, "icon.png"),
+    path.join(process.resourcesPath || "", "assets/icon.png"),
+    path.join(process.resourcesPath || "", "icon.png"),
+    path.join(app.getAppPath ? app.getAppPath() : __dirname, "assets/icon.png"),
+    path.join(app.getAppPath ? app.getAppPath() : __dirname, "dist/icon.png"),
+    path.join(app.getAppPath ? app.getAppPath() : __dirname, "electron/icon.png"),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const icon = nativeImage.createFromPath(p);
+        if (!icon.isEmpty()) {
+          return { iconPath: p, nativeImg: icon };
+        }
+      } catch (e) {}
+    }
+  }
+  return { iconPath: path.join(__dirname, "../assets/icon.png"), nativeImg: null };
+}
 
 // Helper: 智能定位本地电脑（桌面/下载/文档/U盘/OneDrive）真实存在的发票台账 Excel 文件
 function findInvoiceFileOnDisk(preferredFileName) {
@@ -123,6 +154,37 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
       return { success: false, message: "缺少 Excel 数据" };
     }
     const incomingBuffer = Buffer.from(base64Data, "base64");
+
+    // 核心优化：当用户选择【保存为全新的 Excel 文件...】时，调起系统原生「另存为」窗口让用户自由选择任意文件夹/磁盘位置与文件名
+    if (mode === "new" || mode === "saveAs") {
+      let defaultDesktop;
+      try {
+        defaultDesktop = app.isReady() ? app.getPath("desktop") : path.join(os.homedir(), "Desktop");
+      } catch (e) {
+        defaultDesktop = path.join(os.homedir(), "Desktop");
+      }
+      const initialPath = path.join(defaultDesktop, fileName || `发票台账明细表_${Date.now()}.xlsx`);
+
+      const win = BrowserWindow.getFocusedWindow() || mainWindow;
+      const saveResult = await dialog.showSaveDialog(win, {
+        title: "选择 Excel 发票台账保存位置",
+        defaultPath: initialPath,
+        filters: [{ name: "Excel 工作簿 (*.xlsx)", extensions: ["xlsx"] }],
+      });
+
+      if (saveResult.canceled || !saveResult.filePath) {
+        return { success: false, canceled: true, message: "已取消保存" };
+      }
+
+      fs.writeFileSync(saveResult.filePath, incomingBuffer);
+      return {
+        success: true,
+        filePath: saveResult.filePath,
+        fileName: path.basename(saveResult.filePath),
+        message: `成功保存全新 Excel 文件至：${saveResult.filePath}`,
+      };
+    }
+
     const diskCheck = findInvoiceFileOnDisk(fileName);
     let targetPath = diskCheck.exists ? diskCheck.filePath : null;
 
@@ -347,6 +409,8 @@ function startBackendServer() {
 }
 
 function createWindow() {
+  const appIconInfo = getAppIcon();
+
   // 窗口防白屏优化：先设置 show: false，设置主题背景色，待 DOM 渲染完毕后再 .show()
   mainWindow = new BrowserWindow({
     width: 1360,
@@ -356,7 +420,7 @@ function createWindow() {
     show: false, // 防白屏：初始隐藏
     backgroundColor: "#f8fafc", // 设置默认优雅背景色
     title: "智能发票管理助手",
-    icon: path.join(__dirname, "../assets/icon.png"),
+    icon: appIconInfo.nativeImg || appIconInfo.iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -364,6 +428,12 @@ function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
     },
   });
+
+  if (appIconInfo.nativeImg) {
+    try {
+      mainWindow.setIcon(appIconInfo.nativeImg);
+    } catch (e) {}
+  }
 
   // 修复 #6: macOS 上 Menu.setApplicationMenu(null) 会导致 Cmd+C/V/A/Q 等所有
   // 系统级快捷键完全失效，因此在 macOS 上保留精简菜单
