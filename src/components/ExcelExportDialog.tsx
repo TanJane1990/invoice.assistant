@@ -12,6 +12,7 @@ interface ExcelExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
   lastExportInfo: LastExportInfo | null;
+  currentCount?: number;
   onAppendToExisting: () => void;
   onSaveNewFile: () => void;
 }
@@ -20,6 +21,7 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
   isOpen,
   onClose,
   lastExportInfo,
+  currentCount = 0,
   onAppendToExisting,
   onSaveNewFile,
 }) => {
@@ -105,8 +107,8 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
             </button>
 
             <div className="flex items-center justify-between text-[11px] font-semibold pt-1 border-t border-slate-200" style={{ color: "#64748b" }}>
-              <span style={{ color: "#64748b" }}>上次导出时间：{lastExportInfo?.lastExportTime || "此前"}</span>
-              <span style={{ color: "#64748b" }}>记录数：{lastExportInfo?.count || 0} 张</span>
+              <span style={{ color: "#64748b" }}>该文件内已有：<strong className="text-slate-800">{lastExportInfo?.count || 0}</strong> 张</span>
+              <span style={{ color: "#009966" }}>本次待导出/追加：<strong>{currentCount}</strong> 张</span>
             </div>
           </div>
 
@@ -129,7 +131,9 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
                 <RefreshCw className="w-4 h-4 text-white group-hover:rotate-180 transition-transform duration-500" style={{ color: "#ffffff" }} />
                 <div className="text-left">
                   <div className="font-extrabold" style={{ color: "#ffffff" }}>追加 / 更新至现有文件</div>
-                  <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>直接拼接更新至 {lastExportInfo?.fileName}</div>
+                  <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>
+                    将本次 {currentCount} 张发票合并追加到现有文件中（全表自动重新查重并黄色高亮）
+                  </div>
                 </div>
               </div>
               <span className="text-xs font-black" style={{ color: "#ffffff" }}>➔</span>
@@ -148,7 +152,9 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
                 <FilePlus className="w-4 h-4 text-white" style={{ color: "#ffffff" }} />
                 <div className="text-left">
                   <div className="font-extrabold" style={{ color: "#ffffff" }}>保存为全新的 Excel 文件 / 另存为...</div>
-                  <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>弹出文件选择窗口，自由选择任意文件夹/磁盘路径保存</div>
+                  <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>
+                    弹出文件选择窗口，将本次 {currentCount} 张发票独立另存到新位置
+                  </div>
                 </div>
               </div>
               <span className="text-xs font-black" style={{ color: "#ffffff" }}>➔</span>

@@ -217,53 +217,30 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
         const existingWb = XLSX.readFile(targetPath);
         const firstSheetName = existingWb.SheetNames[0];
         const existingSheet = existingWb.Sheets[firstSheetName];
-        const existingRows = XLSX.utils.sheet_to_json(existingSheet);
+        const rawExistingRows = XLSX.utils.sheet_to_json(existingSheet);
 
         const incomingWb = XLSX.read(incomingBuffer, { type: "buffer" });
         const incomingSheet = incomingWb.Sheets[incomingWb.SheetNames[0]];
-        const incomingRows = XLSX.utils.sheet_to_json(incomingSheet);
+        const rawIncomingRows = XLSX.utils.sheet_to_json(incomingSheet);
 
-        if (existingRows.length > 0 && incomingRows.length > 0) {
-          const existingRowFingerprints = new Set();
-          existingRows.forEach((r) => {
-            const num = String(r["发票号码"] || "").trim();
-            const importTime = String(r["导入时间"] || "").trim();
-            const batchTime = String(r["导出批次时间"] || "").trim();
-            const amt = String(r["价税合计(元)"] || r["价税合计"] || r["含税金额(元)"] || "").trim();
-            existingRowFingerprints.add(`${num}|${importTime}|${batchTime}|${amt}`);
-          });
+        // 过滤掉原本末尾的统计汇总行，提取纯发票数据
+        const existingRows = rawExistingRows.filter((r) => !String(r["序号"] || "").startsWith("统计"));
+        const incomingRows = rawIncomingRows.filter((r) => !String(r["序号"] || "").startsWith("统计"));
 
-          const rowsToAppend = [];
-          incomingRows.forEach((r) => {
-            const num = String(r["发票号码"] || "").trim();
-            const importTime = String(r["导入时间"] || "").trim();
-            const batchTime = String(r["导出批次时间"] || "").trim();
-            const amt = String(r["价税合计(元)"] || r["价税合计"] || r["含税金额(元)"] || "").trim();
-            if (!existingRowFingerprints.has(`${num}|${importTime}|${batchTime}|${amt}`)) {
-              rowsToAppend.push(r);
-            }
-          });
+        if (existingRows.length > 0 || incomingRows.length > 0) {
+          // 合并已有数据与本次新追加的数据
+          const combinedRows = [...existingRows, ...incomingRows];
 
-          if (rowsToAppend.length === 0) {
-            return {
-              success: true,
-              filePath: targetPath,
-              fileName: path.basename(targetPath),
-              totalCount: existingRows.length,
-              appendedCount: 0,
-              message: "所有发票均已存在于文件中，无需重复追加",
-            };
-          }
-
-          const combinedRows = [...existingRows, ...rowsToAppend];
+          // 重新编排序号 (1, 2, 3, 4, ...)
           combinedRows.forEach((row, idx) => {
             row["序号"] = idx + 1;
           });
 
+          // 全表精准重复发票检测（跨批次全量查重）
           const invoiceNumCounts = {};
           combinedRows.forEach((row, idx) => {
             const num = String(row["发票号码"] || "").trim();
-            if (num && num !== "-") {
+            if (num && num !== "-" && num !== "无") {
               if (!invoiceNumCounts[num]) invoiceNumCounts[num] = [];
               invoiceNumCounts[num].push(idx);
             }
@@ -276,21 +253,55 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
             }
           });
 
+          // 更新每一行的查重状态文字
           combinedRows.forEach((row, idx) => {
             if (dupRowIndices.has(idx)) {
               row["查重状态"] = "⚠️ 发票重复";
+            } else {
+              row["查重状态"] = "✓ 正常唯一";
             }
           });
 
-          const colKeys = Object.keys(combinedRows[0] || {});
-          const mergedWorksheet = XLSX.utils.json_to_sheet(combinedRows, { header: colKeys });
+          // 底部计算全表统计汇总行
+          const allTotalAmount = combinedRows.reduce((sum, r) => {
+            const amt = parseFloat(String(r["价税合计"] || r["价税合计(元)"] || 0).replace(/[^0-9.]/g, ""));
+            return sum + (isNaN(amt) ? 0 : amt);
+          }, 0);
 
+          const summaryRow = {
+            序号: `统计 共 ${combinedRows.length} 张发票`,
+            开票日期: "",
+            发票类型: "",
+            发票代码: "",
+            发票号码: "",
+            校验码: "",
+            购买方名称: "",
+            购买方税号: "",
+            销售方名称: "",
+            销售方税号: "",
+            不含税金额: "",
+            税率: "",
+            税额: "",
+            价税合计: `¥${Number(allTotalAmount.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            商品明细: "",
+            备注: "",
+            导入时间: "",
+            查重状态: "",
+          };
+
+          const finalRowsWithSummary = [...combinedRows, summaryRow];
+
+          // 生成新的 Worksheet
+          const colKeys = Object.keys(finalRowsWithSummary[0] || {});
+          const mergedWorksheet = XLSX.utils.json_to_sheet(finalRowsWithSummary, { header: colKeys });
+
+          // 自适应计算列宽
           const dynamicCols = colKeys.map((key) => {
             let maxLen = 0;
             for (let i = 0; i < key.length; i++) {
               maxLen += key.charCodeAt(i) > 255 ? 2.1 : 1.05;
             }
-            combinedRows.forEach((item) => {
+            finalRowsWithSummary.forEach((item) => {
               const val = String(item[key] ?? "");
               let len = 0;
               for (let i = 0; i < val.length; i++) {
@@ -302,6 +313,7 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
           });
           mergedWorksheet["!cols"] = dynamicCols;
 
+          // 设置表头样式
           const headerStyle = {
             fill: { fgColor: { rgb: "F1F5F9" } },
             font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "0F172A" } },
@@ -315,14 +327,14 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
           };
 
           const duplicateRowStyle = {
-            fill: { fgColor: { rgb: "FFFF00" } },
+            fill: { fgColor: { rgb: "FFFF00" } }, // 明黄色整行高亮
             font: { name: "Microsoft YaHei", sz: 10, bold: true, color: { rgb: "000000" } },
             alignment: { vertical: "center", horizontal: "left" },
             border: {
               top: { style: "thin", color: { rgb: "D4D4D8" } },
               bottom: { style: "thin", color: { rgb: "D4D4D8" } },
-              left: { style: "thin", color: { rgb: "D4D4D8" } },
-              right: { style: "thin", color: { rgb: "D4D4D8" } },
+              left: { style: "thin", color: { rgb: "E4E4E7" } },
+              right: { style: "thin", color: { rgb: "E4E4E7" } },
             },
           };
 
@@ -334,6 +346,30 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
               bottom: { style: "thin", color: { rgb: "E4E4E7" } },
               left: { style: "thin", color: { rgb: "E4E4E7" } },
               right: { style: "thin", color: { rgb: "E4E4E7" } },
+            },
+          };
+
+          const summaryStyle = {
+            fill: { fgColor: { rgb: "F8FAFC" } },
+            font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "0F172A" } },
+            alignment: { vertical: "center", horizontal: "left" },
+            border: {
+              top: { style: "medium", color: { rgb: "475569" } },
+              bottom: { style: "medium", color: { rgb: "475569" } },
+              left: { style: "thin", color: { rgb: "CBD5E1" } },
+              right: { style: "thin", color: { rgb: "CBD5E1" } },
+            },
+          };
+
+          const summaryMoneyStyle = {
+            fill: { fgColor: { rgb: "FEF2F2" } },
+            font: { name: "Microsoft YaHei", sz: 11, bold: true, color: { rgb: "DC2626" } },
+            alignment: { vertical: "center", horizontal: "right" },
+            border: {
+              top: { style: "medium", color: { rgb: "DC2626" } },
+              bottom: { style: "medium", color: { rgb: "DC2626" } },
+              left: { style: "thin", color: { rgb: "CBD5E1" } },
+              right: { style: "thin", color: { rgb: "CBD5E1" } },
             },
           };
 
@@ -349,8 +385,8 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
               const cellRef = XLSX.utils.encode_cell({ r, c: colIdx });
               if (mergedWorksheet[cellRef]) {
                 const baseStyle = isDup ? { ...duplicateRowStyle } : { ...normalRowStyle };
-                const isCenterCol = key === "序号" || key === "开票日期" || key === "分类" || key === "查重状态" || key === "发票代码";
-                const isRightCol = key.includes("金额") || key.includes("税额") || key.includes("价税合计");
+                const isCenterCol = key === "序号" || key === "开票日期" || key === "发票类型" || key === "税率" || key === "查重状态" || key === "发票代码" || key === "校验码";
+                const isRightCol = key === "不含税金额" || key === "税额" || key === "价税合计";
                 mergedWorksheet[cellRef].s = {
                   ...baseStyle,
                   alignment: {
@@ -362,6 +398,19 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
             });
           });
 
+          // 统计汇总行样式
+          const summaryRowIdx = combinedRows.length + 1;
+          colKeys.forEach((key, colIdx) => {
+            const cellRef = XLSX.utils.encode_cell({ r: summaryRowIdx, c: colIdx });
+            if (mergedWorksheet[cellRef]) {
+              if (key === "价税合计") {
+                mergedWorksheet[cellRef].s = summaryMoneyStyle;
+              } else {
+                mergedWorksheet[cellRef].s = summaryStyle;
+              }
+            }
+          });
+
           const mergedWorkbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(mergedWorkbook, mergedWorksheet, "发票台账数据");
           XLSX.writeFile(mergedWorkbook, targetPath);
@@ -371,7 +420,10 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
             filePath: targetPath,
             fileName: path.basename(targetPath),
             totalCount: combinedRows.length,
-            appendedCount: rowsToAppend.length,
+            appendedCount: incomingRows.length,
+            message: dupRowIndices.size > 0
+              ? `成功合并追加！文件中共 ${combinedRows.length} 条记录。\n⚠️ 发现 ${dupRowIndices.size} 条重复发票，已自动在 Excel 中明黄色高亮标出！`
+              : `成功合并追加！文件中共 ${combinedRows.length} 条记录，无重复发票。`,
           };
         }
       } catch (err) {

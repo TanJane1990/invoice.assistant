@@ -450,6 +450,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         isOpen={isExportDialogOpen}
         onClose={() => setIsExportDialogOpen(false)}
         lastExportInfo={lastExportInfo}
+        currentCount={invoices.length}
         onAppendToExisting={() => exportInvoicesToExcel(invoices, systemSettings, "append")}
         onSaveNewFile={() => exportInvoicesToExcel(invoices, systemSettings, "new")}
       />

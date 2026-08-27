@@ -388,6 +388,7 @@ export const App: React.FC = () => {
         isOpen={isTopNavExportDialogOpen}
         onClose={() => setIsTopNavExportDialogOpen(false)}
         lastExportInfo={topNavLastExportInfo}
+        currentCount={invoices.length}
         onAppendToExisting={() => exportInvoicesToExcel(invoices, settings, "append")}
         onSaveNewFile={() => exportInvoicesToExcel(invoices, settings, "new")}
       />
