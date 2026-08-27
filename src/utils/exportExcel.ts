@@ -94,6 +94,34 @@ export const exportInvoicesToExcel = (
     return;
   }
 
+  // 1. 动态精准计算全量发票的重复查重映射（发票号码 + 防伪校验码 + 金额）
+  const counts: Record<string, InvoiceData[]> = {};
+  invoices.forEach((inv) => {
+    if (inv.invoiceNumber && inv.invoiceNumber.trim()) {
+      const num = inv.invoiceNumber.trim();
+      const amt = Number((inv.totalAmountWithTax || 0).toFixed(2));
+      const check = (inv.checkCode || "").trim();
+      const key = check ? `${num}_${check}_${amt}` : `${num}_${amt}`;
+      if (!counts[key]) counts[key] = [];
+      counts[key].push(inv);
+    }
+  });
+
+  const duplicateMap: Record<string, { groupIndex: number; totalInGroup: number }> = {};
+  let groupCounter = 1;
+
+  Object.values(counts).forEach((group) => {
+    if (group.length > 1) {
+      const currentGroupIdx = groupCounter++;
+      group.forEach((inv) => {
+        duplicateMap[inv.id] = {
+          groupIndex: currentGroupIdx,
+          totalInGroup: group.length,
+        };
+      });
+    }
+  });
+
   const exportData = invoices.map((inv, idx) => {
     const isPassengerTicket =
       Boolean(inv.trainRoute) ||
@@ -123,8 +151,6 @@ export const exportInvoicesToExcel = (
       rawBuyer = "个人";
     }
 
-
-
     const capitalRMB =
       inv.totalAmountWithTaxCN &&
       inv.totalAmountWithTaxCN !== "小写" &&
@@ -132,6 +158,17 @@ export const exportInvoicesToExcel = (
       inv.totalAmountWithTaxCN !== "超出最大转换金额"
         ? inv.totalAmountWithTaxCN
         : numberToRMB(totalAmt);
+
+    const dupInfo = duplicateMap[inv.id];
+    const isDup = Boolean(dupInfo || inv.duplicateWarning);
+    const duplicateStatus = isDup
+      ? `⚠️ 发票重复 (重号组#${dupInfo?.groupIndex || 1}，共${dupInfo?.totalInGroup || 2}张)`
+      : "✓ 正常唯一";
+
+    const currentNowStr = new Date().toLocaleString("zh-CN", { hour12: false });
+    // 自动记录/继承本张发票的导出批次时间
+    const exportBatchTime = inv.exportBatchTime || currentNowStr;
+    inv.exportBatchTime = exportBatchTime;
 
     return {
       序号: idx + 1,
@@ -151,13 +188,47 @@ export const exportInvoicesToExcel = (
       合计税额: taxAmt,
       "价税合计(元)": totalAmt,
       价税合计大写: capitalRMB,
-      查重状态: inv.duplicateWarning ? "重复告警" : "正常唯一",
+      查重状态: duplicateStatus,
+      导出批次时间: exportBatchTime,
       备注: cleanStr(inv.remarks),
-      导入时间: cleanStr(inv.importTime || new Date().toLocaleString("zh-CN", { hour12: false })),
+      导入时间: cleanStr(inv.importTime || currentNowStr),
     };
   });
 
   const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+  // 动态自动计算每列的最佳自适应列宽（精准识别中文/全角字符与数字英文，按各列最长单元格字数自适应展开，永不截断）
+  const getVisualLength = (val: any): number => {
+    if (val === null || val === undefined) return 0;
+    const str = String(val);
+    let len = 0;
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      // 中文/全角符号/宽字符按 2.1 字符宽度计算，英文/数字按 1.05
+      if (code > 255 || (code >= 0x4e00 && code <= 0x9fa5)) {
+        len += 2.1;
+      } else {
+        len += 1.05;
+      }
+    }
+    return len;
+  };
+
+  const colKeys = Object.keys(exportData[0] || {});
+  const dynamicCols = colKeys.map((key) => {
+    let maxLen = getVisualLength(key); // 表头字宽
+    exportData.forEach((row: any) => {
+      const cellLen = getVisualLength(row[key]);
+      if (cellLen > maxLen) {
+        maxLen = cellLen;
+      }
+    });
+    // 增加 3 个缓冲字符空间，设置最小宽度为 8
+    const finalWidth = Math.max(Math.ceil(maxLen) + 3, 8);
+    return { wch: finalWidth };
+  });
+
+  worksheet["!cols"] = dynamicCols;
 
   // Apply SheetJS Worksheet Protection if configured or password set
   if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {
@@ -190,12 +261,12 @@ export const exportInvoicesToExcel = (
     fileName = overrideFilename;
   } else if (mode === "append" && lastInfo?.fileName) {
     fileName = lastInfo.fileName;
-  } else if (mode === "new" || !lastInfo) {
+  } else if (mode === "new") {
     const now = new Date();
     const timestampStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
     fileName = `发票台账明细表_${timestampStr}.xlsx`;
   } else {
-    fileName = "发票台账明细表.xlsx";
+    fileName = lastInfo?.fileName || "发票台账明细表.xlsx";
   }
 
   XLSX.writeFile(workbook, fileName);
@@ -218,7 +289,6 @@ export const exportInvoicesToExcel = (
   }
 
   if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {
-    const pass = settings.exportPassword && settings.exportPassword.trim() !== "" ? settings.exportPassword.trim() : "123456";
-    alert(`成功导出加密 Excel 表格！\n已启用防篡改工作表保护，撤销保护密码为：${pass}`);
+    alert("成功导出加密 Excel 表格！\n已启用防篡改工作表保护。");
   }
 };

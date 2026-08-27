@@ -48,6 +48,7 @@ export interface InvoiceData {
   duplicateGroupIndex?: number; // Color index grouping for duplicate highlighting
   selectedForPrint?: boolean;
   importTime?: string; // 导入发票的时间 (YYYY-MM-DD HH:mm:ss)
+  exportBatchTime?: string; // 导出到 Excel 的批次时间戳
   passengerName?: string; // 火车票/客票乘坐人姓名 (如: 李某年)
   passengerId?: string; // 乘坐人身份证号 (如: 130130********2459)
   trainRoute?: string; // 行程路线 (如: 昆山站 K850 苏州站)
