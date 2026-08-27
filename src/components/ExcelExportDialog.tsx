@@ -27,6 +27,12 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
 
   const handleOpenFileFolder = async () => {
     if (!lastExportInfo?.fileName) return;
+    if (typeof window !== "undefined" && (window as any).electronAPI?.openFileFolder) {
+      try {
+        const res = await (window as any).electronAPI.openFileFolder({ fileName: lastExportInfo.fileName });
+        if (res && res.success) return;
+      } catch (e) {}
+    }
     try {
       const res = await fetch(getBackendApiUrl("/api/open-file-folder"), {
         method: "POST",

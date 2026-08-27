@@ -34,6 +34,14 @@ export const getBackendApiUrl = (endpoint: string): string => {
 };
 
 export const checkDiskFileExists = async (fileName: string): Promise<boolean> => {
+  if (typeof window !== "undefined" && (window as any).electronAPI?.checkFileExists) {
+    try {
+      const res = await (window as any).electronAPI.checkFileExists({ fileName });
+      return Boolean(res?.exists);
+    } catch (e) {
+      return false;
+    }
+  }
   try {
     const res = await fetch(getBackendApiUrl("/api/check-file-exists"), {
       method: "POST",
@@ -56,11 +64,30 @@ export const clearLastExportInfo = () => {
 
 export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> => {
   const local = getLastExportInfo();
+  const targetFileName = local?.fileName || "发票台账明细表.xlsx";
+
+  if (typeof window !== "undefined" && (window as any).electronAPI?.checkFileExists) {
+    try {
+      const data = await (window as any).electronAPI.checkFileExists({ fileName: targetFileName });
+      if (data && data.exists && data.fileName) {
+        const updatedInfo: LastExportInfo = {
+          fileName: data.fileName,
+          lastExportTime: local?.lastExportTime || new Date().toLocaleString("zh-CN", { hour12: false }),
+          count: local?.count || 0,
+        };
+        try {
+          localStorage.setItem(LAST_EXPORT_KEY, JSON.stringify(updatedInfo));
+        } catch (e) {}
+        return updatedInfo;
+      }
+    } catch (e) {}
+  }
+
   try {
     const res = await fetch(getBackendApiUrl("/api/check-file-exists"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName: local?.fileName || "发票台账明细表.xlsx" }),
+      body: JSON.stringify({ fileName: targetFileName }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -373,21 +400,18 @@ export const exportInvoicesToExcel = async (
     fileName = "发票台账明细表.xlsx";
   }
 
-  // 核心：优先直接精准写入 Mac 磁盘目标文件（桌面/下载），彻底杜绝浏览器生成 (1).xlsx 或未覆盖的问题
+  // 核心：优先直接通过 Electron IPC 原生保存写入 Mac/Windows 目标文件，次选本地 HTTP 服务，最后降级浏览器另存为
   let directSaved = false;
   let totalMergedCount = invoices.length;
   let appendedCount = invoices.length;
   let serverMessage = "";
-  try {
-    const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
-    const saveRes = await fetch(getBackendApiUrl("/api/save-excel-direct"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName, base64Data, mode }),
-    });
-    if (saveRes.ok) {
-      const saveData = await saveRes.json();
-      if (saveData.success) {
+
+  const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
+
+  if (typeof window !== "undefined" && (window as any).electronAPI?.saveExcelDirect) {
+    try {
+      const saveData = await (window as any).electronAPI.saveExcelDirect({ fileName, base64Data, mode });
+      if (saveData && saveData.success) {
         directSaved = true;
         if (saveData.totalCount != null) {
           totalMergedCount = saveData.totalCount;
@@ -399,18 +423,41 @@ export const exportInvoicesToExcel = async (
           serverMessage = saveData.message;
         }
       }
-    } else {
-      console.error("save-excel-direct HTTP error:", saveRes.status, saveRes.statusText);
+    } catch (e) {
+      console.warn("Electron IPC save error:", e);
     }
-  } catch (e) {
-    console.error("save-excel-direct fetch error:", e);
   }
 
   if (!directSaved) {
-    // 后端不可用时的 fallback：如果是 Electron 打包环境 (file:// 协议)，直接提示用户后端服务未启动
-    if (typeof window !== "undefined" && !window.location.protocol.startsWith("http")) {
-      alert("⚠️ 后端服务未响应，无法直接保存到磁盘。\n\n请确保通过 npm run dev 或 npm run electron:dev 启动应用。\n\n本次将使用浏览器下载方式保存文件。");
+    try {
+      const saveRes = await fetch(getBackendApiUrl("/api/save-excel-direct"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, base64Data, mode }),
+      });
+      if (saveRes.ok) {
+        const saveData = await saveRes.json();
+        if (saveData.success) {
+          directSaved = true;
+          if (saveData.totalCount != null) {
+            totalMergedCount = saveData.totalCount;
+          }
+          if (saveData.appendedCount != null) {
+            appendedCount = saveData.appendedCount;
+          }
+          if (saveData.message) {
+            serverMessage = saveData.message;
+          }
+        }
+      } else {
+        console.error("save-excel-direct HTTP error:", saveRes.status, saveRes.statusText);
+      }
+    } catch (e) {
+      console.error("save-excel-direct fetch error:", e);
     }
+  }
+
+  if (!directSaved) {
     XLSX.writeFile(workbook, fileName);
   }
 
