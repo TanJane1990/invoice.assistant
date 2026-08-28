@@ -167,16 +167,26 @@ export const exportInvoicesToExcel = async (
   invoices: InvoiceData[],
   settings?: SystemSettings,
   mode: "default" | "append" | "new" = "default",
-  overrideFilename?: string
+  overrideFilename?: string,
+  onExportSuccess?: (exportedIds: string[]) => void
 ) => {
   if (!invoices || invoices.length === 0) {
     alert("当前没有可导出的发票数据！");
     return;
   }
 
-  // 1. 动态精准计算全量发票的重复查重映射（严格按相同发票号码）
+  // 1. 确定本次实际导出的发票批次 (targetInvoices)
+  let targetInvoices = invoices;
+  if (mode === "append") {
+    const unexported = invoices.filter((i) => !i.exported);
+    if (unexported.length > 0) {
+      targetInvoices = unexported;
+    }
+  }
+
+  // 2. 动态精准计算全量发票的重复查重映射（严格按相同发票号码）
   const counts: Record<string, InvoiceData[]> = {};
-  invoices.forEach((inv) => {
+  targetInvoices.forEach((inv) => {
     if (inv.invoiceNumber && inv.invoiceNumber.trim() && inv.invoiceNumber.trim() !== "-") {
       const num = inv.invoiceNumber.trim();
       const key = num;
@@ -200,7 +210,9 @@ export const exportInvoicesToExcel = async (
     }
   });
 
-  const exportData = invoices.map((inv, idx) => {
+  const currentNowStr = new Date().toLocaleString("zh-CN", { hour12: false });
+
+  const exportData = targetInvoices.map((inv, idx) => {
     const isPassengerTicket =
       Boolean(inv.trainRoute) ||
       inv.invoiceType?.includes("客票") ||
@@ -232,9 +244,9 @@ export const exportInvoicesToExcel = async (
       ? `⚠️ 发票重复 (重号组#${dupInfo?.groupIndex || 1}，共${dupInfo?.totalInGroup || 2}张)`
       : "✓ 正常唯一";
 
-    const currentNowStr = new Date().toLocaleString("zh-CN", { hour12: false });
     const exportBatchTime = inv.exportBatchTime || currentNowStr;
     inv.exportBatchTime = exportBatchTime;
+    inv.exported = true;
 
     const taxRateStr = inv.taxRate || (taxAmt > 0 && noTaxAmt > 0 ? `${Math.round((taxAmt / noTaxAmt) * 100)}%` : "0%");
 
@@ -260,12 +272,12 @@ export const exportInvoicesToExcel = async (
     };
   });
 
-  // 计算本次导出的专属汇总统计行 (对齐目标标准表格：统计 共 X 张发票 ¥X,XXX.XX)
-  const batchTotalAmount = invoices.reduce((sum, inv) => sum + Number((inv.totalAmountWithTax || 0).toFixed(2)), 0);
+  // 计算本次导出的专属汇总统计行 (对齐标准表格：统计 共 X 张发票 ¥X,XXX.XX)
+  const batchTotalAmount = targetInvoices.reduce((sum, inv) => sum + Number((inv.totalAmountWithTax || 0).toFixed(2)), 0);
   const formattedBatchTotal = batchTotalAmount.toFixed(2);
 
   const summaryRow: any = {
-    序号: `统计 共 ${invoices.length} 张发票`,
+    序号: `统计 共 ${targetInvoices.length} 张发票`,
     开票日期: "",
     发票类型: "",
     发票代码: "",
@@ -391,7 +403,7 @@ export const exportInvoicesToExcel = async (
   });
 
   // 2. 设置数据行样式
-  invoices.forEach((inv, rowIdx) => {
+  targetInvoices.forEach((inv, rowIdx) => {
     const r = rowIdx + 1;
     const isDup = Boolean(duplicateMap[inv.id] || inv.duplicateWarning);
 
@@ -414,7 +426,7 @@ export const exportInvoicesToExcel = async (
   });
 
   // 3. 设置底部专属汇总统计行样式
-  const summaryRowIdx = invoices.length + 1;
+  const summaryRowIdx = targetInvoices.length + 1;
   colKeys.forEach((key, colIdx) => {
     const cellRef = XLSX.utils.encode_cell({ r: summaryRowIdx, c: colIdx });
     if (worksheet[cellRef]) {
@@ -469,8 +481,8 @@ export const exportInvoicesToExcel = async (
   // 核心：优先直接通过 Electron IPC 原生保存写入 Mac/Windows 目标文件，次选本地 HTTP 服务，最后降级浏览器另存为
   let directSaved = false;
   let isCanceled = false;
-  let totalMergedCount = invoices.length;
-  let appendedCount = invoices.length;
+  let totalMergedCount = targetInvoices.length;
+  let appendedCount = targetInvoices.length;
   let serverMessage = "";
 
   const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
@@ -547,13 +559,19 @@ export const exportInvoicesToExcel = async (
     console.warn("Save export info error:", e);
   }
 
+  // 回调通知前端更新发票导出状态
+  if (onExportSuccess) {
+    const exportedIds = targetInvoices.map((i) => i.id);
+    onExportSuccess(exportedIds);
+  }
+
   if (serverMessage) {
     alert(serverMessage);
   } else if (mode === "append") {
     if (appendedCount > 0) {
-      alert(`成功追加 ${appendedCount} 张新发票至：${fileName}\n文件中共 ${totalMergedCount} 条记录。`);
+      alert(`成功追加 ${appendedCount} 张新发票至：${fileName}\n文件中共 ${totalMergedCount} 条记录（分批次归档）。`);
     } else {
-      alert(`已导出 ${invoices.length} 张发票至：${fileName}`);
+      alert(`已导出 ${targetInvoices.length} 张发票至：${fileName}`);
     }
   } else if (mode === "new") {
     alert(`成功另存为全新 Excel 发票台账至：${fileName}`);

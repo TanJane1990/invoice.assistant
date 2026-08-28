@@ -13,6 +13,7 @@ interface ExcelExportDialogProps {
   onClose: () => void;
   lastExportInfo: LastExportInfo | null;
   currentCount?: number;
+  unexportedCount?: number;
   onAppendToExisting: () => void;
   onSaveNewFile: () => void;
 }
@@ -22,10 +23,13 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
   onClose,
   lastExportInfo,
   currentCount = 0,
+  unexportedCount = 0,
   onAppendToExisting,
   onSaveNewFile,
 }) => {
   if (!isOpen) return null;
+
+  const appendBatchCount = unexportedCount > 0 ? unexportedCount : currentCount;
 
   const handleOpenFileFolder = async () => {
     if (!lastExportInfo?.fileName) return;
@@ -108,7 +112,7 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
 
             <div className="flex items-center justify-between text-[11px] font-semibold pt-1 border-t border-slate-200" style={{ color: "#64748b" }}>
               <span style={{ color: "#64748b" }}>该文件内已有：<strong className="text-slate-800">{lastExportInfo?.count || 0}</strong> 张</span>
-              <span style={{ color: "#009966" }}>本次待导出/追加：<strong>{currentCount}</strong> 张</span>
+              <span style={{ color: "#009966" }}>本次待追加新批次：<strong>{appendBatchCount}</strong> 张</span>
             </div>
           </div>
 
@@ -130,9 +134,9 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
               <div className="flex items-center space-x-2.5">
                 <RefreshCw className="w-4 h-4 text-white group-hover:rotate-180 transition-transform duration-500" style={{ color: "#ffffff" }} />
                 <div className="text-left">
-                  <div className="font-extrabold" style={{ color: "#ffffff" }}>追加 / 更新至现有文件</div>
+                  <div className="font-extrabold" style={{ color: "#ffffff" }}>追加新批次至现有文件（{appendBatchCount}张新发票）</div>
                   <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>
-                    将本次 {currentCount} 张发票合并追加到现有文件中（全表自动重新查重并黄色高亮）
+                    将本次 {appendBatchCount} 张发票作为新批次追加（独立编号与统计，全表智能跨批次查重）
                   </div>
                 </div>
               </div>
@@ -153,7 +157,7 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
                 <div className="text-left">
                   <div className="font-extrabold" style={{ color: "#ffffff" }}>保存为全新的 Excel 文件 / 另存为...</div>
                   <div className="text-[10px] opacity-80 font-normal" style={{ color: "#ffffff" }}>
-                    弹出文件选择窗口，将本次 {currentCount} 张发票独立另存到新位置
+                    弹出文件选择窗口，将台账中全量 {currentCount} 张发票独立另存到新位置
                   </div>
                 </div>
               </div>

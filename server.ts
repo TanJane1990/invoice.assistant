@@ -148,15 +148,17 @@ async function startServer() {
         }
       }
 
-      // 真正对齐旧发票软件的【追加数据】核心算法：
-      // 如果模式为 append 且目标文件已存在于磁盘中：读取磁盘已有历史数据 + 本次新数据拼接到末尾
+      // 如果模式为 append 且目标文件已存在于磁盘中：读取磁盘已有历史数据 + 本次新批次数据拼接到末尾
       if (mode === "append" && diskCheck.exists && targetPath && fs.existsSync(targetPath)) {
         try {
           const existingWb = XLSX.readFile(targetPath);
           const firstSheetName = existingWb.SheetNames[0];
           const existingSheet = existingWb.Sheets[firstSheetName];
-          const rawExistingRows: any[] = XLSX.utils.sheet_to_json(existingSheet);
-          const rawIncomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet);
+          const rawExistingRows: any[] = XLSX.utils.sheet_to_json(existingSheet, { defval: "" });
+
+          const incomingWb = XLSX.read(incomingBuffer, { type: "buffer" });
+          const incomingSheet = incomingWb.Sheets[incomingWb.SheetNames[0]];
+          const rawIncomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet, { defval: "" });
 
           // 过滤掉原本文件中因为历史错误被误写入的空行（既没有开票日期也没有发票号码，且不是统计行的坏数据）
           const cleanedExistingRows = rawExistingRows.filter((r) => {
@@ -165,7 +167,7 @@ async function startServer() {
             return isSummary || hasData;
           });
 
-          // 确保本次新追加的数据（包含新发票 + 本次专属统计汇总行）直接追加在旧数据下方
+          // 确保本次新追加的数据（包含新批次发票 + 本批次专属统计汇总行）作为新批次追加在旧数据下方
           const allRows = [...cleanedExistingRows, ...rawIncomingRows];
 
           // 统计全表真正的发票总张数（不含任何统计汇总行）
@@ -196,7 +198,7 @@ async function startServer() {
             }
           });
 
-          // 更新真实发票行的查重状态文字
+          // 更新全表所有发票行（跨批次）的查重状态文字
           allRows.forEach((row, idx) => {
             const isSummary = String(row["序号"] || "").startsWith("统计");
             if (!isSummary) {
@@ -250,8 +252,8 @@ async function startServer() {
             border: {
               top: { style: "thin", color: { rgb: "D4D4D8" } },
               bottom: { style: "thin", color: { rgb: "D4D4D8" } },
-              left: { style: "thin", color: { rgb: "D4D4D8" } },
-              right: { style: "thin", color: { rgb: "D4D4D8" } },
+              left: { style: "thin", color: { rgb: "E4E4E7" } },
+              right: { style: "thin", color: { rgb: "E4E4E7" } },
             },
           };
 
@@ -338,8 +340,8 @@ async function startServer() {
             totalCount: realInvoiceCount,
             appendedCount: incomingInvoiceCount,
             message: dupRowIndices.size > 0
-              ? `成功合并追加 ${incomingInvoiceCount} 张发票！文件中共 ${realInvoiceCount} 张发票。\n⚠️ 发现 ${dupRowIndices.size} 条重复发票，已自动在 Excel 中明黄色高亮标出！`
-              : `成功合并追加 ${incomingInvoiceCount} 张发票！文件中共 ${realInvoiceCount} 张发票，无重复发票。`,
+              ? `成功合并追加 ${incomingInvoiceCount} 张新发票！\n文件中共 ${realInvoiceCount} 张发票（分批次归档）。\n⚠️ 发现 ${dupRowIndices.size} 条跨批次重复发票，已自动在 Excel 中明黄色高亮标出！`
+              : `成功合并追加 ${incomingInvoiceCount} 张新发票！\n文件中共 ${realInvoiceCount} 张发票（分批次归档），所有发票正常唯一。`,
           });
         } catch (mergeErr) {
           console.warn("Append merge error, falling back to direct write:", mergeErr);

@@ -132,10 +132,16 @@ export const App: React.FC = () => {
     setTheme(nextTheme);
   };
 
-  // 批量导入与台账操作：新导入的发票自动选中以方便直接排版
+  // 批量导入与台账操作：新导入的发票自动选中以方便直接排版，并标记为未导出
   const handleAddInvoices = (newInvs: InvoiceData[]) => {
-    const markedInvs = newInvs.map((inv) => ({ ...inv, selectedForPrint: true }));
+    const markedInvs = newInvs.map((inv) => ({ ...inv, selectedForPrint: true, exported: false }));
     setInvoices((prev) => [...markedInvs, ...prev]);
+  };
+
+  const handleExportSuccess = (exportedIds: string[]) => {
+    setInvoices((prev) =>
+      prev.map((inv) => (exportedIds.includes(inv.id) ? { ...inv, exported: true } : inv))
+    );
   };
 
   const handleDeleteInvoice = (id: string) => {
@@ -199,7 +205,7 @@ export const App: React.FC = () => {
   const handleTopNavExportExcel = async () => {
     const historicalInfo = await getLastExportInfoAsync();
     if (!historicalInfo) {
-      exportInvoicesToExcel(invoices, settings, "default");
+      exportInvoicesToExcel(invoices, settings, "default", undefined, handleExportSuccess);
     } else {
       setTopNavLastExportInfo(historicalInfo);
       setIsTopNavExportDialogOpen(true);
@@ -304,6 +310,7 @@ export const App: React.FC = () => {
             onToggleSelectAll={handleToggleSelectAll}
             onDeleteInvoice={handleDeleteInvoice}
             onEditInvoice={(inv) => setEditingInvoice(inv)}
+            onExportSuccess={handleExportSuccess}
             onManualCreate={() => {
               const newInv: InvoiceData = {
                 id: `custom-${Date.now()}`,
@@ -389,8 +396,9 @@ export const App: React.FC = () => {
         onClose={() => setIsTopNavExportDialogOpen(false)}
         lastExportInfo={topNavLastExportInfo}
         currentCount={invoices.length}
-        onAppendToExisting={() => exportInvoicesToExcel(invoices, settings, "append")}
-        onSaveNewFile={() => exportInvoicesToExcel(invoices, settings, "new")}
+        unexportedCount={invoices.filter((i) => !i.exported).length}
+        onAppendToExisting={() => exportInvoicesToExcel(invoices, settings, "append", undefined, handleExportSuccess)}
+        onSaveNewFile={() => exportInvoicesToExcel(invoices, settings, "new", undefined, handleExportSuccess)}
       />
     </div>
   );

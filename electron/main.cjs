@@ -217,11 +217,11 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
         const existingWb = XLSX.readFile(targetPath);
         const firstSheetName = existingWb.SheetNames[0];
         const existingSheet = existingWb.Sheets[firstSheetName];
-        const rawExistingRows = XLSX.utils.sheet_to_json(existingSheet);
+        const rawExistingRows = XLSX.utils.sheet_to_json(existingSheet, { defval: "" });
 
         const incomingWb = XLSX.read(incomingBuffer, { type: "buffer" });
         const incomingSheet = incomingWb.Sheets[incomingWb.SheetNames[0]];
-        const rawIncomingRows = XLSX.utils.sheet_to_json(incomingSheet);
+        const rawIncomingRows = XLSX.utils.sheet_to_json(incomingSheet, { defval: "" });
 
         // 过滤掉原本文件中因为历史错误被误写入的空行（既没有开票日期也没有发票号码，且不是统计行的坏数据）
         const cleanedExistingRows = rawExistingRows.filter((r) => {
@@ -230,7 +230,7 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
           return isSummary || hasData;
         });
 
-        // 确保本次新追加的数据（包含新发票 + 本次专属统计汇总行）直接追加在旧数据下方
+        // 确保本次新追加的数据（包含新批次发票 + 本批次专属统计汇总行）作为新批次追加在旧数据下方
         const allRows = [...cleanedExistingRows, ...rawIncomingRows];
 
         // 统计全表真正的发票总张数（不含任何统计汇总行）
@@ -261,7 +261,7 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
           }
         });
 
-        // 更新真实发票行的查重状态文字
+        // 更新全表所有发票行（跨批次）的查重状态文字
         allRows.forEach((row, idx) => {
           const isSummary = String(row["序号"] || "").startsWith("统计");
           if (!isSummary) {
@@ -403,8 +403,8 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
           totalCount: realInvoiceCount,
           appendedCount: incomingInvoiceCount,
           message: dupRowIndices.size > 0
-            ? `成功合并追加 ${incomingInvoiceCount} 张发票！文件中共 ${realInvoiceCount} 张发票。\n⚠️ 发现 ${dupRowIndices.size} 条重复发票，已自动在 Excel 中明黄色高亮标出！`
-            : `成功合并追加 ${incomingInvoiceCount} 张发票！文件中共 ${realInvoiceCount} 张发票，无重复发票。`,
+            ? `成功合并追加 ${incomingInvoiceCount} 张新发票！\n文件中共 ${realInvoiceCount} 张发票（分批次归档）。\n⚠️ 发现 ${dupRowIndices.size} 条跨批次重复发票，已自动在 Excel 中明黄色高亮标出！`
+            : `成功合并追加 ${incomingInvoiceCount} 张新发票！\n文件中共 ${realInvoiceCount} 张发票（分批次归档），所有发票正常唯一。`,
         };
       } catch (err) {
         console.warn("Append error:", err);
