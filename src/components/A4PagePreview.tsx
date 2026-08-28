@@ -45,11 +45,10 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   const paperKey = config.paperType || "A4";
   const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
   
-  // 4张/页屏幕预览始终为 A4 横向 (297×210mm)；当勾选【带报销封面】时，打印输出自动旋转 90 度嵌入 A4 纵向纸张
+  // 4张/页为标准 A4 横向 (297×210mm)，2张/页为 A4 纵向 (210×297mm)，1张/页为单票专用纸 (210×140mm)
   const isGrid4Landscape = config.gridMode === "4" || config.orientation === "landscape";
   const isGrid1SingleTicket = config.gridMode === "1";
   const isLandscape = isGrid4Landscape;
-  const shouldRotateForCoverPrint = isGrid4Landscape && !!config.includeCoverPage;
 
   const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
 
@@ -174,9 +173,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
             <div
               key={`page-${pageIdx}`}
               className={`a4-print-page-wrapper ${
-                shouldRotateForCoverPrint
-                  ? "rotate-90-for-portrait-print"
-                  : isGrid4Landscape
+                isGrid4Landscape
                   ? "landscape-mode"
                   : isGrid1SingleTicket
                   ? "single-ticket-mode"
