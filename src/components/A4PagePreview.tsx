@@ -44,9 +44,16 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   const isDark = theme === "dark";
   const paperKey = config.paperType || "A4";
   const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
-  const isLandscape = config.orientation === "landscape";
-  const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
+  
+  // 核心强制防错：4张/页 必须锁定横向 (Landscape)，2张/页 必须锁定纵向 (Portrait)
+  const isLandscape =
+    config.gridMode === "4"
+      ? true
+      : config.gridMode === "2"
+      ? false
+      : config.orientation === "landscape";
 
+  const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
   const isGrid1SingleTicket = config.gridMode === "1";
 
   // Calculate pages based on gridMode
@@ -145,11 +152,9 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
             size: ${
               isGrid1SingleTicket
                 ? "210mm 140mm"
-                : (() => {
-                    const standardNames: Record<string, string> = { A4: "A4", A5: "A5", B5: "JIS-B5" };
-                    const stdName = standardNames[paperKey];
-                    return stdName ? `${stdName} ${isLandscape ? "landscape" : "portrait"}` : isLandscape ? `${paperSize.height} ${paperSize.width}` : `${paperSize.width} ${paperSize.height}`;
-                  })()
+                : isLandscape
+                ? "A4 landscape"
+                : "A4 portrait"
             };
             margin: 0;
           }

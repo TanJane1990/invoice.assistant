@@ -137,16 +137,22 @@ textarea::placeholder {
     print-color-adjust: exact !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    page-break-before: auto !important;
-    break-before: auto !important;
-    page-break-after: always !important;
-    break-after: page !important;
+    page-break-before: auto;
+    break-before: auto;
+    page-break-after: auto;
+    break-after: auto;
     overflow: hidden !important;
     display: block !important;
     box-sizing: border-box !important;
   }
 
-  /* 最后一页绝不强制换页，防止末尾多吐空白页 */
+  /* 非最后一页执行换页，最后一页绝不换页 */
+  .a4-print-page-wrapper:not(:last-child) .a4-print-page,
+  .a4-print-page:not(:last-child) {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
   .a4-print-page:last-of-type,
   .a4-print-page:last-child {
     page-break-after: auto !important;
