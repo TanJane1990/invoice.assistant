@@ -100,7 +100,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
     }
   }, [invoices, config.sortBy, itemsPerPage]);
 
-  const pageWidth = isGrid4Landscape ? "296mm" : "210mm";
+  const pageWidth = isGrid4Landscape ? "297mm" : "210mm";
   const pageHeight = isGrid1SingleTicket ? "140mm" : isGrid4Landscape ? "210mm" : "297mm";
   const printSheetHeight = pageHeight;
 
@@ -138,7 +138,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
       <style>{`
         @media print {
           @page {
-            size: ${isGrid4Landscape ? "296mm 210mm landscape" : isGrid1SingleTicket ? "210mm 140mm portrait" : "A4 portrait"};
+            size: ${isGrid4Landscape ? "A4 landscape" : isGrid1SingleTicket ? "210mm 140mm" : "A4 portrait"};
             margin: 0;
           }
         }

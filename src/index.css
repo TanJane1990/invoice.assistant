@@ -168,11 +168,11 @@ textarea::placeholder {
     box-sizing: border-box !important;
   }
 
-  /* 横向 4张/页 打印纸张尺寸 (296×210mm) */
+  /* 横向 4张/页 打印纸张尺寸 (A4 横向: 297×210mm) */
   .a4-print-page.landscape-mode {
-    width: 296mm !important;
+    width: 297mm !important;
     height: 210mm !important;
-    max-width: 296mm !important;
+    max-width: 297mm !important;
     max-height: 210mm !important;
     min-height: 210mm !important;
   }

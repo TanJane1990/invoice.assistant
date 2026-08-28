@@ -220,9 +220,9 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         style={{
           width: "210mm",
           maxWidth: "210mm",
-          height: "296mm",
-          minHeight: "296mm",
-          maxHeight: "296mm",
+          height: "297mm",
+          minHeight: "297mm",
+          maxHeight: "297mm",
           padding: "14mm 15mm",
           boxSizing: "border-box",
           color: "#000000",
