@@ -51,7 +51,7 @@ export const App: React.FC = () => {
     showCropLines: true,
     showCategoryBadge: true,
     marginSize: "normal",
-    sortBy: "category",
+    sortBy: "date_asc", // 默认排序：按开票时间 (升序)
     includeCoverPage: false,
   });
 
@@ -271,11 +271,11 @@ export const App: React.FC = () => {
             totalInvoices={selectedInvoices.length}
             totalPages={totalPages}
             totalAmount={totalAmount}
-            onResetOrder={() => handleUpdateConfig({ sortBy: "category" })}
+            onResetOrder={() => handleUpdateConfig({ sortBy: "date_asc" })}
           />
           <main className="flex-1 overflow-auto bg-[#0E172B]">
             {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
-              <div className="pt-6 print:pt-0 print:m-0 print:p-0">
+              <div className="a4-print-cover-wrapper pt-6 print:pt-0 print:m-0 print:p-0">
                 <ReimbursementCover
                   selectedInvoices={selectedInvoices}
                   invoices={invoices}

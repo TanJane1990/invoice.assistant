@@ -194,8 +194,6 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                   maxHeight: printSheetHeight,
                   padding: paddingValue,
                   boxSizing: "border-box",
-                  pageBreakAfter: isLastPage ? "auto" : "always",
-                  breakAfter: isLastPage ? "auto" : "page",
                   overflow: "hidden",
                 }}
               >
@@ -204,15 +202,15 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                   <>
                     {(config.gridMode === "2" || config.gridMode === "4") && (
                       <div
-                        className="absolute left-0 right-0 border-b border-dashed border-sky-400/80 pointer-events-none z-20"
-                        style={{ top: "50%", transform: "translateY(-50%)" }}
+                        className="absolute left-0 right-0 border-t border-dashed border-sky-400/80 pointer-events-none z-20"
+                        style={{ top: "50%", height: 0 }}
                       />
                     )}
                     {config.gridMode === "4" && (
                       <>
                         <div
-                          className="absolute top-0 bottom-0 border-r border-dashed border-sky-400/80 pointer-events-none z-20"
-                          style={{ left: "50%", transform: "translateX(-50%)" }}
+                          className="absolute top-0 bottom-0 border-l border-dashed border-sky-400/80 pointer-events-none z-20"
+                          style={{ left: "50%", width: 0 }}
                         />
                         <div className="no-print print:hidden absolute right-3 top-1/2 translate-y-1.5 text-[10px] text-slate-400 font-mono flex items-center space-x-1 pointer-events-none z-20">
                           <span>✂ 十字剪裁中心线 (148mm × 105mm)</span>

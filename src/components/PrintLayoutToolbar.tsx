@@ -168,8 +168,8 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
                 isDark ? "text-white" : "text-slate-900"
               }`}
             >
-              <option value="category" className={isDark ? "bg-[#0B0F19]" : "bg-white"}>按发票种类/票种</option>
               <option value="date_asc" className={isDark ? "bg-[#0B0F19]" : "bg-white"}>按开票时间 (升序)</option>
+              <option value="category" className={isDark ? "bg-[#0B0F19]" : "bg-white"}>按发票种类/票种</option>
               <option value="amount_desc" className={isDark ? "bg-[#0B0F19]" : "bg-white"}>按金额大小 (降序)</option>
             </select>
           </div>

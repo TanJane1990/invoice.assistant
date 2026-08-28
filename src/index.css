@@ -122,8 +122,34 @@ textarea::placeholder {
     display: block !important;
     margin: 0 !important;
     padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  /* 非最后一个包装页执行换页，最后一个绝不换页 */
+  .a4-print-page-wrapper:not(:last-child) {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .a4-print-page-wrapper:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  /* 报销封面外层包装：若后面有发票页，则强制换页 */
+  .a4-print-cover-wrapper {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
   }
 
   /* ===== 7. 隐藏所有屏幕 UI 控件 ===== */
@@ -152,7 +178,7 @@ textarea::placeholder {
     display: none !important;
   }
 
-  /* ===== 8. 物理打印纸张（.a4-print-page）：根据排版模式自适应精准尺寸 ===== */
+  /* ===== 8. 物理打印纸张（.a4-print-page）：高度设为安全尺寸（减1mm）防止亚像素溢出导致空白页 ===== */
   .a4-print-page {
     background-color: #ffffff !important;
     color: #0f172a !important;
@@ -163,68 +189,56 @@ textarea::placeholder {
     print-color-adjust: exact !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
     overflow: hidden !important;
     display: block !important;
     box-sizing: border-box !important;
   }
 
-  /* 横向 4张/页 打印纸张尺寸 (A4 横向: 297×210mm) */
+  /* 横向 4张/页 打印纸张尺寸 (A4 横向: 297×209mm) */
   .a4-print-page.landscape-mode {
     width: 297mm !important;
-    height: 210mm !important;
+    height: 209mm !important;
     max-width: 297mm !important;
-    max-height: 210mm !important;
-    min-height: 210mm !important;
+    max-height: 209mm !important;
+    min-height: 209mm !important;
   }
 
-  /* 纵向 2张/页 打印纸张尺寸 (210×297mm) */
+  /* 纵向 2张/页 打印纸张尺寸 (210×296mm) */
   .a4-print-page.portrait-mode {
     width: 210mm !important;
-    height: 297mm !important;
+    height: 296mm !important;
     max-width: 210mm !important;
-    max-height: 297mm !important;
-    min-height: 297mm !important;
+    max-height: 296mm !important;
+    min-height: 296mm !important;
   }
 
-  /* 单票专用纸张尺寸 (210×140mm) */
+  /* 单票专用纸张尺寸 (210×139mm) */
   .a4-print-page.single-ticket-mode {
     width: 210mm !important;
-    height: 140mm !important;
+    height: 139mm !important;
     max-width: 210mm !important;
-    max-height: 140mm !important;
-    min-height: 140mm !important;
+    max-height: 139mm !important;
+    min-height: 139mm !important;
   }
 
-  /* ===== 9. 分页控制：非最后一页换页，最后一页不换（防止空白尾页） ===== */
-  .a4-print-page:not(:last-of-type) {
-    page-break-after: always !important;
-    break-after: page !important;
-  }
-
-  .a4-print-page:last-of-type {
-    page-break-after: auto !important;
-    break-after: auto !important;
-  }
-
-  /* ===== 10. 报销凭证封面单 ===== */
+  /* ===== 9. 报销凭证封面单 ===== */
   .a4-print-cover-page {
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
-    min-height: 297mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
+    min-height: 296mm !important;
     padding: 14mm 15mm !important;
     box-sizing: border-box !important;
     background-color: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
     overflow: hidden !important;
     display: block !important;
-  }
-
-  .a4-print-cover-page:not(:last-of-type) {
-    page-break-after: always !important;
-    break-after: page !important;
   }
 
   /* ===== 11. 发票卡片文字对比度 ===== */
