@@ -173,7 +173,16 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
           const isLastPage = pageIdx === pages.length - 1;
 
           return (
-            <div key={`page-${pageIdx}`} className="a4-print-page-wrapper relative flex flex-col items-center z-0 print:m-0 print:p-0">
+            <div
+              key={`page-${pageIdx}`}
+              className={`a4-print-page-wrapper ${
+                isGrid4Landscape
+                  ? "landscape-mode"
+                  : isGrid1SingleTicket
+                  ? "single-ticket-mode"
+                  : "portrait-mode"
+              } relative flex flex-col items-center z-0 print:m-0 print:p-0`}
+            >
               {/* On-screen Page Badge (hidden in print) */}
               <div
                 className={`no-print mb-2 flex items-center justify-between text-xs font-semibold px-2 py-1 rounded-md ${

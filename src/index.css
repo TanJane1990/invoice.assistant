@@ -147,6 +147,18 @@ textarea::placeholder {
     break-inside: avoid !important;
   }
 
+  .a4-print-page-wrapper.landscape-mode {
+    page: invoice_landscape !important;
+  }
+
+  .a4-print-page-wrapper.portrait-mode {
+    page: invoice_portrait !important;
+  }
+
+  .a4-print-page-wrapper.single-ticket-mode {
+    page: invoice_single !important;
+  }
+
   /* 非最后一个包装页执行换页，最后一个绝不换页 */
   .a4-print-page-wrapper:not(:last-child) {
     page-break-after: always !important;
@@ -160,6 +172,7 @@ textarea::placeholder {
 
   /* 报销封面外层包装：若后面有发票页，则强制换页 */
   .a4-print-cover-wrapper {
+    page: cover_page !important;
     display: block !important;
     margin: 0 !important;
     padding: 0 !important;
