@@ -120,9 +120,9 @@ export function cropWhitespaceFromCanvas(canvas: HTMLCanvasElement): string {
       maxY = Math.min(maxY, mainContentMaxY);
     }
 
-    // 增加 1.5% 安全微边距，防止贴边切到印章或字迹
-    const paddingX = Math.round(w * 0.015);
-    const paddingY = Math.round(h * 0.015);
+    // 增加 2% 安全微边距，防止贴边切到印章或字迹
+    const paddingX = Math.round(w * 0.02);
+    const paddingY = Math.round(h * 0.02);
 
     const cropX = Math.max(0, minX - paddingX);
     const cropY = Math.max(0, minY - paddingY);
