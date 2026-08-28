@@ -51,7 +51,8 @@ textarea::placeholder {
 /* Print CSS - Strictly Isolates A4 Printable Canvas & Cover Page Only */
 @media print {
   @page {
-    margin: 0;
+    size: A4 portrait !important;
+    margin: 0 !important;
   }
 
   /* 彻底屏蔽打印页面上的所有滚动条/拖条 (Scrollbars) */
@@ -76,7 +77,8 @@ textarea::placeholder {
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 100% !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
     height: auto !important;
     min-height: 0 !important;
     overflow: visible !important;
@@ -96,6 +98,8 @@ textarea::placeholder {
     padding: 0 !important;
     min-height: 0 !important;
     height: auto !important;
+    width: 100% !important;
+    max-width: 210mm !important;
     background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -106,6 +110,8 @@ textarea::placeholder {
   /* 消除包装层在打印时的空白占位 */
   .a4-print-page-wrapper {
     display: contents !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* 4. 隐藏所有屏幕 UI 控件（导航栏、工具条、按钮、弹窗等） */
@@ -130,6 +136,11 @@ textarea::placeholder {
 
   /* 5. 物理打印纸张实体（.a4-print-page）：强制纯白实体背景与精准尺寸 */
   .a4-print-page {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
+    min-height: 296mm !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     margin: 0 auto !important;
@@ -137,10 +148,8 @@ textarea::placeholder {
     print-color-adjust: exact !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    page-break-before: auto;
-    break-before: auto;
-    page-break-after: auto;
-    break-after: auto;
+    page-break-before: auto !important;
+    break-before: auto !important;
     overflow: hidden !important;
     display: block !important;
     box-sizing: border-box !important;
@@ -148,13 +157,15 @@ textarea::placeholder {
 
   /* 非最后一页执行换页，最后一页绝不换页 */
   .a4-print-page-wrapper:not(:last-child) .a4-print-page,
-  .a4-print-page:not(:last-child) {
+  .a4-print-page:not(:last-child),
+  .a4-print-cover-page:not(:last-child) {
     page-break-after: always !important;
     break-after: page !important;
   }
 
   .a4-print-page:last-of-type,
-  .a4-print-page:last-child {
+  .a4-print-page:last-child,
+  .a4-print-cover-page:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
   }
@@ -163,16 +174,14 @@ textarea::placeholder {
   .a4-print-cover-page {
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 295mm !important;
-    max-height: 295mm !important;
-    min-height: 295mm !important;
-    padding: 8mm 12mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
+    min-height: 296mm !important;
+    padding: 12mm 15mm !important;
     box-sizing: border-box !important;
     background-color: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    page-break-after: always !important;
-    break-after: page !important;
     overflow: hidden !important;
     display: block !important;
   }

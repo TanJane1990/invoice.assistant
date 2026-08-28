@@ -45,14 +45,8 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   const paperKey = config.paperType || "A4";
   const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
   
-  // 核心强制防错：4张/页 必须锁定横向 (Landscape)，2张/页 必须锁定纵向 (Portrait)
-  const isLandscape =
-    config.gridMode === "4"
-      ? true
-      : config.gridMode === "2"
-      ? false
-      : config.orientation === "landscape";
-
+  // 统一物理规范：全流程锁定为标准纵向进出纸 (A4 Portrait: 210mm 进纸口)
+  const isLandscape = false;
   const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
   const isGrid1SingleTicket = config.gridMode === "1";
 
@@ -104,16 +98,8 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
     }
   }, [invoices, config.sortBy, itemsPerPage]);
 
-  const pageWidth = isGrid1SingleTicket
-    ? "210mm"
-    : isLandscape
-    ? paperSize.height
-    : paperSize.width;
-  const pageHeight = isGrid1SingleTicket
-    ? "140mm"
-    : isLandscape
-    ? paperSize.width
-    : paperSize.height;
+  const pageWidth = "210mm";
+  const pageHeight = isGrid1SingleTicket ? "140mm" : "296mm";
 
   if (invoices.length === 0) {
     return (
@@ -145,17 +131,11 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态打印纸张尺寸与方向规则：直接锁定浏览器物理打印机的横向/纵向出纸尺寸 */}
+      {/* 动态打印纸张尺寸与方向规则：直接锁定物理打印机 A4 纵向出纸尺寸 */}
       <style>{`
         @media print {
           @page {
-            size: ${
-              isGrid1SingleTicket
-                ? "210mm 140mm"
-                : isLandscape
-                ? "A4 landscape"
-                : "A4 portrait"
-            };
+            size: ${isGrid1SingleTicket ? "210mm 140mm" : "A4 portrait"};
             margin: 0;
           }
         }

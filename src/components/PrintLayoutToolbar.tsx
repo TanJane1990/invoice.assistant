@@ -38,9 +38,9 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   const isDark = theme === "dark";
 
   const gridModes = [
-    { id: "1", label: "1张/页 (单张原票 210×140mm)", orientation: "landscape" },
+    { id: "1", label: "1张/页 (单张原票 210×140mm)", orientation: "portrait" },
     { id: "2", label: "2张/页 (上下 纵向)", orientation: "portrait" },
-    { id: "4", label: "4张/页 (2×2 横向)", orientation: "landscape" },
+    { id: "4", label: "4张/页 (2×2 田字格)", orientation: "portrait" },
   ];
 
   return (
@@ -223,19 +223,10 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             }`}
           >
             <Compass className="w-3.5 h-3.5 text-slate-400" />
-            <span>纸张方向:</span>
-            <select
-              value={config.gridMode === "4" ? "landscape" : config.gridMode === "2" ? "portrait" : config.orientation}
-              onChange={(e) => onChangeConfig({ orientation: e.target.value as any })}
-              disabled={config.gridMode === "4" || config.gridMode === "2"}
-              title={config.gridMode === "4" ? "4张/页 自动锁定为横向最佳排版" : config.gridMode === "2" ? "2张/页 自动锁定为纵向最佳排版" : "切换纸张方向"}
-              className={`bg-transparent text-xs font-bold focus:outline-none ${
-                config.gridMode === "4" || config.gridMode === "2" ? "cursor-default opacity-85" : "cursor-pointer"
-              } ${isDark ? "text-white" : "text-slate-900"}`}
-            >
-              <option value="landscape" className={isDark ? "bg-[#0B0F19]" : "bg-white"}>横向 (Landscape)</option>
-              <option value="portrait" className={isDark ? "bg-[#0B0F19]" : "bg-white"}>纵向 (Portrait)</option>
-            </select>
+            <span>进纸方向:</span>
+            <span className={`text-xs font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+              标准纵向进纸 (210×297mm)
+            </span>
           </div>
         </div>
 

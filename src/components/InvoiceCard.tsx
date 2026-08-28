@@ -106,12 +106,20 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
 
       {/* RENDER REAL ORIGINAL INVOICE FILE IF AVAILABLE */}
       {renderedImgUrl ? (
-        <div className="w-full h-full flex items-center justify-center overflow-hidden bg-white p-2">
+        <div
+          className={`w-full h-full flex items-center justify-center overflow-hidden bg-white ${
+            gridMode === "4" ? "p-1" : "px-2 py-3"
+          }`}
+        >
           <img
             src={renderedImgUrl}
             alt={invoice.fileName || "发票原票件"}
             className="w-full h-full object-contain pointer-events-none"
-            style={{ maxHeight: "calc(100% - 4px)" }}
+            style={{
+              maxHeight: gridMode === "4" ? "calc(100% - 4px)" : "calc(100% - 8px)",
+              maxWidth: "calc(100% - 4px)",
+              transform: "none",
+            }}
           />
         </div>
       ) : (
