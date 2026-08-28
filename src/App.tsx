@@ -115,12 +115,14 @@ export const App: React.FC = () => {
     }
   }, [theme]);
 
-  // 更新排版参数 (4张/页 自动绑定横向 Landscape)
+  // 更新排版参数 (4张/页 自动绑定横向 Landscape，1/2张/页 自动绑定纵向 Portrait)
   const handleUpdateConfig = (newCfg: Partial<PrintConfig>) => {
     setPrintConfig((prev) => {
       const next = { ...prev, ...newCfg };
-      if (newCfg.gridMode === "4" && !newCfg.orientation) {
+      if (newCfg.gridMode === "4") {
         next.orientation = "landscape";
+      } else if (newCfg.gridMode === "2" || newCfg.gridMode === "1") {
+        next.orientation = "portrait";
       }
       return next;
     });

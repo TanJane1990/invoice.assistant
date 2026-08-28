@@ -50,79 +50,88 @@ textarea::placeholder {
 
 /* Print CSS - Strictly Isolates A4 Printable Canvas & Cover Page Only */
 @media print {
+  /* ===== 1. 唯一的 @page 声明（不加 !important，允许动态 @page 覆盖用于 gridMode=1 的 210×140mm） ===== */
   @page {
-    size: A4 portrait !important;
-    margin: 0 !important;
+    size: A4 portrait;
+    margin: 0;
   }
 
-  /* 彻底屏蔽打印页面上的所有滚动条/拖条 (Scrollbars) */
+  /* ===== 2. 彻底屏蔽滚动条 ===== */
   ::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
   }
 
-  /* 1. 全局重置：默认所有元素背景完全透明、无阴影、无文本阴影，彻底消除暗黑模式背景色 */
-  * {
-    background-color: transparent !important;
-    background-image: none !important;
-    box-shadow: none !important;
-    text-shadow: none !important;
-  }
-
-  /* 2. 根级与页面基础容器：纯白底色，去除溢出与固定高度 */
+  /* ===== 3. 根级容器：纯白底色、打印友好 ===== */
   html,
   body {
     background-color: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
     overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* 3. 彻底重置屏幕外层布局容器，防止生成多余空白页 */
+  /* ===== 4. 布局容器重置：保留原始 display 类型，只清除多余间距和溢出 ===== */
   #root,
-  #root > div,
-  main,
-  section,
-  article,
-  .min-h-screen,
-  .overflow-auto,
-  .overflow-x-auto,
-  .overflow-y-auto {
+  #root > div {
     margin: 0 !important;
     padding: 0 !important;
     min-height: 0 !important;
     height: auto !important;
     width: 100% !important;
-    max-width: 210mm !important;
+    max-width: 100% !important;
     background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    transform: none !important;
-    display: block !important;
+    overflow: visible !important;
   }
 
-  /* 消除包装层在打印时的空白占位 */
+  main,
+  section,
+  article {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  /* ===== 5. Zoom 容器 transform 强制清除（双保险：CSS class + 此规则） ===== */
+  .print-zoom-container,
+  .min-h-screen > div > div,
+  [style*="scale"] {
+    transform: none !important;
+    transform-origin: top left !important;
+  }
+
+  /* ===== 6. 打印页面 wrapper：使用 block 而非 contents，保留分页控制 ===== */
   .a4-print-page-wrapper {
-    display: contents !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  /* 4. 隐藏所有屏幕 UI 控件（导航栏、工具条、按钮、弹窗等） */
+  /* ===== 7. 隐藏所有屏幕 UI 控件 ===== */
   .no-print,
   .print\:hidden,
   [data-no-print="true"],
   header,
   nav,
-  button,
-  input,
-  select,
   .header-container,
   .settings-modal,
   .batch-modal,
@@ -134,50 +143,77 @@ textarea::placeholder {
     display: none !important;
   }
 
-  /* 5. 物理打印纸张实体（.a4-print-page）：强制纯白实体背景与精准尺寸 */
+  /* 隐藏非打印区的 button/input/select（但保留打印页面内部的内容） */
+  body > div button,
+  body > div input,
+  body > div select,
+  header button,
+  nav button {
+    display: none !important;
+  }
+
+  /* ===== 8. 物理打印纸张（.a4-print-page）：根据排版模式自适应精准尺寸 ===== */
   .a4-print-page {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 296mm !important;
-    max-height: 296mm !important;
-    min-height: 296mm !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    page-break-before: auto !important;
-    break-before: auto !important;
     overflow: hidden !important;
     display: block !important;
     box-sizing: border-box !important;
   }
 
-  /* 非最后一页执行换页，最后一页绝不换页 */
-  .a4-print-page-wrapper:not(:last-child) .a4-print-page,
-  .a4-print-page:not(:last-child),
-  .a4-print-cover-page:not(:last-child) {
+  /* 横向 4张/页 打印纸张尺寸 (296×210mm) */
+  .a4-print-page.landscape-mode {
+    width: 296mm !important;
+    height: 210mm !important;
+    max-width: 296mm !important;
+    max-height: 210mm !important;
+    min-height: 210mm !important;
+  }
+
+  /* 纵向 2张/页 打印纸张尺寸 (210×297mm) */
+  .a4-print-page.portrait-mode {
+    width: 210mm !important;
+    height: 297mm !important;
+    max-width: 210mm !important;
+    max-height: 297mm !important;
+    min-height: 297mm !important;
+  }
+
+  /* 单票专用纸张尺寸 (210×140mm) */
+  .a4-print-page.single-ticket-mode {
+    width: 210mm !important;
+    height: 140mm !important;
+    max-width: 210mm !important;
+    max-height: 140mm !important;
+    min-height: 140mm !important;
+  }
+
+  /* ===== 9. 分页控制：非最后一页换页，最后一页不换（防止空白尾页） ===== */
+  .a4-print-page:not(:last-of-type) {
     page-break-after: always !important;
     break-after: page !important;
   }
 
-  .a4-print-page:last-of-type,
-  .a4-print-page:last-child,
-  .a4-print-cover-page:last-child {
+  .a4-print-page:last-of-type {
     page-break-after: auto !important;
     break-after: auto !important;
   }
 
-  /* 报销凭证封面单固定纵向规范 */
+  /* ===== 10. 报销凭证封面单 ===== */
   .a4-print-cover-page {
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 296mm !important;
-    max-height: 296mm !important;
-    min-height: 296mm !important;
-    padding: 12mm 15mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    min-height: 297mm !important;
+    padding: 14mm 15mm !important;
     box-sizing: border-box !important;
     background-color: #ffffff !important;
     page-break-inside: avoid !important;
@@ -186,7 +222,12 @@ textarea::placeholder {
     display: block !important;
   }
 
-  /* 6. 强制锁死发票卡片文字深度对比度与浅灰背景 */
+  .a4-print-cover-page:not(:last-of-type) {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  /* ===== 11. 发票卡片文字对比度 ===== */
   .invoice-card-content,
   .invoice-card-content div,
   .invoice-card-content * {

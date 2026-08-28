@@ -9,3 +9,4 @@ coverage/
 .vite/
 .env*
 !.env.example
+.cursor/

@@ -45,10 +45,12 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   const paperKey = config.paperType || "A4";
   const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
   
-  // 统一物理规范：全流程锁定为标准纵向进出纸 (A4 Portrait: 210mm 进纸口)
-  const isLandscape = false;
-  const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
+  // 4张/页锁定为 A4 横向 (296×210mm)，2张/页为 A4 纵向 (210×297mm)，1张/页为单票专用纸 (210×140mm)
+  const isGrid4Landscape = config.gridMode === "4" || config.orientation === "landscape";
   const isGrid1SingleTicket = config.gridMode === "1";
+  const isLandscape = isGrid4Landscape;
+
+  const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
 
   // Calculate pages based on gridMode
   const itemsPerPage =
@@ -98,8 +100,9 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
     }
   }, [invoices, config.sortBy, itemsPerPage]);
 
-  const pageWidth = "210mm";
-  const pageHeight = isGrid1SingleTicket ? "140mm" : "296mm";
+  const pageWidth = isGrid4Landscape ? "296mm" : "210mm";
+  const pageHeight = isGrid1SingleTicket ? "140mm" : isGrid4Landscape ? "210mm" : "297mm";
+  const printSheetHeight = pageHeight;
 
   if (invoices.length === 0) {
     return (
@@ -131,28 +134,23 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态打印纸张尺寸与方向规则：直接锁定物理打印机 A4 纵向出纸尺寸 */}
+      {/* 动态打印纸张尺寸与方向规则：4张/页自动切换为 A4 横向，2张/页纵向，1张/页单票专用尺寸 */}
       <style>{`
         @media print {
           @page {
-            size: ${isGrid1SingleTicket ? "210mm 140mm" : "A4 portrait"};
+            size: ${isGrid4Landscape ? "296mm 210mm landscape" : isGrid1SingleTicket ? "210mm 140mm portrait" : "A4 portrait"};
             margin: 0;
           }
         }
       `}</style>
       {/* Pages Container with Scaling Zoom */}
       <div
-        className="transition-transform origin-top flex flex-col items-center space-y-10 relative z-0 print:space-y-0 print:m-0 print:p-0 print:transform-none"
+        className="print-zoom-container transition-transform origin-top flex flex-col items-center space-y-10 relative z-0 print:space-y-0 print:m-0 print:p-0"
         style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
       >
         {pages.map((pageData, pageIdx) => {
           const pageInvoices = pageData.invoices;
           const isLastPage = pageIdx === pages.length - 1;
-          const printSheetHeight = isGrid1SingleTicket
-            ? "140mm"
-            : isLandscape
-            ? paperSize.width
-            : paperSize.height;
 
           return (
             <div key={`page-${pageIdx}`} className="a4-print-page-wrapper relative flex flex-col items-center z-0 print:m-0 print:p-0">
@@ -167,7 +165,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                   <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
                   <span>
                     第 {pageIdx + 1} 页 / 共 {pages.length} 页 ({config.paperType || "A4"}
-                    {isLandscape ? "横向" : "纵向"})
+                    {isGrid4Landscape ? "横向 296×210mm" : isGrid1SingleTicket ? "单张原票 210×140mm" : "纵向 210×297mm"})
                   </span>
                   {pageData.groupTitle && (
                     <span className="px-2 py-0.5 bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 font-bold rounded text-[11px] border border-red-200 dark:border-red-800">
@@ -182,7 +180,9 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
               {/* Pixel-Accurate Printable Sheet */}
               <div
-                className={`mx-auto bg-white transition-all print:shadow-none a4-print-page relative z-0 ${
+                className={`mx-auto bg-white transition-all print:shadow-none a4-print-page ${
+                  isGrid4Landscape ? "landscape-mode" : isGrid1SingleTicket ? "single-ticket-mode" : "portrait-mode"
+                } relative z-0 ${
                   isDark
                     ? "shadow-[0_10px_30px_rgba(0,0,0,0.6)] ring-1 ring-slate-800"
                     : "shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-slate-200"
@@ -199,24 +199,30 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
                   overflow: "hidden",
                 }}
               >
-                {/* 1:1 剪裁线：居中穿过页面中轴线的分割虚线 (1:1 匹配 media_1786901840126.png) */}
+                {/* 1:1 十字剪裁虚线：横向 148.0mm / 纵向 105.0mm 正中心 */}
                 {showCropLines && (
                   <>
                     {(config.gridMode === "2" || config.gridMode === "4") && (
-                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-b border-dashed border-sky-400/80 pointer-events-none z-20" />
+                      <div
+                        className="absolute left-0 right-0 border-b border-dashed border-sky-400/80 pointer-events-none z-20"
+                        style={{ top: "50%", transform: "translateY(-50%)" }}
+                      />
                     )}
                     {config.gridMode === "4" && (
                       <>
-                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 border-r border-dashed border-sky-400/80 pointer-events-none z-20" />
+                        <div
+                          className="absolute top-0 bottom-0 border-r border-dashed border-sky-400/80 pointer-events-none z-20"
+                          style={{ left: "50%", transform: "translateX(-50%)" }}
+                        />
                         <div className="no-print print:hidden absolute right-3 top-1/2 translate-y-1.5 text-[10px] text-slate-400 font-mono flex items-center space-x-1 pointer-events-none z-20">
-                          <span>✂ 剪裁边线</span>
+                          <span>✂ 十字剪裁中心线 (148mm × 105mm)</span>
                         </div>
                       </>
                     )}
                   </>
                 )}
 
-                {/* Grid Layout inside Page */}
+                {/* Grid Layout inside Page: 4 个象限中发票水平正立放置 */}
                 <div
                   className={`w-full h-full relative z-0 ${
                     pageInvoices.length > 4

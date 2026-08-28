@@ -2,7 +2,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 /**
- * 一键直接打印：纯粹调起系统/打印机打印窗口，彻底杜绝弹出“保存到本地”对话框
+ * 一键直接打印：纯粹调起系统/打印机打印窗口，彻底杜绝弹出"保存到本地"对话框
+ * 打印前自动重置 zoom 缩放，确保打印输出与 100% 预览一致
  */
 export async function generateAndPrintPdf(
   pagesElementContainer: HTMLElement,
@@ -17,8 +18,28 @@ export async function generateAndPrintPdf(
       return;
     }
 
-    // 直接调起系统级打印预览/打印机窗口，0延迟，不保存任何本地文件
+    // 关键修复：打印前临时重置 zoom 缩放 transform，防止打印输出尺寸随缩放比例变化
+    const zoomContainer = pagesElementContainer.querySelector<HTMLElement>(".print-zoom-container");
+    let originalTransform = "";
+    if (zoomContainer) {
+      originalTransform = zoomContainer.style.transform;
+      zoomContainer.style.transform = "none";
+    }
+
+    // 使用 afterprint 事件确保打印完成后恢复缩放（无论用户是否取消打印）
+    const restoreZoom = () => {
+      if (zoomContainer) {
+        zoomContainer.style.transform = originalTransform;
+      }
+      window.removeEventListener("afterprint", restoreZoom);
+    };
+    window.addEventListener("afterprint", restoreZoom);
+
+    // 调起系统级打印预览/打印机窗口
     window.print();
+
+    // 兜底恢复（某些浏览器 afterprint 事件不可靠）
+    setTimeout(restoreZoom, 2000);
   } catch (err) {
     console.error("调起系统打印失败:", err);
     window.print();
