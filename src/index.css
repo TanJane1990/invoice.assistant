@@ -159,6 +159,45 @@ textarea::placeholder {
     page: invoice_single !important;
   }
 
+  /* 4张/页横向画布自动旋转 90 度嵌入 A4 纵向打印纸张 (带封面打印时) */
+  .a4-print-page-wrapper.rotate-90-for-portrait-print {
+    width: 210mm !important;
+    height: 296mm !important;
+    max-width: 210mm !important;
+    max-height: 296mm !important;
+    min-height: 296mm !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    background-color: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .a4-print-page-wrapper.rotate-90-for-portrait-print .a4-print-page {
+    width: 297mm !important;
+    height: 209mm !important;
+    max-width: 297mm !important;
+    max-height: 209mm !important;
+    min-height: 209mm !important;
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) rotate(90deg) !important;
+    transform-origin: center center !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background-color: #ffffff !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
   /* 非最后一个包装页执行换页，最后一个绝不换页 */
   .a4-print-page-wrapper:not(:last-child) {
     page-break-after: always !important;

@@ -45,10 +45,11 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   const paperKey = config.paperType || "A4";
   const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
   
-  // 智能方向自适应：当勾选【带报销封面】时，自动与封面统一为 A4 纵向 (210×297mm)；未带封面时 4张/页 保持 A4 横向 (297×210mm)
-  const isGrid4Landscape = config.gridMode === "4" && !config.includeCoverPage && config.orientation !== "portrait";
+  // 4张/页屏幕预览始终为 A4 横向 (297×210mm)；当勾选【带报销封面】时，打印输出自动旋转 90 度嵌入 A4 纵向纸张
+  const isGrid4Landscape = config.gridMode === "4" || config.orientation === "landscape";
   const isGrid1SingleTicket = config.gridMode === "1";
   const isLandscape = isGrid4Landscape;
+  const shouldRotateForCoverPrint = isGrid4Landscape && !!config.includeCoverPage;
 
   const paddingValue = MARGIN_SIZES[config.marginSize || config.margin || "normal"] || "5mm";
 
@@ -139,26 +140,23 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态打印纸张尺寸与方向规则：支持命名页面 (封面纵向 + 4张/页横向混合自适应) */}
+      {/* 动态打印纸张尺寸与方向规则：若含封面统一为 A4 纵向打印，发票页自动旋转 90 度；未含封面时按模式自适应 */}
       <style>{`
         @media print {
           @page {
-            margin: 0;
-          }
-          @page cover_page {
-            size: A4 portrait;
-            margin: 0;
-          }
-          @page invoice_landscape {
-            size: ${isA5 ? "A5 landscape" : "A4 landscape"};
-            margin: 0;
-          }
-          @page invoice_portrait {
-            size: ${isA5 ? "A5 portrait" : "A4 portrait"};
-            margin: 0;
-          }
-          @page invoice_single {
-            size: ${isA5 ? "A5 portrait" : "210mm 140mm"};
+            size: ${
+              config.includeCoverPage
+                ? "A4 portrait"
+                : isA5
+                ? isGrid4Landscape
+                  ? "A5 landscape"
+                  : "A5 portrait"
+                : isGrid4Landscape
+                ? "A4 landscape"
+                : isGrid1SingleTicket
+                ? "210mm 140mm"
+                : "A4 portrait"
+            };
             margin: 0;
           }
         }
@@ -176,7 +174,9 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
             <div
               key={`page-${pageIdx}`}
               className={`a4-print-page-wrapper ${
-                isGrid4Landscape
+                shouldRotateForCoverPrint
+                  ? "rotate-90-for-portrait-print"
+                  : isGrid4Landscape
                   ? "landscape-mode"
                   : isGrid1SingleTicket
                   ? "single-ticket-mode"
