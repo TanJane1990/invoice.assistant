@@ -214,37 +214,43 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
         </div>
       )}
 
-      {/* Printable Paper Voucher (Standard Fixed Portrait A4 Voucher) */}
+      {/* Printable Paper Voucher */}
       <div
-        className="a4-print-page a4-print-cover-page bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative flex flex-col justify-between"
+        className={`a4-print-page a4-print-cover-page ${
+          isLandscape ? "cover-landscape" : "cover-portrait"
+        } bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative flex flex-col justify-between`}
         style={{
-          width: "210mm",
-          maxWidth: "210mm",
-          height: "297mm",
-          minHeight: "297mm",
-          maxHeight: "297mm",
-          padding: "14mm 15mm",
+          width: isLandscape ? "297mm" : "210mm",
+          maxWidth: isLandscape ? "297mm" : "210mm",
+          height: isLandscape ? "209mm" : "296mm",
+          minHeight: isLandscape ? "209mm" : "296mm",
+          maxHeight: isLandscape ? "209mm" : "296mm",
+          padding: isLandscape ? "8mm 15mm" : "14mm 15mm",
           boxSizing: "border-box",
           color: "#000000",
           backgroundColor: "#ffffff",
           pageBreakInside: "avoid",
           breakInside: "avoid",
+          pageBreakAfter: "auto",
+          breakAfter: "auto",
           overflow: "hidden",
         }}
       >
-        <div className="flex flex-col space-y-4">
+        <div className={`flex flex-col ${isLandscape ? "space-y-2" : "space-y-4"}`}>
           {/* Title */}
-          <div className="text-center pt-2 pb-1 mb-2 flex flex-col items-center">
+          <div className="text-center pt-1 pb-0.5 flex flex-col items-center">
             <div className="inline-flex flex-col items-center">
               <h2
-                className="text-3xl font-extrabold tracking-[0.2em] font-serif text-slate-900 leading-tight px-6"
+                className={`${
+                  isLandscape ? "text-2xl" : "text-3xl"
+                } font-extrabold tracking-[0.2em] font-serif text-slate-900 leading-tight px-6`}
                 style={{ color: "#000000" }}
               >
                 费 用 报 销 凭 证 单
               </h2>
               {/* 独立标题下划线：与汉字底部拉开明显舒适的间距，绝对不紧贴文字 */}
               <div
-                className="w-full border-b-2 border-slate-900 mt-2.5"
+                className="w-full border-b-2 border-slate-900 mt-1.5"
                 style={{ borderColor: "#000000" }}
               />
             </div>

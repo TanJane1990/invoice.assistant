@@ -225,13 +225,6 @@ textarea::placeholder {
 
   /* ===== 9. 报销凭证封面单 ===== */
   .a4-print-cover-page {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 296mm !important;
-    max-height: 296mm !important;
-    min-height: 296mm !important;
-    padding: 14mm 15mm !important;
-    box-sizing: border-box !important;
     background-color: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
@@ -239,6 +232,27 @@ textarea::placeholder {
     break-after: auto !important;
     overflow: hidden !important;
     display: block !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 横向模式下的封面单 (297×209mm) */
+  .a4-print-cover-page.cover-landscape {
+    width: 297mm !important;
+    max-width: 297mm !important;
+    height: 209mm !important;
+    max-height: 209mm !important;
+    min-height: 209mm !important;
+    padding: 6mm 15mm !important;
+  }
+
+  /* 纵向模式下的封面单 (210×296mm) */
+  .a4-print-cover-page.cover-portrait {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
+    min-height: 296mm !important;
+    padding: 14mm 15mm !important;
   }
 
   /* ===== 11. 发票卡片文字对比度 ===== */
