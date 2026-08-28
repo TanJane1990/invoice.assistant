@@ -226,7 +226,9 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             <span>进纸方向:</span>
             <span className={`text-xs font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
               {config.gridMode === "4"
-                ? `${config.paperType || "A4"} 横向进纸`
+                ? config.includeCoverPage
+                  ? `${config.paperType || "A4"} 标准纵向进纸 (含封面)`
+                  : `${config.paperType || "A4"} 横向进纸`
                 : config.gridMode === "1"
                 ? "单张发票专用纸"
                 : `${config.paperType || "A4"} 标准纵向进纸`}

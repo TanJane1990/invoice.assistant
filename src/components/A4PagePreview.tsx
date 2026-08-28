@@ -45,8 +45,8 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   const paperKey = config.paperType || "A4";
   const paperSize = PAPER_SIZES[paperKey] || PAPER_SIZES.A4;
   
-  // 4张/页锁定为 A4 横向 (296×210mm)，2张/页为 A4 纵向 (210×297mm)，1张/页为单票专用纸 (210×140mm)
-  const isGrid4Landscape = config.gridMode === "4" || config.orientation === "landscape";
+  // 智能方向自适应：当勾选【带报销封面】时，自动与封面统一为 A4 纵向 (210×297mm)；未带封面时 4张/页 保持 A4 横向 (297×210mm)
+  const isGrid4Landscape = config.gridMode === "4" && !config.includeCoverPage && config.orientation !== "portrait";
   const isGrid1SingleTicket = config.gridMode === "1";
   const isLandscape = isGrid4Landscape;
 
