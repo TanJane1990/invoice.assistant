@@ -50,9 +50,28 @@ textarea::placeholder {
 
 /* Print CSS - Strictly Isolates A4 Printable Canvas & Cover Page Only */
 @media print {
-  /* ===== 1. 唯一的 @page 声明（不加 !important，允许动态 @page 覆盖用于 gridMode=1 的 210×140mm） ===== */
+  /* ===== 1. 全局默认与命名页面规则 (支持封面纵向 + 4张/页横向混合打印) ===== */
   @page {
+    margin: 0;
+  }
+
+  @page cover_page {
     size: A4 portrait;
+    margin: 0;
+  }
+
+  @page invoice_landscape {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  @page invoice_portrait {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  @page invoice_single {
+    size: 210mm 140mm;
     margin: 0;
   }
 
@@ -198,6 +217,7 @@ textarea::placeholder {
 
   /* 横向 4张/页 打印纸张尺寸 (A4 横向: 297×209mm) */
   .a4-print-page.landscape-mode {
+    page: invoice_landscape;
     width: 297mm !important;
     height: 209mm !important;
     max-width: 297mm !important;
@@ -207,6 +227,7 @@ textarea::placeholder {
 
   /* 纵向 2张/页 打印纸张尺寸 (210×296mm) */
   .a4-print-page.portrait-mode {
+    page: invoice_portrait;
     width: 210mm !important;
     height: 296mm !important;
     max-width: 210mm !important;
@@ -216,6 +237,7 @@ textarea::placeholder {
 
   /* 单票专用纸张尺寸 (210×139mm) */
   .a4-print-page.single-ticket-mode {
+    page: invoice_single;
     width: 210mm !important;
     height: 139mm !important;
     max-width: 210mm !important;
@@ -223,8 +245,16 @@ textarea::placeholder {
     min-height: 139mm !important;
   }
 
-  /* ===== 9. 报销凭证封面单 ===== */
+  /* ===== 9. 报销凭证封面单 (标准固定 A4 纵向: 210×296mm) ===== */
   .a4-print-cover-page {
+    page: cover_page;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
+    min-height: 296mm !important;
+    padding: 14mm 15mm !important;
+    box-sizing: border-box !important;
     background-color: #ffffff !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
@@ -232,27 +262,6 @@ textarea::placeholder {
     break-after: auto !important;
     overflow: hidden !important;
     display: block !important;
-    box-sizing: border-box !important;
-  }
-
-  /* 横向模式下的封面单 (297×209mm) */
-  .a4-print-cover-page.cover-landscape {
-    width: 297mm !important;
-    max-width: 297mm !important;
-    height: 209mm !important;
-    max-height: 209mm !important;
-    min-height: 209mm !important;
-    padding: 6mm 15mm !important;
-  }
-
-  /* 纵向模式下的封面单 (210×296mm) */
-  .a4-print-cover-page.cover-portrait {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 296mm !important;
-    max-height: 296mm !important;
-    min-height: 296mm !important;
-    padding: 14mm 15mm !important;
   }
 
   /* ===== 11. 发票卡片文字对比度 ===== */

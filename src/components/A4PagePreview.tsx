@@ -139,21 +139,26 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态打印纸张尺寸与方向规则：根据选中的纸张类型 (A4/A5) 与拼页模式自适应 */}
+      {/* 动态打印纸张尺寸与方向规则：支持命名页面 (封面纵向 + 4张/页横向混合自适应) */}
       <style>{`
         @media print {
           @page {
-            size: ${
-              isA5
-                ? isGrid4Landscape
-                  ? "A5 landscape"
-                  : "A5 portrait"
-                : isGrid4Landscape
-                ? "A4 landscape"
-                : isGrid1SingleTicket
-                ? "210mm 140mm"
-                : "A4 portrait"
-            };
+            margin: 0;
+          }
+          @page cover_page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          @page invoice_landscape {
+            size: ${isA5 ? "A5 landscape" : "A4 landscape"};
+            margin: 0;
+          }
+          @page invoice_portrait {
+            size: ${isA5 ? "A5 portrait" : "A4 portrait"};
+            margin: 0;
+          }
+          @page invoice_single {
+            size: ${isA5 ? "A5 portrait" : "210mm 140mm"};
             margin: 0;
           }
         }
