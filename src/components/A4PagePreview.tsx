@@ -100,8 +100,13 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
     }
   }, [invoices, config.sortBy, itemsPerPage]);
 
-  const pageWidth = isGrid4Landscape ? "297mm" : "210mm";
-  const pageHeight = isGrid1SingleTicket ? "140mm" : isGrid4Landscape ? "210mm" : "297mm";
+  const isA5 = paperKey === "A5";
+  const pageWidth = isGrid4Landscape ? (isA5 ? "210mm" : "297mm") : (isA5 ? "148mm" : "210mm");
+  const pageHeight = isGrid1SingleTicket
+    ? "140mm"
+    : isGrid4Landscape
+    ? (isA5 ? "148mm" : "210mm")
+    : (isA5 ? "210mm" : "297mm");
   const printSheetHeight = pageHeight;
 
   if (invoices.length === 0) {
@@ -134,11 +139,21 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
         isDark ? "bg-[#0E172B]" : "bg-[#F3F5F9]"
       }`}
     >
-      {/* 动态打印纸张尺寸与方向规则：4张/页自动切换为 A4 横向，2张/页纵向，1张/页单票专用尺寸 */}
+      {/* 动态打印纸张尺寸与方向规则：根据选中的纸张类型 (A4/A5) 与拼页模式自适应 */}
       <style>{`
         @media print {
           @page {
-            size: ${isGrid4Landscape ? "A4 landscape" : isGrid1SingleTicket ? "210mm 140mm" : "A4 portrait"};
+            size: ${
+              isA5
+                ? isGrid4Landscape
+                  ? "A5 landscape"
+                  : "A5 portrait"
+                : isGrid4Landscape
+                ? "A4 landscape"
+                : isGrid1SingleTicket
+                ? "210mm 140mm"
+                : "A4 portrait"
+            };
             margin: 0;
           }
         }

@@ -38,9 +38,9 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
   const isDark = theme === "dark";
 
   const gridModes = [
-    { id: "1", label: "1张/页 (单张原票 210×140mm)", orientation: "portrait" },
-    { id: "2", label: "2张/页 (上下 纵向 210×297mm)", orientation: "portrait" },
-    { id: "4", label: "4张/页 (2×2 横向 296×210mm)", orientation: "landscape" },
+    { id: "1", label: "1张/页 (单张原票)", orientation: "portrait" },
+    { id: "2", label: "2张/页 (上下 纵向)", orientation: "portrait" },
+    { id: "4", label: "4张/页 (2×2 横向)", orientation: "landscape" },
   ];
 
   return (
@@ -226,10 +226,10 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
             <span>进纸方向:</span>
             <span className={`text-xs font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
               {config.gridMode === "4"
-                ? "A4 横向进纸 (296×210mm)"
+                ? `${config.paperType || "A4"} 横向进纸`
                 : config.gridMode === "1"
-                ? "单张发票专用纸 (210×140mm)"
-                : "A4 标准纵向进纸 (210×297mm)"}
+                ? "单张发票专用纸"
+                : `${config.paperType || "A4"} 标准纵向进纸`}
             </span>
           </div>
         </div>
