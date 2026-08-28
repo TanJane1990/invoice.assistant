@@ -294,53 +294,61 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* 卡片 1: 台账总发票数 */}
         <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: "#ffffff" }}>
-          <div className="text-sm font-extrabold tracking-tight flex items-center justify-between" style={{ color: "#334155" }}>
-            <span>台账总发票数</span>
+          <div className="text-sm font-extrabold tracking-tight flex items-center justify-between" style={{ color: "#0f172a" }}>
+            <span style={{ color: "#0f172a" }}>台账总发票数</span>
             {unexportedCount > 0 ? (
-              <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse">
+              <span className="px-2.5 py-0.5 text-[10px] font-black rounded-full border animate-pulse" style={{ backgroundColor: "#d1fae5", color: "#065f46", borderColor: "#6ee7b7" }}>
                 {unexportedCount} 张待追加
               </span>
             ) : (
-              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="px-2.5 py-0.5 text-[10px] font-bold rounded-full border" style={{ backgroundColor: "#f1f5f9", color: "#475569", borderColor: "#cbd5e1" }}>
                 已全量归档
               </span>
             )}
           </div>
           <div className="text-2xl font-black mt-2 flex items-baseline space-x-1" style={{ color: "#0f172a" }}>
             <span style={{ color: "#0f172a" }}>{invoices.length}</span>
-            <span className="text-xs font-bold" style={{ color: "#64748b" }}>张</span>
+            <span className="text-xs font-bold" style={{ color: "#475569" }}>张</span>
           </div>
-          <div className="text-[11px] font-bold mt-1 text-slate-500 flex items-center space-x-2">
-            <span className="text-emerald-700">✨ 新导入: {unexportedCount}</span>
-            <span>•</span>
-            <span className="text-slate-600">📁 已归档: {exportedCount}</span>
+          <div className="text-[11px] font-bold mt-2 flex items-center space-x-2">
+            <span className="px-2 py-0.5 rounded-md font-black text-[11px] border" style={{ color: "#065f46", backgroundColor: "#ecfdf5", borderColor: "#a7f3d0" }}>
+              ✨ 新导入: {unexportedCount}
+            </span>
+            <span style={{ color: "#94a3b8" }}>•</span>
+            <span className="px-2 py-0.5 rounded-md font-bold text-[11px] border" style={{ color: "#334155", backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}>
+              📁 已归档: {exportedCount}
+            </span>
           </div>
         </div>
 
         {/* 卡片 2: 拟排版打印数 */}
         <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: "#ffffff" }}>
-          <div className="text-sm font-extrabold tracking-tight" style={{ color: "#334155" }}>
+          <div className="text-sm font-extrabold tracking-tight" style={{ color: "#0f172a" }}>
             拟排版打印数
           </div>
           <div className="text-2xl font-black mt-2 flex items-baseline space-x-1" style={{ color: "#E8000A" }}>
             <span style={{ color: "#E8000A" }}>{selectedForPrintCount}</span>
-            <span className="text-xs font-bold" style={{ color: "#64748b" }}>/ {invoices.length}</span>
+            <span className="text-xs font-bold" style={{ color: "#475569" }}>/ {invoices.length}</span>
           </div>
-          <div className="text-[11px] font-bold mt-1 text-slate-500 truncate">
-            {unexportedCount > 0 && selectedForPrintCount === 0 ? "提示：可一键仅勾选新导入发票排版" : "已勾选拟打印发票"}
+          <div className="text-[11px] font-extrabold mt-2 truncate flex items-center space-x-1.5" style={{ color: "#334155" }}>
+            <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: selectedForPrintCount > 0 ? "#dc2626" : "#94a3b8" }}></span>
+            <span style={{ color: selectedForPrintCount > 0 ? "#b91c1c" : "#475569" }}>
+              {selectedForPrintCount > 0 ? `已勾选 ${selectedForPrintCount} 张发票就绪排版` : "未勾选任何发票"}
+            </span>
           </div>
         </div>
 
         {/* 卡片 3: 总金额合计 */}
         <div className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: "#ffffff" }}>
-          <div className="text-sm font-extrabold tracking-tight" style={{ color: "#334155" }}>
+          <div className="text-sm font-extrabold tracking-tight" style={{ color: "#0f172a" }}>
             总金额合计
           </div>
           <div className="text-2xl font-black mt-2 font-mono" style={{ color: "#009966" }}>
             ¥{invoices.reduce((sum, i) => sum + i.totalAmountWithTax, 0).toFixed(2)}
           </div>
-          <div className="text-[11px] font-bold mt-1 text-slate-500 truncate font-mono">
-            均价: ¥{invoices.length > 0 ? (invoices.reduce((sum, i) => sum + i.totalAmountWithTax, 0) / invoices.length).toFixed(2) : "0.00"}
+          <div className="text-[11px] font-black mt-2 truncate font-mono flex items-center space-x-1" style={{ color: "#334155" }}>
+            <span style={{ color: "#64748b" }}>均价:</span>
+            <span style={{ color: "#0f172a" }}>¥{invoices.length > 0 ? (invoices.reduce((sum, i) => sum + i.totalAmountWithTax, 0) / invoices.length).toFixed(2) : "0.00"}</span>
           </div>
         </div>
 
@@ -355,8 +363,8 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           style={{ backgroundColor: duplicateCount > 0 ? "#fff5f5" : "#ffffff" }}
           title={duplicateCount > 0 ? "点击快速仅筛选重复发票" : "当前无重复发票"}
         >
-          <div className="flex items-center justify-between text-sm font-extrabold" style={{ color: duplicateCount > 0 ? "#b91c1c" : "#334155" }}>
-            <span style={{ color: duplicateCount > 0 ? "#b91c1c" : "#334155" }}>相同发票号查重预警</span>
+          <div className="flex items-center justify-between text-sm font-extrabold" style={{ color: duplicateCount > 0 ? "#b91c1c" : "#0f172a" }}>
+            <span style={{ color: duplicateCount > 0 ? "#b91c1c" : "#0f172a" }}>相同发票号查重预警</span>
             {duplicateCount > 0 ? (
               <div className="relative flex items-center justify-center w-7 h-7">
                 <span
@@ -393,7 +401,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         {/* 左侧: 搜索框 & 分类 & 批次筛选胶囊 */}
         <div className="flex flex-wrap items-center space-x-3 gap-y-2">
           {/* 搜索框 */}
-          <div className="relative w-56">
+          <div className="relative w-52">
             <Search className="w-4 h-4 absolute left-3 top-2.5" style={{ color: "#64748b" }} />
             <input
               type="text"
@@ -405,40 +413,41 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
             />
           </div>
 
-          {/* 批次筛选切换胶囊 */}
-          <div className="flex items-center p-0.5 rounded-xl border border-slate-300 bg-slate-100 text-xs font-bold space-x-0.5" style={{ backgroundColor: "#f1f5f9" }}>
+          {/* 批次筛选切换胶囊 (高对比度清晰色彩) */}
+          <div className="flex items-center p-1 rounded-xl border space-x-1" style={{ backgroundColor: "#f1f5f9", borderColor: "#cbd5e1" }}>
             <button
+              type="button"
               onClick={() => setBatchFilter("all")}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer text-xs ${
-                batchFilter === "all"
-                  ? "bg-white text-slate-900 shadow-xs font-extrabold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className="px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
+              style={{
+                backgroundColor: batchFilter === "all" ? "#0f172a" : "transparent",
+                color: batchFilter === "all" ? "#ffffff" : "#334155",
+              }}
             >
-              全部 ({invoices.length})
+              <span>全部 ({invoices.length})</span>
             </button>
             <button
+              type="button"
               onClick={() => setBatchFilter("unexported")}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer text-xs flex items-center space-x-1 ${
-                batchFilter === "unexported"
-                  ? "bg-emerald-600 text-white shadow-xs font-extrabold"
-                  : unexportedCount > 0
-                  ? "text-emerald-700 hover:bg-emerald-100/60 font-bold"
-                  : "text-slate-400"
-              }`}
+              className="px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
+              style={{
+                backgroundColor: batchFilter === "unexported" ? "#059669" : "transparent",
+                color: batchFilter === "unexported" ? "#ffffff" : unexportedCount > 0 ? "#047857" : "#64748b",
+              }}
             >
-              <Sparkles className="w-3 h-3" />
+              <Sparkles className="w-3.5 h-3.5" style={{ color: batchFilter === "unexported" ? "#ffffff" : "#047857" }} />
               <span>新导入 ({unexportedCount})</span>
             </button>
             <button
+              type="button"
               onClick={() => setBatchFilter("exported")}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer text-xs flex items-center space-x-1 ${
-                batchFilter === "exported"
-                  ? "bg-slate-800 text-white shadow-xs font-extrabold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className="px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
+              style={{
+                backgroundColor: batchFilter === "exported" ? "#334155" : "transparent",
+                color: batchFilter === "exported" ? "#ffffff" : "#475569",
+              }}
             >
-              <Archive className="w-3 h-3" />
+              <Archive className="w-3.5 h-3.5" style={{ color: batchFilter === "exported" ? "#ffffff" : "#475569" }} />
               <span>已归档 ({exportedCount})</span>
             </button>
           </div>
@@ -465,7 +474,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           </div>
 
           {/* 仅筛选重复发票 */}
-          <label className="flex items-center space-x-1.5 text-xs cursor-pointer px-2.5 py-1.5 rounded-xl border border-amber-300 font-bold bg-amber-50" style={{ color: "#78350f", backgroundColor: "#fffbeb" }}>
+          <label className="flex items-center space-x-1.5 text-xs cursor-pointer px-2.5 py-1.5 rounded-xl border font-bold" style={{ color: "#78350f", backgroundColor: "#fffbeb", borderColor: "#fcd34d" }}>
             <input
               type="checkbox"
               checked={filterDuplicateOnly}
