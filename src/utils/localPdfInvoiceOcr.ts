@@ -724,11 +724,16 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     if (mPeriodRemark) {
       remarks = mPeriodRemark[1].replace(/\s+/g, "");
     } else {
-      const mRemark = cleanText.match(/备\s*注[：:\s]*([^\n\r]{1,100})/);
+      const mRemark = cleanText.match(/(?:备\s*注|其他信息|其它信息)[：:\s]*([^\n\r]{1,100})/);
       if (mRemark) {
         const remarkText = mRemark[1].trim();
         if (!/统一社会信用|纳税人识别|信用代码/.test(remarkText)) {
           remarks = remarkText;
+        }
+      } else {
+        const mUserNo = cleanText.match(/(用户编号[:：\s]*\d+[^，,\n\r]*)/);
+        if (mUserNo) {
+          remarks = mUserNo[1].trim();
         }
       }
     }
