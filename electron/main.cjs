@@ -419,21 +419,12 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
 });
 
 function startBackendServer() {
-  const isDev = !app.isPackaged;
-
-  if (isDev) {
-    console.log("[Electron] Dev mode: using external dev server on port " + PORT);
-    return;
-  }
-
-  // 生产模式下（打包为 ASAR）：直接通过 require 加载 server.cjs 模块
   try {
-    process.env.NODE_ENV = "production";
     process.env.PORT = String(PORT);
     const serverPath = path.join(__dirname, "../dist/server.cjs");
     if (fs.existsSync(serverPath)) {
       require(serverPath);
-      console.log("[Electron Core] Express backend server started directly via require.");
+      console.log("[Electron Core] Express backend server started directly via require on port " + PORT);
     }
   } catch (err) {
     console.error("[Electron Core] Failed to start backend server:", err);
@@ -512,32 +503,24 @@ function createWindow() {
 
   const isDev = !app.isPackaged;
 
-  if (isDev) {
-    const startUrl = `http://127.0.0.1:${PORT}`;
-    let retryCount = 0;
-    const MAX_RETRIES = 30;
-    const loadApp = () => {
-      if (!mainWindow || mainWindow.isDestroyed()) return;
-      if (retryCount >= MAX_RETRIES) {
-        console.error("[Electron] Dev server failed to start after " + MAX_RETRIES + " retries, quitting.");
-        app.quit();
-        return;
-      }
+  const startUrl = `http://127.0.0.1:${PORT}`;
+  let retryCount = 0;
+  const MAX_RETRIES = 20;
+  const loadApp = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.loadURL(startUrl).catch(() => {
       retryCount++;
-      mainWindow.loadURL(startUrl).catch(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          setTimeout(loadApp, 500);
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(loadApp, 300);
+      } else {
+        const indexPath = path.join(__dirname, "../dist/index.html");
+        if (fs.existsSync(indexPath)) {
+          mainWindow.loadFile(indexPath);
         }
-      });
-    };
-    loadApp();
-  } else {
-    // 生产模式：直接使用 native loadFile 加载本地静态页面，实现 0ms 秒开、免防火墙及彻底消除白屏
-    const indexPath = path.join(__dirname, "../dist/index.html");
-    mainWindow.loadFile(indexPath).catch((err) => {
-      console.error("[Electron] Failed to load local index.html:", err);
+      }
     });
-  }
+  };
+  loadApp();
 
   // 核心防白屏：DOM 准备完毕、内容绘制完成后才优雅展现窗口
   mainWindow.once("ready-to-show", () => {
