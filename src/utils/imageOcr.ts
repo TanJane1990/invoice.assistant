@@ -3,11 +3,27 @@ import { extractInvoiceROIs, preprocessInvoiceImage } from "./imagePreprocess";
 
 let workerPromise: Promise<any> | null = null;
 
+function getTessLangPath(): string {
+  if (typeof window !== "undefined") {
+    if (window.location.origin && window.location.origin.startsWith("http")) {
+      return `${window.location.origin}/tessdata`;
+    }
+    return "https://fastly.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0";
+  }
+  try {
+    return "./public/tessdata";
+  } catch (e) {
+    return "https://fastly.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0";
+  }
+}
+
 async function getOcrWorker() {
   if (!workerPromise) {
     workerPromise = (async () => {
+      const langPath = getTessLangPath();
       try {
         const worker = await createWorker("chi_sim+eng", 1, {
+          langPath,
           logger: () => {},
           errorHandler: () => {},
         });
@@ -16,6 +32,7 @@ async function getOcrWorker() {
         console.warn("Failed to init Tesseract worker with chi_sim+eng, trying eng fallback:", e);
         try {
           const worker = await createWorker("eng", 1, {
+            langPath,
             logger: () => {},
             errorHandler: () => {},
           });

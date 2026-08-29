@@ -27,6 +27,17 @@ async function startServer() {
   // Parse JSON payloads up to 20MB for image/PDF uploads
   app.use(express.json({ limit: "20mb" }));
 
+  // 静态挂载本地 tessdata 离线 OCR 语言包，保障离线与无网环境毫秒级加载
+  const tessdataPath = path.join(__dirname, "public", "tessdata");
+  if (fs.existsSync(tessdataPath)) {
+    app.use("/tessdata", express.static(tessdataPath));
+  } else {
+    const rootTess = path.join(process.cwd(), "public", "tessdata");
+    if (fs.existsSync(rootTess)) {
+      app.use("/tessdata", express.static(rootTess));
+    }
+  }
+
   // Initialize Gemini AI client server-side
   const getAi = (customApiKey?: string) => {
     const apiKey = customApiKey || process.env.GEMINI_API_KEY;
@@ -466,7 +477,7 @@ async function startServer() {
         }
       }
 
-      if (!extractedText) {
+      if (!extractedText && isPdf) {
         extractedText = fileBuffer.toString("utf-8");
       }
 
