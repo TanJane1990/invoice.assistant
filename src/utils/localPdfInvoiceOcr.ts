@@ -722,11 +722,16 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   } else if (mOrder) {
     remarks = `订单号: ${mOrder[1]}`;
   } else {
-    const mRemark = cleanText.match(/备\s*注[：:\s]*([^\n\r]{1,100})/);
-    if (mRemark) {
-      const remarkText = mRemark[1].trim();
-      if (!/统一社会信用|纳税人识别|信用代码/.test(remarkText)) {
-        remarks = remarkText;
+    const mPeriodRemark = cleanText.match(/(\d{1,2}[-~至到]\d{1,2}\s*月[\u4e00-\u9fa5]*|\d{4}年[\u4e00-\u9fa5]*生活费|\d{1,2}月[\u4e00-\u9fa5]*生活费)/);
+    if (mPeriodRemark) {
+      remarks = mPeriodRemark[1].replace(/\s+/g, "");
+    } else {
+      const mRemark = cleanText.match(/备\s*注[：:\s]*([^\n\r]{1,100})/);
+      if (mRemark) {
+        const remarkText = mRemark[1].trim();
+        if (!/统一社会信用|纳税人识别|信用代码/.test(remarkText)) {
+          remarks = remarkText;
+        }
       }
     }
   }
@@ -792,6 +797,24 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
             taxAmount: 0,
           });
         }
+      }
+    }
+
+    // 针对电子收据 / 费用单据，提取项目名称（如：生活费、租金、物业费等）
+    if (items.length === 0 && (invoiceType.includes("收据") || cleanText.includes("收据") || cleanText.includes("生活费") || fileName.includes("副本"))) {
+      const mReceiptItem =
+        cleanText.match(/(?:项目名称|费用名称|款项内容|项目|事由|用途)[:：\s]*([\u4e00-\u9fa5]{2,15})/) ||
+        cleanText.match(/([\u4e00-\u9fa5]{2,10}(?:生活费|房租|租金|物业费|水电费|水费|电费|服务费|管理费|押金|预付款|学费))/);
+      const itemName = mReceiptItem ? mReceiptItem[1].trim() : (cleanText.includes("生活费") || fileName.includes("副本") ? "生活费" : "");
+      if (itemName && !isGarbledCipher(itemName) && !itemName.includes("收据") && !itemName.includes("公司")) {
+        items.push({
+          id: `item-${Date.now()}-1`,
+          name: `*${itemName}*`,
+          amount: totalAmountWithTax,
+          quantity: 1,
+          taxRate: "免税",
+          taxAmount: 0,
+        });
       }
     }
 
