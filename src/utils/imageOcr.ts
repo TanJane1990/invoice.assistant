@@ -8,12 +8,12 @@ function getTessLangPath(): string {
     if (window.location.origin && window.location.origin.startsWith("http")) {
       return `${window.location.origin}/tessdata`;
     }
-    return "https://fastly.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0";
+    return "http://127.0.0.1:3000/tessdata";
   }
   try {
     return "./public/tessdata";
   } catch (e) {
-    return "https://fastly.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0";
+    return "http://127.0.0.1:3000/tessdata";
   }
 }
 

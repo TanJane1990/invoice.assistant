@@ -1,17 +1,15 @@
 import * as pdfjsLib from "pdfjs-dist";
 
-// 使用本地打包的 pdf.worker.min.js 和 cmaps/standard_fonts，彻底解除云端外网依赖
-const LOCAL_WORKER_URL = typeof window !== "undefined" && window.location.origin && window.location.origin.startsWith("http")
-  ? `${window.location.origin}/pdf.worker.min.js`
-  : "/pdf.worker.min.js";
+function getPdfServerBase(): string {
+  if (typeof window !== "undefined" && window.location.origin && window.location.origin.startsWith("http")) {
+    return window.location.origin;
+  }
+  return "http://127.0.0.1:3000";
+}
 
-const LOCAL_CMAP_URL = typeof window !== "undefined" && window.location.origin && window.location.origin.startsWith("http")
-  ? `${window.location.origin}/cmaps/`
-  : "/cmaps/";
-
-const LOCAL_FONTS_URL = typeof window !== "undefined" && window.location.origin && window.location.origin.startsWith("http")
-  ? `${window.location.origin}/standard_fonts/`
-  : "/standard_fonts/";
+const LOCAL_WORKER_URL = `${getPdfServerBase()}/pdf.worker.min.js`;
+const LOCAL_CMAP_URL = `${getPdfServerBase()}/cmaps/`;
+const LOCAL_FONTS_URL = `${getPdfServerBase()}/standard_fonts/`;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = LOCAL_WORKER_URL;
 
