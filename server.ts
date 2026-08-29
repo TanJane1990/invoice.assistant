@@ -558,7 +558,7 @@ async function startServer() {
   });
 }
 
-export { XLSX };
+export { XLSX, parseInvoiceTextWithRules };
 export default startServer;
 
 startServer();

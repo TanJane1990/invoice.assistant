@@ -7,12 +7,37 @@ if (typeof window !== "undefined" && pdfjsLib?.GlobalWorkerOptions) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 }
 
+function getPdfCmapUrl(): string {
+  if (typeof window !== "undefined") {
+    if (window.location.origin && window.location.origin.startsWith("http")) {
+      return `${window.location.origin}/cmaps/`;
+    }
+    return "http://127.0.0.1:3000/cmaps/";
+  }
+  return "./public/cmaps/";
+}
+
+function getPdfStandardFontsUrl(): string {
+  if (typeof window !== "undefined") {
+    if (window.location.origin && window.location.origin.startsWith("http")) {
+      return `${window.location.origin}/standard_fonts/`;
+    }
+    return "http://127.0.0.1:3000/standard_fonts/";
+  }
+  return "./public/standard_fonts/";
+}
+
 /**
  * 从 PDF 文件 Base64/Uint8Array 中提取纯文本字符串
  */
 export async function extractTextFromPdf(pdfDataUri: string): Promise<string> {
   try {
     let loadingTask;
+    const pdfOptions = {
+      cMapUrl: getPdfCmapUrl(),
+      cMapPacked: true,
+      standardFontDataUrl: getPdfStandardFontsUrl(),
+    };
 
     if (pdfDataUri.startsWith("data:")) {
       const base64Str = pdfDataUri.split(",")[1];
@@ -22,9 +47,9 @@ export async function extractTextFromPdf(pdfDataUri: string): Promise<string> {
       for (let i = 0; i < len; i++) {
         bytes[i] = binaryStr.charCodeAt(i);
       }
-      loadingTask = pdfjsLib.getDocument({ data: bytes });
+      loadingTask = pdfjsLib.getDocument({ data: bytes, ...pdfOptions });
     } else {
-      loadingTask = pdfjsLib.getDocument({ url: pdfDataUri });
+      loadingTask = pdfjsLib.getDocument({ url: pdfDataUri, ...pdfOptions });
     }
 
     const pdfDoc = await loadingTask.promise;
@@ -152,6 +177,12 @@ export function cropWhitespaceFromCanvas(canvas: HTMLCanvasElement): string {
 export async function convertPdfToImageDataUrl(pdfDataUri: string): Promise<string> {
   try {
     let loadingTask;
+    const pdfOptions = {
+      cMapUrl: getPdfCmapUrl(),
+      cMapPacked: true,
+      standardFontDataUrl: getPdfStandardFontsUrl(),
+    };
+
     if (pdfDataUri.startsWith("data:")) {
       const base64Str = pdfDataUri.split(",")[1];
       const binaryStr = atob(base64Str);
@@ -160,9 +191,9 @@ export async function convertPdfToImageDataUrl(pdfDataUri: string): Promise<stri
       for (let i = 0; i < len; i++) {
         bytes[i] = binaryStr.charCodeAt(i);
       }
-      loadingTask = pdfjsLib.getDocument({ data: bytes });
+      loadingTask = pdfjsLib.getDocument({ data: bytes, ...pdfOptions });
     } else {
-      loadingTask = pdfjsLib.getDocument({ url: pdfDataUri });
+      loadingTask = pdfjsLib.getDocument({ url: pdfDataUri, ...pdfOptions });
     }
 
     const pdfDoc = await loadingTask.promise;
