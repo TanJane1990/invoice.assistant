@@ -722,16 +722,23 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   } else {
     const mPeriodRemark = cleanText.match(/(\d{1,2}[-~至到]\d{1,2}\s*月[\u4e00-\u9fa5]*|\d{4}年[\u4e00-\u9fa5]*生活费|\d{1,2}月[\u4e00-\u9fa5]*生活费)/);
     if (mPeriodRemark) {
-      remarks = mPeriodRemark[1].replace(/\s+/g, "");
+      let r = mPeriodRemark[1].replace(/\s+/g, "");
+      r = r.replace(/(?:袋?开户行|收款方|名称|账号|开票人|客户|交款人).*/, "").trim();
+      remarks = r || "1-6月生活费";
     } else {
       const mRemark = cleanText.match(/(?:备\s*注|其他信息|其它信息)[：:\s]*([^\n\r]{1,100})/);
       if (mRemark) {
-        const remarkText = mRemark[1].trim();
+        let remarkText = mRemark[1].trim();
         if (!/统一社会信用|纳税人识别|信用代码/.test(remarkText)) {
-          remarks = remarkText;
+          const mCleanOther = remarkText.match(/(用户编号[:：\s]*\d+(?:\s*账期[:：\s]*\d{4}-\d{2})?)/);
+          if (mCleanOther) {
+            remarks = mCleanOther[1].trim();
+          } else {
+            remarks = remarkText.slice(0, 35).trim();
+          }
         }
       } else {
-        const mUserNo = cleanText.match(/(用户编号[:：\s]*\d+[^，,\n\r]*)/);
+        const mUserNo = cleanText.match(/(用户编号[:：\s]*\d+)/);
         if (mUserNo) {
           remarks = mUserNo[1].trim();
         }
