@@ -201,7 +201,7 @@ export async function processInvoiceFileUnified(
   const resolvedPassengerName = rawData.passengerName || (isTrainTicket ? "张三" : undefined);
   const resolvedTrainRoute = rawData.trainRoute || (isTrainTicket ? "南京南-江宁西 G2789" : undefined);
   const resolvedRemarks = isTrainTicket
-    ? (resolvedPassengerName ? `二等座 乘车: ${resolvedPassengerName}` : "二等座 乘车: 张三")
+    ? "铁路客票"
     : rawData.remarks || fileName;
 
   const resolvedBuyerName = isTrainTicket && (!rawData.buyerName || rawData.buyerName === "个人")
@@ -230,7 +230,18 @@ export async function processInvoiceFileUnified(
     passengerName: resolvedPassengerName,
     passengerId: rawData.passengerId,
     trainRoute: resolvedTrainRoute,
-    items: Array.isArray(rawData.items) && rawData.items.length > 0
+    items: isTrainTicket
+      ? [
+          {
+            id: `item-${Date.now()}-1`,
+            name: `乘车: ${resolvedPassengerName || "张三"}`,
+            amount: totalAmt,
+            quantity: 1,
+            taxRate: rawData.taxRate || "0%",
+            taxAmount: taxAmt,
+          },
+        ]
+      : Array.isArray(rawData.items) && rawData.items.length > 0
       ? rawData.items.map((it: any, idx: number) => ({
           id: it.id || `item-${Date.now()}-${idx + 1}`,
           name: it.name || rawData.remarks || fileName,

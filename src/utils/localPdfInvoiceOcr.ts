@@ -713,9 +713,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const mOrder = cleanText.match(/订单号[:：\s]*([0-9A-Za-z]+)/);
 
   if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
-    const seatStr = trainSeat || "二等座";
-    const pName = passengerName || "-";
-    remarks = `${seatStr} 乘车: ${pName}`;
+    remarks = "铁路客票";
   } else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
     const pName = passengerName || "-";
     remarks = `乘机人: ${pName}`;
@@ -740,10 +738,10 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const items: ParsedInvoiceResult["items"] = [];
 
   if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
-    const routeText = trainRoute || "铁路客票";
+    const pName = passengerName || "张三";
     items.push({
       id: `item-${Date.now()}-1`,
-      name: totalAmountWithTax > 0 ? `${totalAmountWithTax} ${routeText}` : routeText,
+      name: `乘车: ${pName}`,
       amount: totalAmountWithTax,
       quantity: 1,
       taxRate: taxRate || "0%",
