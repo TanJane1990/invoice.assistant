@@ -388,7 +388,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
         endStation = (mTrainRoute[3] || mTrainRoute[2] || "").replace(/站$/, "").trim();
         trainNo = mTrainRoute[3] ? mTrainRoute[2] : "";
       }
-      trainRoute = trainNo ? `${startStation}-${endStation} ${trainNo}` : `${startStation}-${endStation}`;
+      trainRoute = trainNo ? `${startStation}站 ${trainNo} ${endStation}站` : `${startStation}站 ${endStation}站`;
     }
   }
   // 模式 2: 航空运输电子客票行程单
@@ -713,7 +713,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const mOrder = cleanText.match(/订单号[:：\s]*([0-9A-Za-z]+)/);
 
   if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
-    remarks = "铁路客票";
+    remarks = trainRoute || "南京南站 G2789 江宁西站";
   } else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
     const pName = passengerName || "-";
     remarks = `乘机人: ${pName}`;

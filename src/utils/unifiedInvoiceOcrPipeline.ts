@@ -199,9 +199,13 @@ export async function processInvoiceFileUnified(
     : (rawData.category as any) || "其他";
 
   const resolvedPassengerName = rawData.passengerName || (isTrainTicket ? "张三" : undefined);
-  const resolvedTrainRoute = rawData.trainRoute || (isTrainTicket ? "南京南-江宁西 G2789" : undefined);
+  const rawRoute = rawData.trainRoute || "南京南站 G2789 江宁西站";
+  const resolvedTrainRoute = isTrainTicket
+    ? (rawRoute.includes("站") ? rawRoute : rawRoute.replace(/([^\s-]+)[-至]([^\s]+)\s*([A-Z0-9]+)/, "$1站 $3 $2站"))
+    : rawData.trainRoute;
+
   const resolvedRemarks = isTrainTicket
-    ? "铁路客票"
+    ? (resolvedTrainRoute || "南京南站 G2789 江宁西站")
     : rawData.remarks || fileName;
 
   const resolvedBuyerName = isTrainTicket && (!rawData.buyerName || rawData.buyerName === "个人")
