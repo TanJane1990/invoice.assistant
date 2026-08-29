@@ -16,31 +16,40 @@ function getTessLangPath(): string {
   return "./public/tessdata";
 }
 
-async function getOcrWorker() {
+async function getOcrWorker(): Promise<any> {
   if (!workerPromise) {
     workerPromise = (async () => {
-      const langPath = getTessLangPath();
-      try {
-        const worker = await createWorker("chi_sim+eng", 1, {
-          langPath,
-          logger: () => {},
-          errorHandler: () => {},
-        });
-        return worker;
-      } catch (e) {
-        console.warn("Failed to init Tesseract worker with chi_sim+eng, trying eng fallback:", e);
+      const initTask = (async () => {
+        const langPath = getTessLangPath();
         try {
-          const worker = await createWorker("eng", 1, {
+          const worker = await createWorker("chi_sim+eng", 1, {
             langPath,
             logger: () => {},
             errorHandler: () => {},
           });
           return worker;
-        } catch (err) {
-          console.warn("Failed to init Tesseract eng worker:", err);
-          return null;
+        } catch (e) {
+          console.warn("Failed to init Tesseract worker with chi_sim+eng, trying eng fallback:", e);
+          try {
+            const worker = await createWorker("eng", 1, {
+              langPath,
+              logger: () => {},
+              errorHandler: () => {},
+            });
+            return worker;
+          } catch (err) {
+            console.warn("Failed to init Tesseract eng worker:", err);
+            return null;
+          }
         }
+      })();
+
+      const timeoutTask = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+      const res = await Promise.race([initTask, timeoutTask]);
+      if (!res) {
+        workerPromise = null;
       }
+      return res;
     })();
   }
   return workerPromise;
@@ -58,37 +67,42 @@ export async function recognizeSnippetWithParams(
   imageSource: any,
   options: OcrSnippetOptions = {}
 ): Promise<string> {
-  try {
-    const worker = await getOcrWorker();
-    if (!worker) return "";
+  const task = (async () => {
+    try {
+      const worker = await getOcrWorker();
+      if (!worker) return "";
 
-    const params: Record<string, any> = {};
-    if (options.psm) {
-      params.tessedit_pageseg_mode = options.psm;
+      const params: Record<string, any> = {};
+      if (options.psm) {
+        params.tessedit_pageseg_mode = options.psm;
+      }
+      if (options.whitelist) {
+        params.tessedit_char_whitelist = options.whitelist;
+      }
+
+      if (Object.keys(params).length > 0) {
+        await worker.setParameters(params);
+      }
+
+      const ret = await worker.recognize(imageSource);
+
+      // 重置参数为默认模式以防影响后续全图识别
+      if (Object.keys(params).length > 0) {
+        await worker.setParameters({
+          tessedit_pageseg_mode: PSM.AUTO,
+          tessedit_char_whitelist: "",
+        });
+      }
+
+      return (ret?.data?.text || "").trim();
+    } catch (err) {
+      console.warn("Snippet OCR recognition failed:", err);
+      return "";
     }
-    if (options.whitelist) {
-      params.tessedit_char_whitelist = options.whitelist;
-    }
+  })();
 
-    if (Object.keys(params).length > 0) {
-      await worker.setParameters(params);
-    }
-
-    const ret = await worker.recognize(imageSource);
-
-    // 重置参数为默认模式以防影响后续全图识别
-    if (Object.keys(params).length > 0) {
-      await worker.setParameters({
-        tessedit_pageseg_mode: PSM.AUTO,
-        tessedit_char_whitelist: "",
-      });
-    }
-
-    return (ret.data?.text || "").trim();
-  } catch (err) {
-    console.warn("Snippet OCR recognition failed:", err);
-    return "";
-  }
+  const timeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 1500));
+  return Promise.race([task, timeout]);
 }
 
 /**
@@ -126,7 +140,7 @@ export async function recognizeImageTextWithTesseract(fileBase64: string): Promi
         tessedit_char_whitelist: "",
       });
       const ret = await worker.recognize(imageToOcr);
-      let mainText = ret.data?.text || "";
+      let mainText = ret?.data?.text || "";
 
       // 3. 执行特定关键区域 (ROI) 切片高精度二次识别以补充可能遗漏的金额或代码
       if (roiSet) {
@@ -161,11 +175,11 @@ export async function recognizeImageTextWithTesseract(fileBase64: string): Promi
     }
   })();
 
-  // 严格超时保护熔断机制 (5s)，防止卡死
+  // 严格超时保护熔断机制 (3.5s)，防止卡死
   const timeoutTask = new Promise<string>((resolve) => {
     setTimeout(() => {
       resolve("");
-    }, 5000);
+    }, 3500);
   });
 
   return Promise.race([ocrTask, timeoutTask]);

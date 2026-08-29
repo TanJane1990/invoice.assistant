@@ -54,6 +54,7 @@ export interface InvoiceData {
   passengerName?: string; // 火车票/客票乘坐人姓名 (如: 李某年)
   passengerId?: string; // 乘坐人身份证号 (如: 130130********2459)
   trainRoute?: string; // 行程路线 (如: 昆山站 K850 苏州站)
+  trainDepartureTime?: string; // 乘车/发车时间 (如: 2026年05月11日 14:52开)
   checkCode?: string; // 发票/票据校验码 (如: 6214f3 或 20位防伪校验码)
 }
 

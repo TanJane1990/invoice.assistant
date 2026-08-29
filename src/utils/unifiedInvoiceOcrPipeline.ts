@@ -26,96 +26,112 @@ export async function processInvoiceFileUnified(
   index: number = 0,
   settings?: SystemSettings
 ): Promise<UnifiedOcrResult> {
-  const isPdf =
-    mimeType.includes("pdf") ||
-    fileName.toLowerCase().endsWith(".pdf") ||
-    fileBase64.startsWith("data:application/pdf");
-
-  // 核心优化：【Step 1 强优先】毫秒级发票防伪二维码直接扫码解构
-  let previewFileUrl = fileBase64;
-  if (isPdf) {
-    try {
-      previewFileUrl = await convertPdfToImageDataUrl(fileBase64);
-    } catch (e) {
-      console.warn("PDF render preview info:", e);
-    }
-  }
-
-  // 1. 强优先：首先使用 jsQR 直接读取发票二维码（包含国家税务局权威定额数据）
-  let qrData: QrInvoiceResult | null = null;
   try {
-    qrData = await scanInvoiceQrCodeFromBase64(previewFileUrl);
-  } catch (qrErr) {
-    console.warn("QR code scan info:", qrErr);
-  }
+    const isPdf =
+      mimeType.includes("pdf") ||
+      fileName.toLowerCase().endsWith(".pdf") ||
+      fileBase64.startsWith("data:application/pdf");
 
-  // 2. 提取 PDF 矢量文本
-  let extractedPdfText = "";
-  if (isPdf) {
-    try {
-      extractedPdfText = await extractTextFromPdf(fileBase64);
-    } catch (e) {
-      console.warn("PDF extract text info:", e);
-    }
-  }
-
-  // 3. 强化：如果矢量文本不足或为空（如图片收据、扫描版火车票），自动触发离线图像 OCR
-  if (!extractedPdfText || extractedPdfText.trim().length < 40) {
-    try {
-      const ocrText = await recognizeImageTextWithTesseract(previewFileUrl || fileBase64);
-      if (ocrText) {
-        extractedPdfText = (extractedPdfText + "\n" + ocrText).trim();
+    // 核心优化：【Step 1 强优先】毫秒级发票防伪二维码直接扫码解构
+    let previewFileUrl = fileBase64;
+    if (isPdf) {
+      try {
+        const renderTask = convertPdfToImageDataUrl(fileBase64);
+        const renderTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(fileBase64), 3000));
+        previewFileUrl = await Promise.race([renderTask, renderTimeout]);
+      } catch (e) {
+        console.warn("PDF render preview info:", e);
       }
-    } catch (e) {
-      console.warn("Image OCR info:", e);
     }
-  }
 
-  // Step 3: 仅在纯图片（如 PNG 收据）或客户端未解析出足够内容时，调用 Electron 原生 IPC OCR 引擎
-  let serverResult: any = null;
-  if ((!isPdf || !extractedPdfText || extractedPdfText.trim().length < 40) && typeof window !== "undefined" && (window as any).electronAPI?.parseInvoiceNative) {
+    // 1. 强优先：首先使用 jsQR 直接读取发票二维码（包含国家税务局权威定额数据）
+    let qrData: QrInvoiceResult | null = null;
     try {
-      const nativeRes = await (window as any).electronAPI.parseInvoiceNative({
-        fileBase64,
-        mimeType,
-        fileName,
-      });
-      if (nativeRes && nativeRes.success && nativeRes.data) {
-        serverResult = nativeRes;
-        if (nativeRes.extractedText) {
-          extractedPdfText = (extractedPdfText + "\n" + nativeRes.extractedText).trim();
+      const qrTask = scanInvoiceQrCodeFromBase64(previewFileUrl);
+      const qrTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+      qrData = await Promise.race([qrTask, qrTimeout]);
+    } catch (qrErr) {
+      console.warn("QR code scan info:", qrErr);
+    }
+
+    // 2. 提取 PDF 矢量文本
+    let extractedPdfText = "";
+    if (isPdf) {
+      try {
+        const pdfTask = extractTextFromPdf(fileBase64);
+        const pdfTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 2500));
+        extractedPdfText = await Promise.race([pdfTask, pdfTimeout]);
+      } catch (e) {
+        console.warn("PDF extract text info:", e);
+      }
+    }
+
+    // 3. 强化：如果矢量文本不足或为空（如图片收据、扫描版火车票），自动触发离线图像 OCR
+    if (!extractedPdfText || extractedPdfText.trim().length < 40) {
+      try {
+        const ocrTask = recognizeImageTextWithTesseract(previewFileUrl || fileBase64);
+        const ocrTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 3500));
+        const ocrText = await Promise.race([ocrTask, ocrTimeout]);
+        if (ocrText) {
+          extractedPdfText = (extractedPdfText + "\n" + ocrText).trim();
         }
+      } catch (e) {
+        console.warn("Image OCR info:", e);
       }
-    } catch (e) {
-      console.warn("Electron native parse warning:", e);
     }
-  }
 
-  // 如果非 Electron 环境且无服务端结果，尝试调用后端 /api/parse-invoice 服务
-  if (!serverResult && (!isPdf || !extractedPdfText || extractedPdfText.trim().length < 40)) {
-    const apiEndpoint = typeof window !== "undefined" && window.location.protocol.startsWith("http")
-      ? "/api/parse-invoice"
-      : "http://127.0.0.1:3000/api/parse-invoice";
-
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    // Step 3: 仅在纯图片（如 PNG 收据）或客户端未解析出足够内容时，调用 Electron 原生 IPC OCR 引擎
+    let serverResult: any = null;
+    if ((!isPdf || !extractedPdfText || extractedPdfText.trim().length < 40) && typeof window !== "undefined" && (window as any).electronAPI?.parseInvoiceNative) {
+      try {
+        const nativeTask = (window as any).electronAPI.parseInvoiceNative({
           fileBase64,
           mimeType,
           fileName,
-          extractedText: extractedPdfText,
-          aiApiKey: settings?.aiApiKey,
-          baiduApiKey: settings?.baiduApiKey,
-          baiduSecretKey: settings?.baiduSecretKey,
-        }),
-      });
-      serverResult = await response.json();
-    } catch (fetchErr) {
-      console.warn("Fetch backend API failed, fallback to pure client OCR:", fetchErr);
+        });
+        const nativeTimeout = new Promise<any>((resolve) => setTimeout(() => resolve(null), 3500));
+        const nativeRes = await Promise.race([nativeTask, nativeTimeout]);
+        if (nativeRes && nativeRes.success) {
+          serverResult = nativeRes;
+          if (nativeRes.extractedText) {
+            extractedPdfText = (extractedPdfText + "\n" + nativeRes.extractedText).trim();
+          }
+        }
+      } catch (e) {
+        console.warn("Electron native parse warning:", e);
+      }
     }
-  }
+
+    // 如果非 Electron 环境且无服务端结果，尝试调用后端 /api/parse-invoice 服务
+    if (!serverResult && (!isPdf || !extractedPdfText || extractedPdfText.trim().length < 40)) {
+      const apiEndpoint = typeof window !== "undefined" && window.location.protocol.startsWith("http")
+        ? "/api/parse-invoice"
+        : "http://127.0.0.1:3000/api/parse-invoice";
+
+      try {
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const fetchTimeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null;
+
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller?.signal,
+          body: JSON.stringify({
+            fileBase64,
+            mimeType,
+            fileName,
+            extractedText: extractedPdfText,
+            aiApiKey: settings?.aiApiKey,
+            baiduApiKey: settings?.baiduApiKey,
+            baiduSecretKey: settings?.baiduSecretKey,
+          }),
+        });
+        if (fetchTimeoutId) clearTimeout(fetchTimeoutId);
+        serverResult = await response.json();
+      } catch (fetchErr) {
+        console.warn("Fetch backend API failed, fallback to pure client OCR:", fetchErr);
+      }
+    }
 
   // Step 4: 整合四层引擎提取到的字段，融合补全（深度保留完整的商品明细与订单号备注）
   const localParsed = parseInvoiceTextWithRules(extractedPdfText || fileName, fileName);
@@ -204,9 +220,19 @@ export async function processInvoiceFileUnified(
     ? (rawRoute.includes("站") ? rawRoute : rawRoute.replace(/([^\s-]+)[-至]([^\s]+)\s*([A-Z0-9]+)/, "$1站 $3 $2站"))
     : rawData.trainRoute;
 
-  const resolvedRemarks = isTrainTicket
-    ? (resolvedTrainRoute || "南京南站 G2789 江宁西站")
-    : rawData.remarks || fileName;
+  const departureTime = rawData.trainDepartureTime || "";
+  let resolvedRemarks = rawData.remarks || fileName;
+  if (isTrainTicket) {
+    if (rawData.remarks && rawData.remarks !== fileName && rawData.remarks !== "发票识别") {
+      resolvedRemarks = rawData.remarks;
+    } else if (resolvedTrainRoute && departureTime) {
+      resolvedRemarks = `${resolvedTrainRoute} ${departureTime}`;
+    } else if (departureTime) {
+      resolvedRemarks = departureTime;
+    } else {
+      resolvedRemarks = resolvedTrainRoute || "南京南站 G2789 江宁西站";
+    }
+  }
 
   const resolvedBuyerName = isTrainTicket && (!rawData.buyerName || rawData.buyerName === "个人")
     ? "北京云里雾里科技有限公司"
@@ -234,6 +260,7 @@ export async function processInvoiceFileUnified(
     passengerName: resolvedPassengerName,
     passengerId: rawData.passengerId,
     trainRoute: resolvedTrainRoute,
+    trainDepartureTime: departureTime,
     items: isTrainTicket
       ? [
           {
@@ -273,12 +300,58 @@ export async function processInvoiceFileUnified(
     importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
   };
 
-  const confidence: UnifiedOcrResult["confidence"] = qrScanned || (isPdf && totalAmt > 0) ? "high" : totalAmt > 0 ? "medium" : "low";
+    const confidence: UnifiedOcrResult["confidence"] = qrScanned || (isPdf && totalAmt > 0) ? "high" : totalAmt > 0 ? "medium" : "low";
 
-  return {
-    invoice: finalInvoice,
-    engineUsed,
-    qrScanned,
-    confidence,
-  };
+    return {
+      invoice: finalInvoice,
+      engineUsed,
+      qrScanned,
+      confidence,
+    };
+  } catch (outerErr: any) {
+    console.warn("Unified pipeline outer catch fallback:", outerErr);
+    const fallbackParsed = parseInvoiceTextWithRules("", fileName);
+    const today = new Date().toISOString().split("T")[0];
+    const fallbackInvoice: InvoiceData = {
+      id: `inv-uploaded-${Date.now()}-${index}`,
+      invoiceType: fallbackParsed.invoiceType || "电子发票(普通发票)",
+      invoiceCode: fallbackParsed.invoiceCode || "",
+      invoiceNumber: fallbackParsed.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
+      issueDate: fallbackParsed.issueDate || today,
+      checkCode: fallbackParsed.checkCode || "",
+      buyerName: fallbackParsed.buyerName || settings?.defaultCompany || "个人",
+      buyerTaxId: fallbackParsed.buyerTaxId || "",
+      sellerName: fallbackParsed.sellerName || "出票服务单位",
+      sellerTaxId: fallbackParsed.sellerTaxId || "",
+      totalAmountWithoutTax: 0,
+      totalTaxAmount: 0,
+      totalAmountWithTax: 0,
+      totalAmountWithTaxCN: "零元整",
+      taxRate: "0%",
+      category: fallbackParsed.category || "其他",
+      remarks: fileName,
+      drawer: "",
+      items: [
+        {
+          id: `item-${Date.now()}-1`,
+          name: fileName,
+          amount: 0,
+          quantity: 1,
+          taxRate: "0%",
+          taxAmount: 0,
+        },
+      ],
+      fileUrl: fileBase64,
+      fileName,
+      selectedForPrint: true,
+      importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
+    };
+
+    return {
+      invoice: fallbackInvoice,
+      engineUsed: "【格式防错兜底】",
+      qrScanned: false,
+      confidence: "low",
+    };
+  }
 }

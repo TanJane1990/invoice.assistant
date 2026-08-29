@@ -21,6 +21,7 @@ export interface ParsedInvoiceResult {
   passengerName?: string;
   passengerId?: string;
   trainRoute?: string;
+  trainDepartureTime?: string;
   checkCode?: string;
   items: Array<{
     id: string;
@@ -120,14 +121,14 @@ export function isGarbledCipher(text: string): boolean {
 export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""): ParsedInvoiceResult {
   let cleanText = rawText.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ");
 
-  // 关键优化：规范化 OCR 与 PDF 输出中每个中文字符之间与数字内部的空格
+  // 关键优化：规范化 OCR 与 PDF 输出中每个中文字符之间与数字内部的空格 (仅合并行内空格，保留换行)
   for (let i = 0; i < 4; i++) {
-    cleanText = cleanText.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, "$1$2");
-    cleanText = cleanText.replace(/(\d)\s+(\d)/g, "$1$2");
-    cleanText = cleanText.replace(/(\d)\s+\*/g, "$1*");
-    cleanText = cleanText.replace(/\*\s+(\d)/g, "*$1");
-    cleanText = cleanText.replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
-    cleanText = cleanText.replace(/([¥￥])\s*(\d)/g, "$1$2");
+    cleanText = cleanText.replace(/([\u4e00-\u9fa5])[ \t]+([\u4e00-\u9fa5])/g, "$1$2");
+    cleanText = cleanText.replace(/(\d)[ \t]+(\d)/g, "$1$2");
+    cleanText = cleanText.replace(/(\d)[ \t]+\*/g, "$1*");
+    cleanText = cleanText.replace(/\*[ \t]+(\d)/g, "*$1");
+    cleanText = cleanText.replace(/(\d)[ \t]*\.[ \t]*(\d)/g, "$1.$2");
+    cleanText = cleanText.replace(/([¥￥])[ \t]*(\d)/g, "$1$2");
   }
   cleanText = cleanText.replace(/([\u4e00-\u9fa5])\s+([:：()（）])/g, "$1$2");
   cleanText = cleanText.replace(/([:：()（）])\s+([\u4e00-\u9fa5])/g, "$1$2");
@@ -188,6 +189,31 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
+  // 尝试从文件名中智能提取发票代码与发票号码 (如: 44322051-0000144-副本.png 或 263291168041258582.pdf)
+  let invoiceCode = "";
+  const mCode = cleanText.match(/(?:发票代码|票据代码)[:：\s]*(\d{8,12})/);
+  if (mCode) {
+    invoiceCode = mCode[1];
+  }
+
+  if (fileName) {
+    const mFilePair = fileName.match(/(\d{8,12})[-_](\d{6,12})/);
+    if (mFilePair) {
+      if (!invoiceCode) invoiceCode = mFilePair[1];
+      if (!invoiceNumber || invoiceNumber.startsWith("F")) invoiceNumber = mFilePair[2];
+    } else {
+      const mFile20 = fileName.match(/\b(2\d{19})\b/) || fileName.match(/\b(\d{20})\b/);
+      if (mFile20 && (!invoiceNumber || invoiceNumber.startsWith("F"))) {
+        invoiceNumber = mFile20[1];
+      } else {
+        const mFile8 = fileName.match(/\b(\d{8,12})\b/);
+        if (mFile8 && (!invoiceNumber || invoiceNumber.startsWith("F"))) {
+          invoiceNumber = mFile8[1];
+        }
+      }
+    }
+  }
+
   if (!invoiceNumber) {
     let hash = 0;
     const hashSource = fileName || rawText.slice(0, 200);
@@ -195,13 +221,6 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       hash = ((hash << 5) - hash + hashSource.charCodeAt(i)) | 0;
     }
     invoiceNumber = "F" + String(Math.abs(hash) % 100000000).padStart(8, "0");
-  }
-
-  // 3. 发票代码
-  let invoiceCode = "";
-  const mCode = cleanText.match(/(?:发票代码|票据代码)[:：\s]*(\d{8,12})/);
-  if (mCode) {
-    invoiceCode = mCode[1];
   }
 
   // 3.5 校验码
@@ -256,6 +275,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let passengerName = "";
   let passengerId = "";
   let trainRoute = "";
+  let trainDepartureTime = "";
   let trainSeat = "";
 
   const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
@@ -328,7 +348,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     const passengerBlacklist = /开票|日期|发票|客票|铁路|购买|始发|改签|乘车|总局|国家|名称|统一|社会|信用|代码|中国|愉快|旅途|请到|车票|票价|旅客|乘机|出行|席位|座位/;
 
     // 1. 模式 A: 脱敏身份证后跟姓名 (如: 25611981****0114 张三 或 25611981****0114 张 三)
-    const mMasked1 = cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/);
+    const mMasked1 =
+      cleanText.match(/\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/) ||
+      cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/);
     if (mMasked1) {
       passengerId = mMasked1[1];
       let candidateName = mMasked1[2].replace(/\s+/g, "");
@@ -340,7 +362,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     // 2. 模式 B: 姓名后跟脱敏身份证 (如: 张三 25611981****0114 或 张 三 25611981****0114)
     if (!passengerName) {
-      const mMasked2 = cleanText.match(/([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})[\s\n\r]*(\d{4,10}\*{2,8}\d{2,6})/);
+      const mMasked2 =
+        cleanText.match(/([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})[\s\n\r]*\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b/) ||
+        cleanText.match(/([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})[\s\n\r]*(\d{4,10}\*{2,8}\d{2,6})/);
       if (mMasked2) {
         let candidateName = mMasked2[1].replace(/\s+/g, "");
         candidateName = candidateName.replace(/(?:电子|客票|发票|号码|代码|开票|乘车|始发|改签|退票|补票).*/, "").trim();
@@ -360,7 +384,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
 
     if (!passengerId) {
-      const mPassengerId = cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})/);
+      const mPassengerId = cleanText.match(/\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b/) || cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})/);
       if (mPassengerId) {
         passengerId = mPassengerId[1];
       }
@@ -368,6 +392,23 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     const mSeat = cleanText.match(/(二等座|一等座|商务座|特等座|硬卧|软卧|硬座|软座|无座)/);
     if (mSeat) trainSeat = mSeat[1];
+
+    // 发车时间/乘车时间 (如: 2026年05月11日 14:52开 或 2026-05-11 14:52开)
+    trainDepartureTime = "";
+    const mDeparture =
+      cleanText.match(/(\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}[:：]\d{2}(?:\s*开)?)/) ||
+      cleanText.match(/(\d{4}[-/.年]\d{1,2}[-/.月]\d{1,2}(?:日)?\s+\d{1,2}[:：]\d{2}(?:\s*开)?)/) ||
+      cleanText.match(/(\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}[:：]\d{2}(?:\s*开)?)/) ||
+      cleanText.match(/(\d{1,2}[:：]\d{2}\s*开)/);
+    if (mDeparture) {
+      let dep = mDeparture[1].replace(/\s+/g, " ").trim();
+      if (!dep.endsWith("开") && cleanText.includes(`${dep}开`)) {
+        dep += "开";
+      } else if (!dep.endsWith("开") && /\d{1,2}[:：]\d{2}$/.test(dep)) {
+        dep += "开";
+      }
+      trainDepartureTime = dep;
+    }
 
     // 车次与始发/终到站 (如: 南京南 G2789 江宁西 或 南京南站江宁西站 G2789)
     const mTrainRoute =
@@ -512,7 +553,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     !cleanText.includes(`账号:${id}`)
   );
 
-  if (validTaxIds.length >= 2) {
+  if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
+    sellerTaxId = "-";
+  } else if (validTaxIds.length >= 2) {
     sellerTaxId = validTaxIds.find(id => /[A-Z]/.test(id) || id.startsWith("91") || id.startsWith("92")) || validTaxIds[0];
     buyerTaxId = validTaxIds.find(id => id !== sellerTaxId) || "";
   } else if (validTaxIds.length === 1) {
@@ -713,7 +756,13 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const mOrder = cleanText.match(/订单号[:：\s]*([0-9A-Za-z]+)/);
 
   if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
-    remarks = trainRoute || "南京南站 G2789 江宁西站";
+    if (trainRoute && trainDepartureTime) {
+      remarks = `${trainRoute} ${trainDepartureTime}`;
+    } else if (trainDepartureTime) {
+      remarks = trainDepartureTime;
+    } else {
+      remarks = trainRoute || "南京南站 G2789 江宁西站";
+    }
   } else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
     const pName = passengerName || "-";
     remarks = `乘机人: ${pName}`;
@@ -860,6 +909,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     passengerName,
     passengerId,
     trainRoute,
+    trainDepartureTime,
     checkCode,
     items,
   };

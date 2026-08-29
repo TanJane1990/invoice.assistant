@@ -154,6 +154,33 @@ ipcMain.handle("open-file-folder", async (event, payload) => {
   return { success: false, message: "文件不存在" };
 });
 
+function findTessdataPath() {
+  const candidates = [
+    path.join(__dirname, "../public/tessdata"),
+    path.join(__dirname, "../dist/tessdata"),
+    path.join(__dirname, "tessdata"),
+    path.join(process.resourcesPath || "", "public/tessdata"),
+    path.join(process.resourcesPath || "", "app.asar.unpacked/public/tessdata"),
+    path.join(process.resourcesPath || "", "dist/tessdata"),
+    path.join(process.resourcesPath || "", "tessdata"),
+    path.join(process.cwd(), "public/tessdata"),
+    path.join(process.cwd(), "dist/tessdata"),
+    path.join(process.cwd(), "tessdata"),
+    process.cwd(),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      if (
+        fs.existsSync(path.join(c, "chi_sim.traineddata")) ||
+        fs.existsSync(path.join(c, "chi_sim.traineddata.gz"))
+      ) {
+        return c;
+      }
+    }
+  }
+  return path.join(process.cwd(), "public/tessdata");
+}
+
 ipcMain.handle("parse-invoice-native", async (event, payload) => {
   try {
     const { fileBase64, mimeType, fileName } = payload || {};
@@ -170,56 +197,70 @@ ipcMain.handle("parse-invoice-native", async (event, payload) => {
     let extractedText = "";
 
     if (isPdf) {
-      try {
-        const pdfParseModule = require("pdf-parse");
-        const PDFParseClass = pdfParseModule.PDFParse || pdfParseModule.default || pdfParseModule;
-        if (typeof PDFParseClass === "function" && PDFParseClass.prototype?.load) {
-          const parser = new PDFParseClass({ data: fileBuffer });
-          await parser.load();
-          const textData = await parser.getText();
-          extractedText = textData?.text || "";
-        } else if (typeof PDFParseClass === "function") {
-          const pdfData = await PDFParseClass(fileBuffer);
-          extractedText = pdfData?.text || "";
+      const pdfTask = (async () => {
+        try {
+          const pdfParseModule = require("pdf-parse");
+          const PDFParseClass = pdfParseModule.PDFParse || pdfParseModule.default || pdfParseModule;
+          if (typeof PDFParseClass === "function" && PDFParseClass.prototype?.load) {
+            const parser = new PDFParseClass({ data: fileBuffer });
+            await parser.load();
+            const textData = await parser.getText();
+            return textData?.text || "";
+          } else if (typeof PDFParseClass === "function") {
+            const pdfData = await PDFParseClass(fileBuffer);
+            return pdfData?.text || "";
+          }
+        } catch (pdfErr) {
+          console.warn("[Electron Native] PDF extraction warning:", pdfErr);
         }
-      } catch (pdfErr) {
-        console.warn("[Electron Native] PDF extraction warning:", pdfErr);
-      }
+        return "";
+      })();
+
+      const pdfTimeout = new Promise((resolve) => setTimeout(() => resolve(""), 2500));
+      extractedText = await Promise.race([pdfTask, pdfTimeout]);
     } else {
       // 纯图片文件（PNG / JPG / 收据截图）：调用 Node 离线 Tesseract OCR
-      try {
-        const { createWorker, PSM } = require("tesseract.js");
-        const langDir = path.join(__dirname, "../public/tessdata");
-        const localLangPath = fs.existsSync(langDir) ? langDir : path.join(process.cwd(), "public/tessdata");
+      const ocrTask = (async () => {
+        let worker = null;
+        try {
+          const { createWorker, PSM } = require("tesseract.js");
+          const localLangPath = findTessdataPath();
 
-        const worker = await createWorker("chi_sim+eng", 1, {
-          langPath: localLangPath,
-          logger: () => {},
-          errorHandler: () => {},
-        });
-        await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
-        const ocrRet = await worker.recognize(fileBuffer);
-        if (ocrRet && ocrRet.data && ocrRet.data.text) {
-          extractedText = (extractedText + "\n" + ocrRet.data.text).trim();
+          worker = await createWorker("chi_sim+eng", 1, {
+            langPath: localLangPath,
+            logger: () => {},
+            errorHandler: () => {},
+          });
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+          const ocrRet = await worker.recognize(fileBuffer);
+          if (ocrRet && ocrRet.data && ocrRet.data.text) {
+            return ocrRet.data.text.trim();
+          }
+        } catch (ocrErr) {
+          console.warn("[Electron Native] OCR extraction warning:", ocrErr);
+        } finally {
+          if (worker) {
+            try {
+              await worker.terminate();
+            } catch (e) {}
+          }
         }
-        await worker.terminate();
-      } catch (ocrErr) {
-        console.warn("[Electron Native] OCR extraction warning:", ocrErr);
+        return "";
+      })();
+
+      const ocrTimeout = new Promise((resolve) => setTimeout(() => resolve(""), 3500));
+      const ocrText = await Promise.race([ocrTask, ocrTimeout]);
+      if (ocrText) {
+        extractedText = (extractedText + "\n" + ocrText).trim();
       }
     }
 
-    let parseInvoiceTextWithRules;
-    try {
-      const srv = require(path.join(__dirname, "../dist/server.cjs"));
-      parseInvoiceTextWithRules = srv.parseInvoiceTextWithRules;
-    } catch (e) {}
-
-    if (parseInvoiceTextWithRules) {
-      const data = parseInvoiceTextWithRules(extractedText || fileName, fileName);
-      return { success: true, data, engine: "electron_native", extractedText };
-    }
-
-    return { success: false, error: "Parser module not found" };
+    return {
+      success: true,
+      engine: "electron_native",
+      extractedText: extractedText || "",
+      fileName: fileName || "",
+    };
   } catch (err) {
     console.error("[Electron Native] Parse invoice error:", err);
     return { success: false, error: err.message };
@@ -285,10 +326,7 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
     try {
       XLSX = require("xlsx-js-style");
     } catch (e) {
-      try {
-        const srv = require(path.join(__dirname, "../dist/server.cjs"));
-        XLSX = srv.XLSX || srv.default?.XLSX;
-      } catch (e2) {}
+      console.warn("Failed to require xlsx-js-style:", e);
     }
 
     if (mode === "append" && diskCheck.exists && targetPath && fs.existsSync(targetPath) && XLSX) {
@@ -302,12 +340,21 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
         const incomingSheet = incomingWb.Sheets[incomingWb.SheetNames[0]];
         const rawIncomingRows = XLSX.utils.sheet_to_json(incomingSheet, { defval: "" });
 
-        // 过滤掉原本文件中因为历史错误被误写入的空行（既没有开票日期也没有发票号码，且不是统计行的坏数据）
-        const cleanedExistingRows = rawExistingRows.filter((r) => {
-          const isSummary = String(r["序号"] || "").startsWith("统计");
-          const hasData = Boolean(r["发票号码"] || r["开票日期"] || r["价税合计"]);
-          return isSummary || hasData;
-        });
+        // 过滤掉原本文件中因为历史错误被误写入的空行，并清理旧版遗留的 导入时间 列
+        const cleanedExistingRows = rawExistingRows
+          .filter((r) => {
+            const isSummary = String(r["序号"] || "").startsWith("统计");
+            const hasData = Boolean(r["发票号码"] || r["开票日期"] || r["价税合计"]);
+            return isSummary || hasData;
+          })
+          .map((r) => {
+            if ("导入时间" in r) {
+              const copy = { ...r };
+              delete copy["导入时间"];
+              return copy;
+            }
+            return r;
+          });
 
         // 确保本次新追加的数据（包含新批次发票 + 本批次专属统计汇总行）作为新批次追加在旧数据下方
         const allRows = [...cleanedExistingRows, ...rawIncomingRows];
@@ -468,6 +515,21 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
             }
           });
         });
+
+        // 合并所有批次统计汇总行的 A 列与 B 列 (序号与开票日期)
+        const merges = [];
+        allRows.forEach((row, rowIdx) => {
+          const isSummary = String(row["序号"] || "").startsWith("统计");
+          if (isSummary) {
+            merges.push({
+              s: { r: rowIdx + 1, c: 0 }, // A 列 (序号)
+              e: { r: rowIdx + 1, c: 1 }, // B 列 (开票日期)
+            });
+          }
+        });
+        if (merges.length > 0) {
+          mergedWorksheet["!merges"] = merges;
+        }
 
         // 关键保护机制：如果在旧表或新表中有设置 !protect（密码与防篡改规则），合并追加时 100% 继承并生效
         if (protect || password) {

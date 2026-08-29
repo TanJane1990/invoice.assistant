@@ -177,12 +177,21 @@ async function startServer() {
           const incomingSheet = incomingWb.Sheets[incomingWb.SheetNames[0]];
           const rawIncomingRows: any[] = XLSX.utils.sheet_to_json(incomingSheet, { defval: "" });
 
-          // 过滤掉原本文件中因为历史错误被误写入的空行（既没有开票日期也没有发票号码，且不是统计行的坏数据）
-          const cleanedExistingRows = rawExistingRows.filter((r) => {
-            const isSummary = String(r["序号"] || "").startsWith("统计");
-            const hasData = Boolean(r["发票号码"] || r["开票日期"] || r["价税合计"]);
-            return isSummary || hasData;
-          });
+          // 过滤掉原本文件中因为历史错误被误写入的空行，并清理旧版遗留的 导入时间 列
+          const cleanedExistingRows = rawExistingRows
+            .filter((r) => {
+              const isSummary = String(r["序号"] || "").startsWith("统计");
+              const hasData = Boolean(r["发票号码"] || r["开票日期"] || r["价税合计"]);
+              return isSummary || hasData;
+            })
+            .map((r) => {
+              if ("导入时间" in r) {
+                const copy = { ...r };
+                delete copy["导入时间"];
+                return copy;
+              }
+              return r;
+            });
 
           // 确保本次新追加的数据（包含新批次发票 + 本批次专属统计汇总行）作为新批次追加在旧数据下方
           const allRows = [...cleanedExistingRows, ...rawIncomingRows];
@@ -343,6 +352,21 @@ async function startServer() {
               }
             });
           });
+
+          // 合并所有批次统计汇总行的 A 列与 B 列 (序号与开票日期)
+          const merges: any[] = [];
+          allRows.forEach((row, rowIdx) => {
+            const isSummary = String(row["序号"] || "").startsWith("统计");
+            if (isSummary) {
+              merges.push({
+                s: { r: rowIdx + 1, c: 0 }, // A 列 (序号)
+                e: { r: rowIdx + 1, c: 1 }, // B 列 (开票日期)
+              });
+            }
+          });
+          if (merges.length > 0) {
+            mergedWorksheet["!merges"] = merges;
+          }
 
           // 关键保护机制：如果在旧表或新表中有设置 !protect（密码与防篡改规则），合并追加时 100% 继承并生效
           const isProtected = Boolean(req.body?.protect || req.body?.password);
@@ -507,24 +531,57 @@ async function startServer() {
 
       // 服务端离线 OCR 兜底：如果前端未提取到文本或纯图片上传，在 Node.js 服务端执行本地离线 Tesseract OCR
       if (!extractedText || extractedText.trim().length < 20) {
-        try {
-          const { createWorker, PSM } = await import("tesseract.js");
-          const langDir = path.join(__dirname, "public", "tessdata");
-          const localLangPath = fs.existsSync(langDir) ? langDir : path.join(process.cwd(), "public", "tessdata");
+        const ocrTask = (async () => {
+          let worker: any = null;
+          try {
+            const { createWorker, PSM } = await import("tesseract.js");
+            const langCandidates = [
+              path.join(__dirname, "public", "tessdata"),
+              path.join(process.cwd(), "public", "tessdata"),
+              path.join(__dirname, "dist", "tessdata"),
+              path.join(process.cwd(), "dist", "tessdata"),
+              path.join(process.cwd(), "tessdata"),
+              process.cwd(),
+            ];
+            let localLangPath = path.join(process.cwd(), "public", "tessdata");
+            for (const c of langCandidates) {
+              if (fs.existsSync(c)) {
+                if (
+                  fs.existsSync(path.join(c, "chi_sim.traineddata")) ||
+                  fs.existsSync(path.join(c, "chi_sim.traineddata.gz"))
+                ) {
+                  localLangPath = c;
+                  break;
+                }
+              }
+            }
 
-          const worker = await createWorker("chi_sim+eng", 1, {
-            langPath: localLangPath,
-            logger: () => {},
-            errorHandler: () => {},
-          });
-          await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
-          const ocrRet = await worker.recognize(fileBuffer);
-          if (ocrRet?.data?.text) {
-            extractedText = (extractedText + "\n" + ocrRet.data.text).trim();
+            worker = await createWorker("chi_sim+eng", 1, {
+              langPath: localLangPath,
+              logger: () => {},
+              errorHandler: () => {},
+            });
+            await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+            const ocrRet = await worker.recognize(fileBuffer);
+            if (ocrRet?.data?.text) {
+              return ocrRet.data.text.trim();
+            }
+          } catch (nodeOcrErr) {
+            console.warn("Node server-side Tesseract OCR fallback warning:", nodeOcrErr);
+          } finally {
+            if (worker) {
+              try {
+                await worker.terminate();
+              } catch (e) {}
+            }
           }
-          await worker.terminate();
-        } catch (nodeOcrErr) {
-          console.warn("Node server-side Tesseract OCR fallback warning:", nodeOcrErr);
+          return "";
+        })();
+
+        const ocrTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 3500));
+        const ocrText = await Promise.race([ocrTask, ocrTimeout]);
+        if (ocrText) {
+          extractedText = (extractedText + "\n" + ocrText).trim();
         }
       }
 
@@ -533,7 +590,7 @@ async function startServer() {
       }
 
       // Run our Local Rule & Regex Invoice OCR Parser
-      const localParsedInvoice = parseInvoiceTextWithRules(extractedText, fileName);
+      const localParsedInvoice = parseInvoiceTextWithRules(extractedText || fileName, fileName);
 
       return res.json({
         success: true,
@@ -569,8 +626,16 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "127.0.0.1", () => {
+  const server = app.listen(PORT, "127.0.0.1", () => {
     console.log(`[发票管理助手] Server running on http://127.0.0.1:${PORT}`);
+  });
+
+  server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.log(`[发票管理助手] Port ${PORT} already active, using existing server instance.`);
+    } else {
+      console.error("[发票管理助手] Server listen error:", err);
+    }
   });
 }
 

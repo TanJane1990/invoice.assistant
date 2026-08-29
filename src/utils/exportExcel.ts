@@ -267,19 +267,19 @@ export const exportInvoicesToExcel = async (
       价税合计: totalAmt,
       商品明细: cleanItemsDetail(inv.items, inv.remarks, inv.category, rawSeller),
       备注: cleanStr(inv.remarks),
-      导入时间: cleanStr(inv.importTime || currentNowStr),
       查重状态: duplicateStatus,
     };
   });
 
-  // 计算本次导出的专属汇总统计行 (对齐标准表格：统计 共 X 张发票 ¥X,XXX.XX)
+  // 计算本次导出的专属汇总统计行 (对齐标准表格：统计 共 X 张发票 ¥X,XXX.XX，汇总行 C 列展示导入时间)
   const batchTotalAmount = targetInvoices.reduce((sum, inv) => sum + Number((inv.totalAmountWithTax || 0).toFixed(2)), 0);
   const formattedBatchTotal = batchTotalAmount.toFixed(2);
+  const batchImportTime = targetInvoices[0]?.importTime || currentNowStr;
 
   const summaryRow: any = {
     序号: `统计 共 ${targetInvoices.length} 张发票`,
     开票日期: "",
-    发票类型: "",
+    发票类型: `导入时间： ${batchImportTime}`,
     发票代码: "",
     发票号码: "",
     校验码: "",
@@ -293,7 +293,6 @@ export const exportInvoicesToExcel = async (
     价税合计: `¥${Number(formattedBatchTotal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     商品明细: "",
     备注: "",
-    导入时间: "",
     查重状态: "",
   };
 
@@ -319,7 +318,7 @@ export const exportInvoicesToExcel = async (
   const colKeys = Object.keys(finalExportData[0] || {});
   const dynamicCols = colKeys.map((key) => {
     let maxLen = getVisualLength(key);
-    exportData.forEach((row: any) => {
+    finalExportData.forEach((row: any) => {
       const cellLen = getVisualLength(row[key]);
       if (cellLen > maxLen) {
         maxLen = cellLen;
@@ -432,11 +431,24 @@ export const exportInvoicesToExcel = async (
     if (worksheet[cellRef]) {
       if (key === "价税合计") {
         worksheet[cellRef].s = summaryMoneyStyle;
+      } else if (key === "发票类型") {
+        worksheet[cellRef].s = {
+          ...summaryStyle,
+          alignment: { vertical: "center", horizontal: "left" },
+        };
       } else {
         worksheet[cellRef].s = summaryStyle;
       }
     }
   });
+
+  // 4. 合并统计汇总行的 A 列与 B 列 (序号与开票日期)，彻底解决加密保护后“统计 共 X 张发票”被遮挡/看不见问题
+  const existingMerges = worksheet["!merges"] || [];
+  existingMerges.push({
+    s: { r: summaryRowIdx, c: 0 }, // A 列 (序号)
+    e: { r: summaryRowIdx, c: 1 }, // B 列 (开票日期)
+  });
+  worksheet["!merges"] = existingMerges;
 
   // Apply SheetJS Worksheet Protection if configured or password set
   const isProtected = Boolean(settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== ""));

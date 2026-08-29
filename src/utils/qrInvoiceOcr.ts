@@ -180,27 +180,34 @@ export async function scanInvoiceQrCodeFromImageData(
 export async function scanInvoiceQrCodeFromBase64(
   base64Url: string
 ): Promise<QrInvoiceResult | null> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = async () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const qrResult = await scanInvoiceQrCodeFromImageData(canvas);
-          resolve(qrResult);
-          return;
+  const scanPromise = new Promise<QrInvoiceResult | null>((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            const qrResult = await scanInvoiceQrCodeFromImageData(canvas);
+            resolve(qrResult);
+            return;
+          }
+        } catch (e) {
+          console.warn("QR canvas scan failed:", e);
         }
-      } catch (e) {
-        console.warn("QR canvas scan failed:", e);
-      }
+        resolve(null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = base64Url;
+    } catch (e) {
       resolve(null);
-    };
-    img.onerror = () => resolve(null);
-    img.src = base64Url;
+    }
   });
+
+  const timer = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500));
+  return Promise.race([scanPromise, timer]);
 }
