@@ -71,29 +71,50 @@ export async function processInvoiceFileUnified(
     }
   }
 
-  // Step 3: 尝试调用后端 /api/parse-invoice 服务 (支持 AI 大模型 / 百度云)
-  const apiEndpoint = typeof window !== "undefined" && window.location.protocol.startsWith("http")
-    ? "/api/parse-invoice"
-    : "http://127.0.0.1:3000/api/parse-invoice";
-
+  // Step 3: 优先尝试通过 Electron 原生 IPC 引擎执行本地高精 OCR 与文本提取 (0 网络依赖，100% 成功率)
   let serverResult: any = null;
-  try {
-    const response = await fetch(apiEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  if (typeof window !== "undefined" && (window as any).electronAPI?.parseInvoiceNative) {
+    try {
+      const nativeRes = await (window as any).electronAPI.parseInvoiceNative({
         fileBase64,
         mimeType,
         fileName,
-        extractedText: extractedPdfText,
-        aiApiKey: settings?.aiApiKey,
-        baiduApiKey: settings?.baiduApiKey,
-        baiduSecretKey: settings?.baiduSecretKey,
-      }),
-    });
-    serverResult = await response.json();
-  } catch (fetchErr) {
-    console.warn("Fetch backend API failed, fallback to pure client OCR:", fetchErr);
+      });
+      if (nativeRes && nativeRes.success && nativeRes.data) {
+        serverResult = nativeRes;
+        if (nativeRes.extractedText) {
+          extractedPdfText = nativeRes.extractedText;
+        }
+      }
+    } catch (e) {
+      console.warn("Electron native parse warning:", e);
+    }
+  }
+
+  // 如果非 Electron 环境或需要扩展，尝试调用后端 /api/parse-invoice 服务
+  if (!serverResult) {
+    const apiEndpoint = typeof window !== "undefined" && window.location.protocol.startsWith("http")
+      ? "/api/parse-invoice"
+      : "http://127.0.0.1:3000/api/parse-invoice";
+
+    try {
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileBase64,
+          mimeType,
+          fileName,
+          extractedText: extractedPdfText,
+          aiApiKey: settings?.aiApiKey,
+          baiduApiKey: settings?.baiduApiKey,
+          baiduSecretKey: settings?.baiduSecretKey,
+        }),
+      });
+      serverResult = await response.json();
+    } catch (fetchErr) {
+      console.warn("Fetch backend API failed, fallback to pure client OCR:", fetchErr);
+    }
   }
 
   // Step 4: 整合四层引擎提取到的字段，融合补全

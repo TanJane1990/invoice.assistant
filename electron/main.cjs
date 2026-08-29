@@ -147,6 +147,91 @@ ipcMain.handle("open-file-folder", async (event, payload) => {
   return { success: false, message: "文件不存在" };
 });
 
+ipcMain.handle("parse-invoice-native", async (event, payload) => {
+  try {
+    const { fileBase64, mimeType, fileName } = payload || {};
+    if (!fileBase64) return { success: false, error: "缺少文件数据" };
+
+    const base64Data = fileBase64.includes(",") ? fileBase64.split(",")[1] : fileBase64;
+    const fileBuffer = Buffer.from(base64Data, "base64");
+
+    const isPdf =
+      (mimeType && mimeType.includes("pdf")) ||
+      (fileName && fileName.toLowerCase().endsWith(".pdf")) ||
+      fileBase64.startsWith("data:application/pdf");
+
+    let extractedText = "";
+
+    if (isPdf) {
+      try {
+        const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
+        const cMapDir = path.join(__dirname, "../public/cmaps");
+        const localCMap = fs.existsSync(cMapDir) ? cMapDir + "/" : path.join(process.cwd(), "public/cmaps") + "/";
+        const fontsDir = path.join(__dirname, "../public/standard_fonts");
+        const localFonts = fs.existsSync(fontsDir) ? fontsDir + "/" : path.join(process.cwd(), "public/standard_fonts") + "/";
+
+        const uint8 = new Uint8Array(fileBuffer);
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: uint8,
+          cMapUrl: localCMap,
+          cMapPacked: true,
+          standardFontDataUrl: localFonts,
+        }).promise;
+
+        let pdfFullText = "";
+        const pages = Math.min(pdfDoc.numPages, 3);
+        for (let i = 1; i <= pages; i++) {
+          const page = await pdfDoc.getPage(i);
+          const content = await page.getTextContent();
+          pdfFullText += content.items.map((it) => it.str || "").join(" ") + "\n";
+        }
+        extractedText = pdfFullText;
+      } catch (pdfErr) {
+        console.warn("[Electron Native] PDF extraction warning:", pdfErr);
+      }
+    }
+
+    // 图片或无文本 PDF：调用 Node.js 端真实离线 Tesseract OCR
+    if (!extractedText || extractedText.trim().length < 20) {
+      try {
+        const { createWorker, PSM } = require("tesseract.js");
+        const langDir = path.join(__dirname, "../public/tessdata");
+        const localLangPath = fs.existsSync(langDir) ? langDir : path.join(process.cwd(), "public/tessdata");
+
+        const worker = await createWorker("chi_sim+eng", 1, {
+          langPath: localLangPath,
+          logger: () => {},
+          errorHandler: () => {},
+        });
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+        const ocrRet = await worker.recognize(fileBuffer);
+        if (ocrRet && ocrRet.data && ocrRet.data.text) {
+          extractedText = (extractedText + "\n" + ocrRet.data.text).trim();
+        }
+        await worker.terminate();
+      } catch (ocrErr) {
+        console.warn("[Electron Native] OCR extraction warning:", ocrErr);
+      }
+    }
+
+    let parseInvoiceTextWithRules;
+    try {
+      const srv = require(path.join(__dirname, "../dist/server.cjs"));
+      parseInvoiceTextWithRules = srv.parseInvoiceTextWithRules;
+    } catch (e) {}
+
+    if (parseInvoiceTextWithRules) {
+      const data = parseInvoiceTextWithRules(extractedText || fileName, fileName);
+      return { success: true, data, engine: "electron_native", extractedText };
+    }
+
+    return { success: false, error: "Parser module not found" };
+  } catch (err) {
+    console.error("[Electron Native] Parse invoice error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle("save-excel-direct", async (event, payload) => {
   try {
     const { fileName, base64Data, mode } = payload || {};
