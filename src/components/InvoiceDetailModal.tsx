@@ -56,14 +56,27 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
     }));
   };
 
+  const handleItemNameChange = (newName: string) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items && prev.items.length > 0
+        ? prev.items.map((it, idx) => (idx === 0 ? { ...it, name: newName } : it))
+        : [{ id: `item-mod-${Date.now()}`, name: newName, amount: prev.totalAmountWithTax || 0, quantity: 1 }],
+    }));
+  };
+
   const handleSave = () => {
     const finalAmount = Number(form.totalAmountWithTax || 0);
     const withoutTax = form.totalAmountWithoutTax || Math.round(finalAmount * 0.94 * 100) / 100;
     const tax = form.totalTaxAmount || Math.round((finalAmount - withoutTax) * 100) / 100;
 
+    const currentItemName = form.items && form.items.length > 0 && form.items[0].name
+      ? form.items[0].name
+      : `*${form.category || "其他"}*物品/服务`;
+
     const updatedItems = form.items && form.items.length > 0
-      ? form.items.map((it) => ({ ...it, amount: finalAmount }))
-      : [{ id: `item-save-${Date.now()}`, name: `*${form.category || "其他"}*物品/服务`, amount: finalAmount, quantity: 1 }];
+      ? form.items.map((it, idx) => (idx === 0 ? { ...it, name: currentItemName, amount: finalAmount } : { ...it, amount: finalAmount }))
+      : [{ id: `item-save-${Date.now()}`, name: currentItemName, amount: finalAmount, quantity: 1 }];
 
     const finalInvoice: InvoiceData = {
       ...form,
@@ -81,7 +94,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
       category: form.category || "其他",
       selectedForPrint: true,
       duplicateWarning: false,
-      remarks: form.remarks || "手动新建发票",
+      remarks: form.remarks || "-",
       importTime: form.importTime || new Date().toLocaleString("zh-CN", { hour12: false }),
       items: updatedItems,
     };
@@ -264,19 +277,35 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Row 5: Remarks */}
-          <div>
-            <label className="font-extrabold block mb-1.5 text-slate-900" style={{ color: "#0f172a" }}>
-              备注信息/开票事由
-            </label>
-            <input
-              type="text"
-              value={form.remarks || ""}
-              onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-              placeholder="手动新建发票"
-              style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
-              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-            />
+          {/* Row 5: Item Name & Remarks */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="font-extrabold block mb-1.5 text-slate-900" style={{ color: "#0f172a" }}>
+                商品明细/开票事由
+              </label>
+              <input
+                type="text"
+                value={form.items && form.items.length > 0 ? form.items[0].name : ""}
+                onChange={(e) => handleItemNameChange(e.target.value)}
+                placeholder="*其他*物品/服务"
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="font-extrabold block mb-1.5 text-slate-900" style={{ color: "#0f172a" }}>
+                备注信息
+              </label>
+              <input
+                type="text"
+                value={form.remarks || ""}
+                onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+                placeholder="无备注可留空"
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+              />
+            </div>
           </div>
         </div>
 
