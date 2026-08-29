@@ -345,9 +345,12 @@ async function startServer() {
           });
 
           // 关键保护机制：如果在旧表或新表中有设置 !protect（密码与防篡改规则），合并追加时 100% 继承并生效
-          const protectConfig = incomingSheet["!protect"] || existingSheet["!protect"];
-          if (protectConfig) {
-            mergedWorksheet["!protect"] = { ...protectConfig };
+          const isProtected = Boolean(req.body?.protect || req.body?.password);
+          const protectPassword = req.body?.password || "123456";
+          if (isProtected) {
+            mergedWorksheet["!protect"] = {
+              password: protectPassword,
+            };
           }
 
           const mergedWorkbook = XLSX.utils.book_new();

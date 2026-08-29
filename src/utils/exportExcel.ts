@@ -439,23 +439,12 @@ export const exportInvoicesToExcel = async (
   });
 
   // Apply SheetJS Worksheet Protection if configured or password set
-  if (settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== "")) {
-    const password = settings.exportPassword && settings.exportPassword.trim() !== "" ? settings.exportPassword.trim() : "123456";
+  const isProtected = Boolean(settings?.protectExportedExcel || (settings?.exportPassword && settings.exportPassword.trim() !== ""));
+  const exportPassword = settings?.exportPassword && settings.exportPassword.trim() !== "" ? settings.exportPassword.trim() : "123456";
+
+  if (isProtected) {
     worksheet["!protect"] = {
-      password: password,
-      selectLockedCells: true, // 允许选中锁定的单元格，支持 Ctrl+C / 复制文本
-      selectUnlockedCells: true, // 允许选中非锁定单元格
-      formatCells: true, // 允许查看格式与复制数据
-      formatColumns: true, // 允许调整列宽以便阅读长文本
-      formatRows: true, // 允许调整行高以便阅读
-      insertColumns: false, // 严禁插入列（防篡改）
-      insertRows: false, // 严禁插入行（防篡改）
-      insertHyperlinks: false, // 严禁插入超链接
-      deleteColumns: false, // 严禁删除列（防篡改）
-      deleteRows: false, // 严禁删除行（防篡改）
-      sort: true, // 允许排序
-      autoFilter: true, // 允许筛选
-      pivotTables: false,
+      password: exportPassword,
     };
   }
 
@@ -486,10 +475,17 @@ export const exportInvoicesToExcel = async (
   let serverMessage = "";
 
   const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
+  const savePayload = {
+    fileName,
+    base64Data,
+    mode,
+    protect: isProtected,
+    password: exportPassword,
+  };
 
   if (typeof window !== "undefined" && (window as any).electronAPI?.saveExcelDirect) {
     try {
-      const saveData = await (window as any).electronAPI.saveExcelDirect({ fileName, base64Data, mode });
+      const saveData = await (window as any).electronAPI.saveExcelDirect(savePayload);
       if (saveData) {
         if (saveData.canceled) {
           isCanceled = true;
@@ -515,7 +511,7 @@ export const exportInvoicesToExcel = async (
       const saveRes = await fetch(getBackendApiUrl("/api/save-excel-direct"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName, base64Data, mode }),
+        body: JSON.stringify(savePayload),
       });
       if (saveRes.ok) {
         const saveData = await saveRes.json();
