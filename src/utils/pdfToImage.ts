@@ -1,10 +1,19 @@
 import * as pdfjsLib from "pdfjs-dist";
 
-// Set worker URL dynamically from CDN to match pdfjs-dist version
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// 使用本地打包的 pdf.worker.min.js 和 cmaps/standard_fonts，彻底解除云端外网依赖
+const LOCAL_WORKER_URL = typeof window !== "undefined" && window.location.origin && window.location.origin.startsWith("http")
+  ? `${window.location.origin}/pdf.worker.min.js`
+  : "/pdf.worker.min.js";
 
-const CMAP_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`;
-const STANDARD_FONTS_URL = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`;
+const LOCAL_CMAP_URL = typeof window !== "undefined" && window.location.origin && window.location.origin.startsWith("http")
+  ? `${window.location.origin}/cmaps/`
+  : "/cmaps/";
+
+const LOCAL_FONTS_URL = typeof window !== "undefined" && window.location.origin && window.location.origin.startsWith("http")
+  ? `${window.location.origin}/standard_fonts/`
+  : "/standard_fonts/";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = LOCAL_WORKER_URL;
 
 /**
  * 从 PDF 文件 Base64/Uint8Array 中提取纯文本字符串
@@ -13,9 +22,9 @@ export async function extractTextFromPdf(pdfDataUri: string): Promise<string> {
   try {
     let loadingTask;
     const pdfOptions = {
-      cMapUrl: CMAP_URL,
+      cMapUrl: LOCAL_CMAP_URL,
       cMapPacked: true,
-      standardFontDataUrl: STANDARD_FONTS_URL,
+      standardFontDataUrl: LOCAL_FONTS_URL,
     };
 
     if (pdfDataUri.startsWith("data:")) {
@@ -157,9 +166,9 @@ export async function convertPdfToImageDataUrl(pdfDataUri: string): Promise<stri
   try {
     let loadingTask;
     const pdfOptions = {
-      cMapUrl: CMAP_URL,
+      cMapUrl: LOCAL_CMAP_URL,
       cMapPacked: true,
-      standardFontDataUrl: STANDARD_FONTS_URL,
+      standardFontDataUrl: LOCAL_FONTS_URL,
     };
 
     if (pdfDataUri.startsWith("data:")) {

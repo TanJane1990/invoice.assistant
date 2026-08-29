@@ -120,13 +120,24 @@ export function isGarbledCipher(text: string): boolean {
 export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""): ParsedInvoiceResult {
   let cleanText = rawText.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ");
 
-  // 关键优化：规范化 OCR 输出中每个中文字符之间的空格（如 "北 京 智 慧 生 活 有 限 公 司" -> "北京智慧生活有限公司"）
+  // 关键优化：规范化 OCR 与 PDF 输出中每个中文字符之间与数字内部的空格
   for (let i = 0; i < 4; i++) {
     cleanText = cleanText.replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, "$1$2");
+    cleanText = cleanText.replace(/(\d)\s+(\d)/g, "$1$2");
+    cleanText = cleanText.replace(/(\d)\s+\*/g, "$1*");
+    cleanText = cleanText.replace(/\*\s+(\d)/g, "*$1");
+    cleanText = cleanText.replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
+    cleanText = cleanText.replace(/([¥￥])\s*(\d)/g, "$1$2");
   }
   cleanText = cleanText.replace(/([\u4e00-\u9fa5])\s+([:：()（）])/g, "$1$2");
   cleanText = cleanText.replace(/([:：()（）])\s+([\u4e00-\u9fa5])/g, "$1$2");
   cleanText = cleanText.replace(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*(?:日|\b)/g, "$1年$2月$3日");
+
+  // 拼接铁路电子客票因版面分列断开的发票号码 (如: 26329116804 ... 1258582 -> 263291168041258582)
+  const mTrainInvSplit = cleanText.match(/(26329\d{6})[\s\S]{0,50}?(\d{7})/);
+  if (mTrainInvSplit) {
+    cleanText = `发票号码:${mTrainInvSplit[1]}${mTrainInvSplit[2]}\n` + cleanText;
+  }
 
   // 1. 发票/收据类型判定
   let invoiceType = "增值税电子普通发票";
@@ -366,15 +377,25 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     const mSeat = cleanText.match(/(二等座|一等座|商务座|特等座|硬卧|软卧|硬座|软座|无座)/);
     if (mSeat) trainSeat = mSeat[1];
 
-    // 车次与始发/终到站 (如: 南京南 G2789 江宁西)
+    // 车次与始发/终到站 (如: 南京南 G2789 江宁西 或 南京南站江宁西站 G2789)
     const mTrainRoute =
       cleanText.match(/([\u4e00-\u9fa5]{2,10}(?:站|东|南|西|北)?)\s*([GDCKTZY][0-9]{1,5})\s*([\u4e00-\u9fa5]{2,10}(?:站|东|南|西|北)?)/) ||
+      cleanText.match(/([\u4e00-\u9fa5]{2,10}站)\s*([\u4e00-\u9fa5]{2,10}站)\s*([GDCKTZY][0-9]{1,5})/) ||
       cleanText.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)\s*([A-Z0-9]{1,6})\s*([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)/) ||
       cleanText.match(/([\u4e00-\u9fa5]{2,15})\s*(?:至|➔|->|--|-)\s*([\u4e00-\u9fa5]{2,15})/);
     if (mTrainRoute) {
-      const startStation = (mTrainRoute[1] || "").replace(/^(?:[年月日期号车开次至])\s*/, "").trim();
-      const endStation = (mTrainRoute[3] || mTrainRoute[2] || "").trim();
-      const trainNo = mTrainRoute[3] ? mTrainRoute[2] : "";
+      let startStation = "";
+      let endStation = "";
+      let trainNo = "";
+      if (mTrainRoute[3] && /^[GDCKTZY][0-9]{1,5}$/.test(mTrainRoute[3])) {
+        startStation = mTrainRoute[1].replace(/站$/, "");
+        endStation = mTrainRoute[2].replace(/站$/, "");
+        trainNo = mTrainRoute[3];
+      } else {
+        startStation = (mTrainRoute[1] || "").replace(/^(?:[年月日期号车开次至])\s*/, "").replace(/站$/, "").trim();
+        endStation = (mTrainRoute[3] || mTrainRoute[2] || "").replace(/站$/, "").trim();
+        trainNo = mTrainRoute[3] ? mTrainRoute[2] : "";
+      }
       trainRoute = trainNo ? `${startStation}-${endStation} ${trainNo}` : `${startStation}-${endStation}`;
     }
   }
