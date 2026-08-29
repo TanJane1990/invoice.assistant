@@ -5,16 +5,15 @@ let workerPromise: Promise<any> | null = null;
 
 function getTessLangPath(): string {
   if (typeof window !== "undefined") {
+    if (window.location.protocol === "file:") {
+      return "./tessdata";
+    }
     if (window.location.origin && window.location.origin.startsWith("http")) {
       return `${window.location.origin}/tessdata`;
     }
-    return "http://127.0.0.1:3000/tessdata";
+    return "./tessdata";
   }
-  try {
-    return "./public/tessdata";
-  } catch (e) {
-    return "http://127.0.0.1:3000/tessdata";
-  }
+  return "./public/tessdata";
 }
 
 async function getOcrWorker() {
