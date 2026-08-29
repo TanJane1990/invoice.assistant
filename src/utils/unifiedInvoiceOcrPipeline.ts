@@ -71,9 +71,9 @@ export async function processInvoiceFileUnified(
     }
   }
 
-  // Step 3: 优先尝试通过 Electron 原生 IPC 引擎执行本地高精 OCR 与文本提取 (0 网络依赖，100% 成功率)
+  // Step 3: 仅在纯图片（如 PNG 收据）或客户端未解析出足够内容时，调用 Electron 原生 IPC OCR 引擎
   let serverResult: any = null;
-  if (typeof window !== "undefined" && (window as any).electronAPI?.parseInvoiceNative) {
+  if ((!isPdf || !extractedPdfText || extractedPdfText.trim().length < 40) && typeof window !== "undefined" && (window as any).electronAPI?.parseInvoiceNative) {
     try {
       const nativeRes = await (window as any).electronAPI.parseInvoiceNative({
         fileBase64,
@@ -83,7 +83,7 @@ export async function processInvoiceFileUnified(
       if (nativeRes && nativeRes.success && nativeRes.data) {
         serverResult = nativeRes;
         if (nativeRes.extractedText) {
-          extractedPdfText = nativeRes.extractedText;
+          extractedPdfText = (extractedPdfText + "\n" + nativeRes.extractedText).trim();
         }
       }
     } catch (e) {
@@ -91,8 +91,8 @@ export async function processInvoiceFileUnified(
     }
   }
 
-  // 如果非 Electron 环境或需要扩展，尝试调用后端 /api/parse-invoice 服务
-  if (!serverResult) {
+  // 如果非 Electron 环境且无服务端结果，尝试调用后端 /api/parse-invoice 服务
+  if (!serverResult && (!isPdf || !extractedPdfText || extractedPdfText.trim().length < 40)) {
     const apiEndpoint = typeof window !== "undefined" && window.location.protocol.startsWith("http")
       ? "/api/parse-invoice"
       : "http://127.0.0.1:3000/api/parse-invoice";
@@ -117,10 +117,32 @@ export async function processInvoiceFileUnified(
     }
   }
 
-  // Step 4: 整合四层引擎提取到的字段，融合补全
-  const rawData: Partial<ParsedInvoiceResult> = serverResult?.success && serverResult.data
-    ? serverResult.data
-    : parseInvoiceTextWithRules(extractedPdfText || fileName, fileName);
+  // Step 4: 整合四层引擎提取到的字段，融合补全（深度保留完整的商品明细与订单号备注）
+  const localParsed = parseInvoiceTextWithRules(extractedPdfText || fileName, fileName);
+  const serverData = serverResult?.success && serverResult.data ? serverResult.data : {};
+
+  const rawData: Partial<ParsedInvoiceResult> = {
+    ...serverData,
+    ...localParsed,
+  };
+
+  // 优先保留非占位符的真实商品明细
+  if (localParsed.items && localParsed.items.length > 0 && !localParsed.items[0].name.includes("物品/服务")) {
+    rawData.items = localParsed.items;
+  } else if (serverData.items && serverData.items.length > 0 && !serverData.items[0].name.includes("物品/服务")) {
+    rawData.items = serverData.items;
+  } else {
+    rawData.items = localParsed.items || serverData.items;
+  }
+
+  // 优先保留包含订单号/乘车行程的真实备注
+  if (localParsed.remarks && !localParsed.remarks.endsWith(".pdf") && !localParsed.remarks.endsWith(".png") && localParsed.remarks !== "发票识别") {
+    rawData.remarks = localParsed.remarks;
+  } else if (serverData.remarks && !serverData.remarks.endsWith(".pdf") && !serverData.remarks.endsWith(".png") && serverData.remarks !== "发票识别") {
+    rawData.remarks = serverData.remarks;
+  } else {
+    rawData.remarks = localParsed.remarks || serverData.remarks || fileName;
+  }
 
   let totalAmt = Number(rawData.totalAmountWithTax || 0);
 
