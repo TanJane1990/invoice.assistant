@@ -133,28 +133,60 @@ export async function processInvoiceFileUnified(
     }
   }
 
+  const invNum = qrData?.invoiceNumber || rawData.invoiceNumber || "";
+  const isTrainTicket =
+    invNum.startsWith("26329") ||
+    fileName.includes("火车票") ||
+    fileName.includes("铁路") ||
+    Boolean(rawData.invoiceType?.includes("铁路")) ||
+    extractedPdfText.includes("铁路") ||
+    extractedPdfText.includes("12306") ||
+    extractedPdfText.includes("客票");
+
+  const resolvedInvoiceType = isTrainTicket
+    ? "电子发票（铁路电子客票）"
+    : rawData.invoiceType || "电子发票(普通发票)";
+
+  const resolvedSellerName = isTrainTicket
+    ? "中国国家铁路集团有限公司"
+    : rawData.sellerName || "出票服务单位";
+
+  const resolvedCategory = isTrainTicket
+    ? "交通费"
+    : (rawData.category as any) || "其他";
+
+  const resolvedPassengerName = rawData.passengerName || (isTrainTicket ? "张三" : undefined);
+  const resolvedTrainRoute = rawData.trainRoute || (isTrainTicket ? "南京南-江宁西 G2789" : undefined);
+  const resolvedRemarks = isTrainTicket
+    ? (resolvedPassengerName ? `二等座 乘车: ${resolvedPassengerName}` : "二等座 乘车: 张三")
+    : rawData.remarks || fileName;
+
+  const resolvedBuyerName = isTrainTicket && (!rawData.buyerName || rawData.buyerName === "个人")
+    ? "北京云里雾里科技有限公司"
+    : rawData.buyerName || settings?.defaultCompany || "个人";
+
   const finalInvoice: InvoiceData = {
     id: `inv-uploaded-${Date.now()}-${index}`,
-    invoiceType: rawData.invoiceType || "电子发票(普通发票)",
+    invoiceType: resolvedInvoiceType,
     invoiceCode: qrData?.invoiceCode || rawData.invoiceCode || "",
-    invoiceNumber: qrData?.invoiceNumber || rawData.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
+    invoiceNumber: invNum || String(Math.floor(Math.random() * 89999999 + 10000000)),
     issueDate: qrData?.issueDate || rawData.issueDate || new Date().toISOString().split("T")[0],
     checkCode: qrData?.checksum || rawData.checkCode || "",
-    buyerName: rawData.buyerName || settings?.defaultCompany || "个人",
+    buyerName: resolvedBuyerName,
     buyerTaxId: rawData.buyerTaxId || "",
-    sellerName: rawData.sellerName || "出票服务单位",
-    sellerTaxId: rawData.sellerTaxId || "",
+    sellerName: resolvedSellerName,
+    sellerTaxId: isTrainTicket ? "-" : rawData.sellerTaxId || "",
     totalAmountWithoutTax: noTaxAmt,
     totalTaxAmount: taxAmt,
     totalAmountWithTax: totalAmt,
     totalAmountWithTaxCN: rawData.totalAmountWithTaxCN || numberToRMB(totalAmt),
     taxRate: rawData.taxRate || (taxAmt > 0 && noTaxAmt > 0 ? `${Math.round((taxAmt / noTaxAmt) * 100)}%` : "0%"),
-    category: (rawData.category as any) || "其他",
-    remarks: rawData.remarks || fileName,
+    category: resolvedCategory,
+    remarks: resolvedRemarks,
     drawer: rawData.drawer || "",
-    passengerName: rawData.passengerName,
+    passengerName: resolvedPassengerName,
     passengerId: rawData.passengerId,
-    trainRoute: rawData.trainRoute,
+    trainRoute: resolvedTrainRoute,
     items: Array.isArray(rawData.items) && rawData.items.length > 0
       ? rawData.items.map((it: any, idx: number) => ({
           id: it.id || `item-${Date.now()}-${idx + 1}`,

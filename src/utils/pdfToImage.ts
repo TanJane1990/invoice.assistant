@@ -9,20 +9,26 @@ if (typeof window !== "undefined" && pdfjsLib?.GlobalWorkerOptions) {
 
 function getPdfCmapUrl(): string {
   if (typeof window !== "undefined") {
+    if (window.location.protocol === "file:") {
+      return "./cmaps/";
+    }
     if (window.location.origin && window.location.origin.startsWith("http")) {
       return `${window.location.origin}/cmaps/`;
     }
-    return "http://127.0.0.1:3000/cmaps/";
+    return "./cmaps/";
   }
   return "./public/cmaps/";
 }
 
 function getPdfStandardFontsUrl(): string {
   if (typeof window !== "undefined") {
+    if (window.location.protocol === "file:") {
+      return "./standard_fonts/";
+    }
     if (window.location.origin && window.location.origin.startsWith("http")) {
       return `${window.location.origin}/standard_fonts/`;
     }
-    return "http://127.0.0.1:3000/standard_fonts/";
+    return "./standard_fonts/";
   }
   return "./public/standard_fonts/";
 }
