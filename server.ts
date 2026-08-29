@@ -1,4 +1,11 @@
 import 'dotenv/config';
+if (typeof globalThis.ReadableStream === "undefined") {
+  try {
+    // @ts-ignore
+    const { ReadableStream } = require("stream/web");
+    globalThis.ReadableStream = ReadableStream;
+  } catch (e) {}
+}
 import express from "express";
 import path from "path";
 import fs from "fs";

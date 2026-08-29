@@ -1,3 +1,10 @@
+if (typeof globalThis.ReadableStream === "undefined") {
+  try {
+    const { ReadableStream } = require("stream/web");
+    globalThis.ReadableStream = ReadableStream;
+  } catch (e) {}
+}
+
 const { app, BrowserWindow, Menu, ipcMain, nativeImage, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -164,35 +171,22 @@ ipcMain.handle("parse-invoice-native", async (event, payload) => {
 
     if (isPdf) {
       try {
-        const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
-        const cMapDir = path.join(__dirname, "../public/cmaps");
-        const localCMap = fs.existsSync(cMapDir) ? cMapDir + "/" : path.join(process.cwd(), "public/cmaps") + "/";
-        const fontsDir = path.join(__dirname, "../public/standard_fonts");
-        const localFonts = fs.existsSync(fontsDir) ? fontsDir + "/" : path.join(process.cwd(), "public/standard_fonts") + "/";
-
-        const uint8 = new Uint8Array(fileBuffer);
-        const pdfDoc = await pdfjsLib.getDocument({
-          data: uint8,
-          cMapUrl: localCMap,
-          cMapPacked: true,
-          standardFontDataUrl: localFonts,
-        }).promise;
-
-        let pdfFullText = "";
-        const pages = Math.min(pdfDoc.numPages, 3);
-        for (let i = 1; i <= pages; i++) {
-          const page = await pdfDoc.getPage(i);
-          const content = await page.getTextContent();
-          pdfFullText += content.items.map((it) => it.str || "").join(" ") + "\n";
+        const pdfParseModule = require("pdf-parse");
+        const PDFParseClass = pdfParseModule.PDFParse || pdfParseModule.default || pdfParseModule;
+        if (typeof PDFParseClass === "function" && PDFParseClass.prototype?.load) {
+          const parser = new PDFParseClass({ data: fileBuffer });
+          await parser.load();
+          const textData = await parser.getText();
+          extractedText = textData?.text || "";
+        } else if (typeof PDFParseClass === "function") {
+          const pdfData = await PDFParseClass(fileBuffer);
+          extractedText = pdfData?.text || "";
         }
-        extractedText = pdfFullText;
       } catch (pdfErr) {
         console.warn("[Electron Native] PDF extraction warning:", pdfErr);
       }
-    }
-
-    // 图片或无文本 PDF：调用 Node.js 端真实离线 Tesseract OCR
-    if (!extractedText || extractedText.trim().length < 20) {
+    } else {
+      // 纯图片文件（PNG / JPG / 收据截图）：调用 Node 离线 Tesseract OCR
       try {
         const { createWorker, PSM } = require("tesseract.js");
         const langDir = path.join(__dirname, "../public/tessdata");
