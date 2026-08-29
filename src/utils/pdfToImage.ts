@@ -1,9 +1,10 @@
-import * as pdfjsLib from "pdfjs-dist";
+// @ts-ignore
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
+// @ts-ignore
+import pdfjsWorker from "pdfjs-dist/legacy/build/pdf.worker.min.js?url";
 
-// 禁用外部 Worker 脚本网络请求，采用单线程纯 JS 内存渲染模式 (Fake Worker Mode)
-// 彻底解决 Electron file:// 协议与断网环境下 Worker 跨域拒绝连接导致的裂图崩溃
-if (pdfjsLib.GlobalWorkerOptions) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+if (typeof window !== "undefined" && pdfjsLib?.GlobalWorkerOptions) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 }
 
 /**

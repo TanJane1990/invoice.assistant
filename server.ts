@@ -457,22 +457,35 @@ async function startServer() {
 
       // Strategy 2: Local PDF OCR & Rule Extraction Engine (No API key required)
       let extractedText = req.body.extractedText || "";
-      if (isPdf && !extractedText) {
+      if (isPdf && (!extractedText || extractedText.trim().length < 20)) {
         try {
-          // 优化点 1: 按需动态加载 PDF 库，缩短 30%+ 软件首屏启动时间
-          const pdfParseModule = await import("pdf-parse");
-          const PDFParseClass = (pdfParseModule as any).PDFParse || (pdfParseModule as any).default || pdfParseModule;
-          if (typeof PDFParseClass === "function" && PDFParseClass.prototype?.load) {
-            const parser = new PDFParseClass({ data: fileBuffer });
-            await parser.load();
-            const textData = await parser.getText();
-            extractedText = textData?.text || "";
-          } else if (typeof PDFParseClass === "function") {
-            const pdfData = await PDFParseClass(fileBuffer);
-            extractedText = pdfData?.text || "";
+          // @ts-ignore
+          const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.js");
+          const cMapDir = path.join(__dirname, "public", "cmaps");
+          const localCMap = fs.existsSync(cMapDir) ? cMapDir + "/" : path.join(process.cwd(), "public", "cmaps") + "/";
+          const fontsDir = path.join(__dirname, "public", "standard_fonts");
+          const localFonts = fs.existsSync(fontsDir) ? fontsDir + "/" : path.join(process.cwd(), "public", "standard_fonts") + "/";
+
+          const uint8 = new Uint8Array(fileBuffer);
+          const pdfDoc = await pdfjsLib.getDocument({
+            data: uint8,
+            cMapUrl: localCMap,
+            cMapPacked: true,
+            standardFontDataUrl: localFonts,
+          }).promise;
+
+          let pdfFullText = "";
+          const pages = Math.min(pdfDoc.numPages, 3);
+          for (let i = 1; i <= pages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const content = await page.getTextContent();
+            pdfFullText += content.items.map((it: any) => it.str || "").join(" ") + "\n";
+          }
+          if (pdfFullText.trim()) {
+            extractedText = pdfFullText;
           }
         } catch (pdfErr) {
-          console.warn("pdfParse extraction warning:", pdfErr);
+          console.warn("Server-side pdfjs extraction warning:", pdfErr);
         }
       }
 

@@ -420,6 +420,7 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
 
 function startBackendServer() {
   try {
+    process.env.NODE_ENV = "production";
     process.env.PORT = String(PORT);
     const serverPath = path.join(__dirname, "../dist/server.cjs");
     if (fs.existsSync(serverPath)) {
@@ -503,24 +504,15 @@ function createWindow() {
 
   const isDev = !app.isPackaged;
 
-  const startUrl = `http://127.0.0.1:${PORT}`;
-  let retryCount = 0;
-  const MAX_RETRIES = 20;
-  const loadApp = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    mainWindow.loadURL(startUrl).catch(() => {
-      retryCount++;
-      if (retryCount < MAX_RETRIES) {
-        setTimeout(loadApp, 300);
-      } else {
-        const indexPath = path.join(__dirname, "../dist/index.html");
-        if (fs.existsSync(indexPath)) {
-          mainWindow.loadFile(indexPath);
-        }
-      }
+  const indexPath = path.join(__dirname, "../dist/index.html");
+  if (fs.existsSync(indexPath)) {
+    mainWindow.loadFile(indexPath).catch((err) => {
+      console.warn("Failed to load local index.html, falling back to port:", err);
+      mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
     });
-  };
-  loadApp();
+  } else {
+    mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
+  }
 
   // 核心防白屏：DOM 准备完毕、内容绘制完成后才优雅展现窗口
   mainWindow.once("ready-to-show", () => {
@@ -544,8 +536,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   startBackendServer();
-  // 稍作停顿等待 Express 后台程序启动
-  setTimeout(createWindow, 800);
+  createWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
