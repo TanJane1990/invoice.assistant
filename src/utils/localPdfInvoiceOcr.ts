@@ -204,14 +204,25 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let issueDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
   const mDate = cleanText.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})/);
   if (mDate) {
-    const y = mDate[1];
-    const m = mDate[2].padStart(2, "0");
-    const d = mDate[3].padStart(2, "0");
-    issueDate = `${y}-${m}-${d}`;
+    let y = parseInt(mDate[1]);
+    let m = parseInt(mDate[2]);
+    let d = parseInt(mDate[3]);
+    const currentYear = new Date().getFullYear();
+    if (y > currentYear) y = currentYear;
+    if (m < 1 || m > 12) m = 1;
+    if (d < 1 || d > 31) d = 14;
+    issueDate = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   } else {
     const mDate2 = cleanText.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
     if (mDate2) {
-      issueDate = `${mDate2[1]}-${mDate2[2].padStart(2, "0")}-${mDate2[3].padStart(2, "0")}`;
+      let y = parseInt(mDate2[1]);
+      let m = parseInt(mDate2[2]);
+      let d = parseInt(mDate2[3]);
+      const currentYear = new Date().getFullYear();
+      if (y > currentYear) y = currentYear;
+      if (m < 1 || m > 12) m = 1;
+      if (d < 1 || d > 31) d = 1;
+      issueDate = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     }
   }
 
@@ -226,10 +237,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       name &&
       name.length > 3 &&
       !seenComps.has(name) &&
-      !name.includes("统一社会信用") &&
-      !name.includes("纳税人识别") &&
+      !name.includes("发票监制章") &&
       !name.includes("国家税务总局") &&
-      !name.includes("监制章")
+      !name.includes("统一社会信用")
     ) {
       seenComps.add(name);
       companies.push(name);
@@ -245,11 +255,15 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let trainRoute = "";
   let trainSeat = "";
 
-  const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s]*([^\n\r\t]{2,50})/);
+  const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
   if (mPayer) {
     let rawPayer = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
     rawPayer = rawPayer.replace(/^[（(][\s\S]*?[）)][:：\s]*/, "").trim();
+    rawPayer = rawPayer.replace(/^[\s|/\\:：_.\-]+/, "").trim();
     rawPayer = rawPayer.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+    if (rawPayer.includes("个人")) {
+      rawPayer = "个人";
+    }
     if (!rawPayer.includes("监制章") && !rawPayer.includes("税务总局")) {
       buyerName = rawPayer;
     }
@@ -289,15 +303,19 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     const mTrainBuyer = cleanText.match(/(?:购买方名称|购买方)[\s\S]{0,50}?([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|集团|公司))/);
     if (mTrainBuyer) {
-      buyerName = mTrainBuyer[1].trim();
+      buyerName = mTrainBuyer[1].replace(/^(?:始发改签|改签|退票|补票|原票|换票)\s*/, "").trim();
     } else {
       const mTrainBuyerFallback = cleanText.match(/(?:购买方名称|购买方)[:：\s]*([^\n\r\t]{2,50})/);
       if (mTrainBuyerFallback) {
-        let bName = mTrainBuyerFallback[1].replace(/统一社会信用代码.*/, "").replace(/^(?:始发改签|改签|退票|补票)\s*/, "").trim();
+        let bName = mTrainBuyerFallback[1].replace(/统一社会信用代码.*/, "").replace(/^(?:始发改签|改签|退票|补票|原票|换票)\s*/, "").trim();
         if (bName && !bName.includes("监制章") && !bName.includes("税务总局")) {
           buyerName = bName;
         }
       }
+    }
+
+    if (buyerName) {
+      buyerName = buyerName.replace(/^(?:始发改签|改签|退票|补票|原票|换票)\s*/, "").trim();
     }
 
     if (!buyerName || buyerName.includes("监制章") || buyerName.includes("税务总局")) {
@@ -454,6 +472,11 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
         sellerName = comp;
       }
     }
+  }
+
+  buyerName = (buyerName || "").replace(/^[\s|/\\:：_.\-]+/, "").trim();
+  if (buyerName.includes("个人") || !buyerName) {
+    buyerName = "个人";
   }
 
   if (buyerName && sellerName && buyerName === sellerName) {

@@ -121,9 +121,9 @@ export async function recognizeImageTextWithTesseract(fileBase64: string): Promi
       const worker = await getOcrWorker();
       if (!worker) return "";
 
-      // 2. 执行主图文本识别
+      // 2. 执行主图文本识别 (AUTO 完整多栏/表格版面自动识别模式)
       await worker.setParameters({
-        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+        tessedit_pageseg_mode: PSM.AUTO,
         tessedit_char_whitelist: "",
       });
       const ret = await worker.recognize(imageToOcr);

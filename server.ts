@@ -477,6 +477,29 @@ async function startServer() {
         }
       }
 
+      // 服务端离线 OCR 兜底：如果前端未提取到文本或纯图片上传，在 Node.js 服务端执行本地离线 Tesseract OCR
+      if (!extractedText || extractedText.trim().length < 20) {
+        try {
+          const { createWorker, PSM } = await import("tesseract.js");
+          const langDir = path.join(__dirname, "public", "tessdata");
+          const localLangPath = fs.existsSync(langDir) ? langDir : path.join(process.cwd(), "public", "tessdata");
+
+          const worker = await createWorker("chi_sim+eng", 1, {
+            langPath: localLangPath,
+            logger: () => {},
+            errorHandler: () => {},
+          });
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+          const ocrRet = await worker.recognize(fileBuffer);
+          if (ocrRet?.data?.text) {
+            extractedText = (extractedText + "\n" + ocrRet.data.text).trim();
+          }
+          await worker.terminate();
+        } catch (nodeOcrErr) {
+          console.warn("Node server-side Tesseract OCR fallback warning:", nodeOcrErr);
+        }
+      }
+
       if (!extractedText && isPdf) {
         extractedText = fileBuffer.toString("utf-8");
       }
