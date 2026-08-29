@@ -47,15 +47,24 @@ const CN_UNIT_MAP: Record<string, number> = {
 
 export function parseChineseAmount(text: string): number | null {
   if (!text) return null;
-  const m = text.match(/([零壹贰叁参肆伍陆柒捌玖一二三四五六七八九拾佰仟万亿十百千]+[元圆][零壹贰叁参肆伍陆柒捌玖一二三四五六七八九角分整]*)/);
+
+  // OCR 常见中文字形混淆容错纠偏
+  const normalized = text
+    .replace(/[任仠什]/g, "仟")
+    .replace(/[伯陌]/g, "佰")
+    .replace(/[石]/g, "拾")
+    .replace(/[园原图]/g, "圆")
+    .replace(/[叄]/g, "叁")
+    .replace(/[貳两]/g, "贰");
+
+  const m = normalized.match(/([零壹贰叁参肆伍陆柒捌玖一二三四五六七八九拾佰仟万亿十百千]+[元圆][零壹贰叁参肆伍陆柒捌玖一二三四五六七八九角分整正]*)/) ||
+            normalized.match(/([零壹贰叁参肆伍陆柒捌玖一二三四五六七八九拾佰仟万亿十百千]{2,10}[整正])/);
   if (!m) return null;
 
   const cnStr = m[1];
   const yuanIdx = cnStr.search(/[元圆]/);
-  if (yuanIdx === -1) return null;
-
-  const yuanPart = cnStr.slice(0, yuanIdx);
-  const rest = cnStr.slice(yuanIdx + 1);
+  const yuanPart = yuanIdx !== -1 ? cnStr.slice(0, yuanIdx) : cnStr.replace(/[整正]/g, "");
+  const rest = yuanIdx !== -1 ? cnStr.slice(yuanIdx + 1) : "";
 
   let jiaoVal = 0;
   let fenVal = 0;
@@ -64,10 +73,10 @@ export function parseChineseAmount(text: string): number | null {
   if (jiaoIdx !== -1) {
     const jiaoChar = rest.slice(0, jiaoIdx).slice(-1);
     if (CN_NUM_MAP[jiaoChar]) jiaoVal = CN_NUM_MAP[jiaoChar] * 0.1;
-    const fenChar = rest.slice(jiaoIdx + 1).replace(/[分整]/g, "").slice(0, 1);
+    const fenChar = rest.slice(jiaoIdx + 1).replace(/[分整正]/g, "").slice(0, 1);
     if (CN_NUM_MAP[fenChar]) fenVal = CN_NUM_MAP[fenChar] * 0.01;
   } else {
-    const fenChar = rest.replace(/[分整]/g, "").slice(0, 1);
+    const fenChar = rest.replace(/[分整正]/g, "").slice(0, 1);
     if (CN_NUM_MAP[fenChar]) fenVal = CN_NUM_MAP[fenChar] * 0.01;
   }
 
@@ -225,9 +234,10 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let trainRoute = "";
   let trainSeat = "";
 
-  const mPayer = cleanText.match(/(?:购买方|交款人|客户|抬头)(?:信息|\s|\/|\(|\))*[（(]?交款人\/单位[）)]?[:：\s]*([^\n\r\t]{2,50})/);
+  const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayer) {
     let rawPayer = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
+    rawPayer = rawPayer.replace(/^[（(][\s\S]*?[）)][:：\s]*/, "").trim();
     rawPayer = rawPayer.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
     if (!rawPayer.includes("监制章") && !rawPayer.includes("税务总局")) {
       buyerName = rawPayer;
@@ -266,11 +276,16 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     sellerName = "中国国家铁路集团有限公司";
     sellerTaxId = "-";
 
-    const mTrainBuyer = cleanText.match(/(?:购买方名称|购买方)[:：\s]*([^\n\r\t]{2,50})/);
+    const mTrainBuyer = cleanText.match(/(?:购买方名称|购买方)[\s\S]{0,50}?([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|集团|公司))/);
     if (mTrainBuyer) {
-      let bName = mTrainBuyer[1].replace(/统一社会信用代码.*/, "").replace(/^(?:始发改签|改签|退票|补票)\s*/, "").trim();
-      if (bName && !bName.includes("监制章") && !bName.includes("税务总局")) {
-        buyerName = bName;
+      buyerName = mTrainBuyer[1].trim();
+    } else {
+      const mTrainBuyerFallback = cleanText.match(/(?:购买方名称|购买方)[:：\s]*([^\n\r\t]{2,50})/);
+      if (mTrainBuyerFallback) {
+        let bName = mTrainBuyerFallback[1].replace(/统一社会信用代码.*/, "").replace(/^(?:始发改签|改签|退票|补票)\s*/, "").trim();
+        if (bName && !bName.includes("监制章") && !bName.includes("税务总局")) {
+          buyerName = bName;
+        }
       }
     }
 
@@ -278,30 +293,41 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       buyerName = "个人";
     }
 
-    const mDirectPassenger = cleanText.match(/(?:乘车人|旅客姓名|姓名|乘机人|出行人)[:：\s]*([\u4e00-\u9fa5]{2,4})/);
-    if (mDirectPassenger) {
-      passengerName = mDirectPassenger[1];
-    } else {
-      const mPassengerName = cleanText.match(/(?:\d{6,10}\*+\d{4}|\d{18}|\d{15})\s*([\u4e00-\u9fa5]{2,4})/);
-      if (mPassengerName) passengerName = mPassengerName[1];
+    // 1. 优先提取铁路专用脱敏身份证 + 乘车人姓名 (如: 25611981****0114 张三)
+    const mMaskedPassenger = cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})\s*([\u4e00-\u9fa5]{2,6})/);
+    if (mMaskedPassenger) {
+      passengerId = mMaskedPassenger[1];
+      const candidateName = mMaskedPassenger[2];
+      if (!/开票|日期|发票|客票|铁路|购买|始发|改签|乘车|总局|国家/.test(candidateName)) {
+        passengerName = candidateName;
+      }
     }
 
-    const mPassengerId = cleanText.match(/(\d{6,10}\*+\d{4}|\d{18}|\d{17}[0-9Xx]|\d{15})/);
-    if (mPassengerId) {
-      // 避免误抓客票号/发票号为身份证
-      const idVal = mPassengerId[1];
-      if (!idVal.startsWith("26119") && !idVal.startsWith("26329") && idVal !== invoiceNumber) {
-        passengerId = idVal;
+    if (!passengerName) {
+      const mDirectPassenger = cleanText.match(/(?:乘车人|旅客姓名|姓名|乘机人|出行人)[:：\s]*([\u4e00-\u9fa5]{2,4})/);
+      if (mDirectPassenger && !/开票|日期|发票|客票|铁路|购买|始发|改签/.test(mDirectPassenger[1])) {
+        passengerName = mDirectPassenger[1];
+      }
+    }
+
+    if (!passengerId) {
+      const mPassengerId = cleanText.match(/(\d{4,10}\*{2,8}\d{2,6}|\d{18}|\d{17}[0-9Xx]|\d{15})/);
+      if (mPassengerId) {
+        const idVal = mPassengerId[1];
+        if (!idVal.startsWith("26119") && !idVal.startsWith("26329") && idVal !== invoiceNumber) {
+          passengerId = idVal;
+        }
       }
     }
 
     const mSeat = cleanText.match(/(二等座|一等座|商务座|特等座|硬卧|软卧|硬座|软座|无座)/);
     if (mSeat) trainSeat = mSeat[1];
 
+    // 车次与始发/终到站 (如: 南京南 G2789 江宁西)
     const mTrainRoute =
+      cleanText.match(/([\u4e00-\u9fa5]{2,10}(?:站|东|南|西|北)?)\s*([GDCKTZY][0-9]{1,5})\s*([\u4e00-\u9fa5]{2,10}(?:站|东|南|西|北)?)/) ||
       cleanText.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)\s*([A-Z0-9]{1,6})\s*([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)/) ||
-      cleanText.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)[\s\S]{0,40}?([A-Z0-9]{1,6})[\s\S]{0,40}?([\u4e00-\u9fa5A-Za-z0-9]{2,15}站)/) ||
-      cleanText.match(/([\u4e00-\u9fa5]{2,15}站?)\s*(?:至|➔|->|--|-)\s*([\u4e00-\u9fa5]{2,15}站?)/);
+      cleanText.match(/([\u4e00-\u9fa5]{2,15})\s*(?:至|➔|->|--|-)\s*([\u4e00-\u9fa5]{2,15})/);
     if (mTrainRoute) {
       trainRoute = mTrainRoute[3]
         ? `${mTrainRoute[1]}-${mTrainRoute[3]} ${mTrainRoute[2]}`
@@ -333,15 +359,15 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       invoiceCode = mNonTaxCode[1];
     }
 
-    const mPayerText = cleanText.match(/(?:交款人|交款单位|客户|付款人)[:：\s]*([^\n\r\t]{2,50})/) || cleanText.match(/(?:交款人)[\s\S]{0,20}?([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|公司))/);
+    const mPayerText = cleanText.match(/(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人))(?:\s*[（(][^）)]+[）)])?[:：\s]*([^\n\r\t]{2,50})/) || cleanText.match(/(?:交款人)[\s\S]{0,20}?([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|公司))/);
     if (mPayerText) {
-      let raw = mPayerText[1].replace(/^(?:统一社会信用代码|纳税人识别号)[:：\s]*/, "").replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+      let raw = mPayerText[1].replace(/^(?:统一社会信用代码|纳税人识别号)[:：\s]*/, "").replace(/^[（(][\s\S]*?[）)][:：\s]*/, "").replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
       if (!raw.includes("监制章") && raw !== sellerName) buyerName = raw;
     }
     if (!buyerName || buyerName === sellerName) {
       const otherComp = companies.find(c => c !== sellerName && !c.includes("自来水"));
       if (otherComp) buyerName = otherComp;
-      else buyerName = "北京市云里雾里有限公司";
+      else buyerName = "个人";
     }
     const mPayerTaxId = cleanText.match(/(?:交款人统一社会信用代码|交款人纳税人识别号)[:：\s]*([A-Za-z0-9]{8,20})/) || cleanText.match(/\b(11100\d{6})\b/);
     if (mPayerTaxId) {
@@ -409,17 +435,24 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const validTaxIds = taxIdMatches.filter(id =>
     id.length >= 15 &&
     id.length <= 20 &&
+    !/^\d{19,25}$/.test(id) &&
     !/^\d{20}$/.test(id) &&
     !/^\d{8}$/.test(id) &&
     !/^\d{16}$/.test(id) &&
-    !/^\d{17}$/.test(id)
+    !/^\d{17}$/.test(id) &&
+    !cleanText.includes(`收款单号: ${id}`) &&
+    !cleanText.includes(`收款单号:${id}`) &&
+    !cleanText.includes(`账号: ${id}`) &&
+    !cleanText.includes(`账号:${id}`)
   );
 
   if (validTaxIds.length >= 2) {
-    sellerTaxId = validTaxIds.find(id => /[A-Z]/.test(id) || id.startsWith("91")) || validTaxIds[0];
+    sellerTaxId = validTaxIds.find(id => /[A-Z]/.test(id) || id.startsWith("91") || id.startsWith("92")) || validTaxIds[0];
     buyerTaxId = validTaxIds.find(id => id !== sellerTaxId) || "";
   } else if (validTaxIds.length === 1) {
-    sellerTaxId = validTaxIds[0];
+    if (/[A-Z]/.test(validTaxIds[0]) || validTaxIds[0].startsWith("91") || validTaxIds[0].startsWith("92")) {
+      sellerTaxId = validTaxIds[0];
+    }
   }
 
   // 7. 多重包含性含税金额提取引擎
@@ -434,18 +467,18 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   if (totalAmountWithTax === 0) {
     const totalPatterns = [
-      /(?:票价|车票票价)\s*[:：]?\s*[¥￥]?\s*([0-9,，]+\.\d{2})/,
-      /(?:价税合计|价税\s*合\s*计)[^0-9¥￥\n\r]*[¥￥]?\s*[:：]?\s*([0-9,，]+\.?\d*)/,
-      /(?:（小写）|\(小写\)|小写)[^0-9¥￥\n\r]*[¥￥]?\s*([0-9,，]+\.?\d{2})/,
-      /小写[）\)]?\s*[¥￥]?\s*([0-9,，]+\.?\d{2})/,
-      /(?:金额|合计|小写)\s*[:：\s]*[¥￥]?\s*([0-9,，]+\.\d{2})/,
-      /[¥￥]\s*([0-9,，]+\.\d{2})/,
+      /(?:票价|车票票价)\s*[:：]?\s*[¥￥]?\s*([0-9,，\s]+(?:\.\s*\d{1,2})?)/,
+      /(?:价税合计|价税\s*合\s*计)[^0-9¥￥\n\r]*[¥￥]?\s*[:：]?\s*([0-9,，\s]+(?:\.\s*\d{1,2})?)/,
+      /(?:（小写）|\(小写\)|小写)[^0-9¥￥\n\r]*[¥￥]?\s*([0-9,，\s]+(?:\.\s*\d{1,2})?)/,
+      /小写[）\)]?\s*[¥￥]?\s*([0-9,，\s]+(?:\.\s*\d{1,2})?)/,
+      /(?:金额|合计|小写|实收|应收)\s*[:：\s]*[¥￥]?\s*([0-9,，\s]+(?:\.\s*\d{1,2})?)/,
+      /[¥￥]\s*([0-9,，\s]+(?:\.\s*\d{1,2})?)/,
     ];
 
     for (const pat of totalPatterns) {
       const m = cleanText.match(pat);
       if (m) {
-        const valStr = m[1].replace(/[,，]/g, "");
+        const valStr = m[1].replace(/[,，\s]/g, "");
         const val = parseFloat(valStr);
         if (!isNaN(val) && val > 0 && val < 1000000) {
           totalAmountWithTax = val;
@@ -456,8 +489,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
 
   if (totalAmountWithTax === 0) {
-    const rawAmounts = Array.from(cleanText.matchAll(/([0-9,，]+\.\d{2})/g))
-      .map(m => parseFloat(m[1].replace(/[,，]/g, "")))
+    const rawAmounts = Array.from(cleanText.matchAll(/([0-9,，]+\s*\.\s*\d{2})/g))
+      .map(m => parseFloat(m[1].replace(/[,，\s]/g, "")))
       .filter(v => !isNaN(v) && v > 0 && v < 1000000);
 
     if (rawAmounts.length > 0) {

@@ -111,13 +111,15 @@ export async function processInvoiceFileUnified(
   }
 
   // 判定最终使用的引擎标签
-  let engineUsed = "【本地PDF离线解析】";
+  let engineUsed = isPdf ? "【本地PDF离线解析】" : "【本地图像增强OCR】";
   if (qrScanned) {
     engineUsed = "【二维码扫码解构】";
   } else if (serverResult?.engine === "gemini_ai") {
     engineUsed = "【Gemini AI大模型】";
   } else if (serverResult?.engine === "baidu_ocr") {
     engineUsed = "【百度云发票OCR】";
+  } else if (!isPdf) {
+    engineUsed = "【本地图像增强OCR】";
   }
 
   let taxAmt = qrData?.totalTaxAmount != null ? qrData.totalTaxAmount : Number(rawData.totalTaxAmount || 0);
