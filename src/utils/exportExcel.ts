@@ -443,18 +443,18 @@ export const exportInvoicesToExcel = async (
     const password = settings.exportPassword && settings.exportPassword.trim() !== "" ? settings.exportPassword.trim() : "123456";
     worksheet["!protect"] = {
       password: password,
-      selectLockedCells: true,
-      selectUnlockedCells: true,
-      formatCells: false,
-      formatColumns: false,
-      formatRows: false,
-      insertColumns: false,
-      insertRows: false,
-      insertHyperlinks: false,
-      deleteColumns: false,
-      deleteRows: false,
-      sort: false,
-      autoFilter: false,
+      selectLockedCells: true, // 允许选中锁定的单元格，支持 Ctrl+C / 复制文本
+      selectUnlockedCells: true, // 允许选中非锁定单元格
+      formatCells: true, // 允许查看格式与复制数据
+      formatColumns: true, // 允许调整列宽以便阅读长文本
+      formatRows: true, // 允许调整行高以便阅读
+      insertColumns: false, // 严禁插入列（防篡改）
+      insertRows: false, // 严禁插入行（防篡改）
+      insertHyperlinks: false, // 严禁插入超链接
+      deleteColumns: false, // 严禁删除列（防篡改）
+      deleteRows: false, // 严禁删除行（防篡改）
+      sort: true, // 允许排序
+      autoFilter: true, // 允许筛选
       pivotTables: false,
     };
   }
