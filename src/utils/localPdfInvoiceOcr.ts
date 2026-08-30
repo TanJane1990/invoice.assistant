@@ -364,7 +364,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     const passengerBlacklist = /开票|日期|发票|客票|铁路|购买|始发|改签|乘车|总局|国家|名称|统一|社会|信用|代码|中国|愉快|旅途|请到|车票|票价|旅客|乘机|出行|席位|座位|信息/;
 
-    // 2. 模式 A: 脱敏身份证后跟姓名 (如: 25611981****0114 张静 或 25611981****0114 张 静)
+    // 2. 模式 A: 脱敏身份证后跟姓名 (如: 25611981****0114 张某某 或 25611981****0114 张 三)
     const mMasked1 =
       cleanText.match(/\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/) ||
       cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/);
@@ -377,7 +377,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
 
-    // 模式 B: 姓名后跟脱敏身份证 (如: 张静 25611981****0114)
+    // 模式 B: 姓名后跟脱敏身份证 (如: 张某某 25611981****0114)
     if (!passengerName) {
       const mMasked2 =
         cleanText.match(/([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})[\s\n\r]*\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b/) ||
@@ -392,7 +392,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
 
-    // 模式 C: 明确标签提取 (如: 乘车人: 张静 / 旅客: 张静)
+    // 模式 C: 明确标签提取 (如: 乘车人: 某某 / 旅客: 某某)
     if (!passengerName) {
       const mDirectPassenger = cleanText.match(/(?:乘车人|旅客姓名|乘机人|出行人|姓名)[:：\s]*([\u4e00-\u9fa5]{2,4})/);
       if (mDirectPassenger && !passengerBlacklist.test(mDirectPassenger[1])) {
@@ -440,7 +440,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
 
-    // 4. 车次与始发/终到站 (如: 南京南 G22 北京南 或 南京南站 G123 宣城站)
+    // 4. 车次与始发/终到站 (如: 始发站 G22 终点站 或 始发站 G123 目的站)
     const mTrainNo = cleanText.match(/\b([GDCKTZY][0-9]{1,5})\b/);
     const trainNo = mTrainNo ? mTrainNo[1] : "";
 
