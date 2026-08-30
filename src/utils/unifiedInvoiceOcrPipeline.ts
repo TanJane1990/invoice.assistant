@@ -234,9 +234,7 @@ export async function processInvoiceFileUnified(
     }
   }
 
-  const resolvedBuyerName = isTrainTicket && (!rawData.buyerName || rawData.buyerName === "个人")
-    ? "北京云里雾里科技有限公司"
-    : rawData.buyerName || settings?.defaultCompany || "个人";
+  const resolvedBuyerName = rawData.buyerName || settings?.defaultCompany || "个人";
 
   const finalInvoice: InvoiceData = {
     id: `inv-uploaded-${Date.now()}-${index}`,
