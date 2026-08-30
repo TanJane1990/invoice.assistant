@@ -3,7 +3,7 @@
   "description": "智能发票管理助手及报销排版打印工具",
   "author": "TanJane",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {

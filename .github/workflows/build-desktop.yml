@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release Tag 版本号 (只支持英文/数字/点/破折号，如: v1.0.0)'
+        description: 'Release Tag 版本号 (只支持英文/数字/点/破折号，如: v1.0.1)'
         required: true
-        default: 'v1.0.0'
+        default: 'v1.0.1'
       release_title:
-        description: 'Release 发布标题 (可含中文，如: 智能发票管理助手 v1.0.0 正式版)'
+        description: 'Release 发布标题 (可含中文，如: 智能发票管理助手 v1.0.1 正式版)'
         required: false
-        default: '智能发票管理助手 v1.0.0 正式版'
+        default: '智能发票管理助手 v1.0.1 正式版'
       is_draft:
         description: '是否发布为草稿 (Draft)?'
         type: boolean

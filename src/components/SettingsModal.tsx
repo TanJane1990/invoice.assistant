@@ -481,7 +481,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex items-center space-x-3 text-xs text-slate-600 font-medium" style={{ color: "#475569" }}>
             <span>设置保存后即刻生效</span>
             <span className="border-l border-slate-300 pl-3">
-              智能发票管理助手 v1.0
+              智能发票管理助手 v1.0.1
             </span>
           </div>
 
