@@ -142,6 +142,26 @@ function normalizeTextStream(rawText: string): string {
   return cleanText;
 }
 
+/**
+ * 实体名称专用深度清洗器（剔除左右边框散落的杂字、税号及地址后缀）
+ */
+function cleanPartyEntityName(rawVal: string): string {
+  if (!rawVal) return "";
+  let val = rawVal.trim();
+  val = val.replace(/(?:统一社会信用|统一信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
+  val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+  
+  // 清洗开头处散落的数电发票边框字 (如 "买 售 北京xxx科技...")
+  val = val.replace(/^(?:[购买销售方信息\s|/\\-])+/, "").trim();
+  // 清洗结尾处散落的数电发票边框字 (如 "北京xxx科技有限公司 售", "广州xxx有限公司 方")
+  val = val.replace(/[\s\n\r]+(?:购|买|销|售|方|信|息)+$/, "").trim();
+  val = val.replace(/(?:公司|分公司|厂|院|店|社|所|部|局|行|中心|委员会|大学|小学|中学|企业|集团|组织|协会|学会|联合会|商会|基金会|办事处|联络处)(?:[购买销售方信息\s]+)$/, (m) => {
+    return m.replace(/[购买销售方信息\s]+$/, "");
+  }).trim();
+
+  return val;
+}
+
 // -------------------------------------------------------------
 // 模板 1：🚄 铁路电子客票专属网格解析器
 // -------------------------------------------------------------
@@ -489,24 +509,6 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
   // 截取发票表头主体信息区（在项目名称/规格型号/货物或应税劳务/合计之前）
   const headerSectionMatch = cleanText.match(/[\s\S]*?(?=(?:项目名称|规格型号|货物或应税|合\s*计|价税合计|$))/);
   const headerSection = headerSectionMatch ? headerSectionMatch[0] : cleanText;
-
-  // 实体名称专用深度清洗器（剔除数电发票左右边框竖排散落的 "购 买 销 售 方 信 息" 字样）
-  const cleanPartyEntityName = (rawVal: string): string => {
-    if (!rawVal) return "";
-    let val = rawVal.trim();
-    val = val.replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
-    val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-    
-    // 清洗开头处散落的数电发票边框字 (如 "买 售 北京xxx科技...")
-    val = val.replace(/^(?:[购买销售方信息\s|/\\-])+/, "").trim();
-    // 清洗结尾处散落的数电发票边框字 (如 "北京xxx科技有限公司 售", "广州xxx有限公司 方")
-    val = val.replace(/[\s\n\r]+(?:购|买|销|售|方|信|息)+$/, "").trim();
-    val = val.replace(/(?:公司|分公司|厂|院|店|社|所|部|局|行|中心|委员会|大学|小学|中学|企业|集团|组织)(?:[购买销售方信息\s]+)$/, (m) => {
-      return m.replace(/[购买销售方信息\s]+$/, "");
-    }).trim();
-
-    return val;
-  };
 
   // 提取所有 "名称:" 实体 (严格排除 "项目名称" / "服务名称" / "货物名称")
   const nameRegex = /(?<!项目|服务|劳务|货物)(?:名\s*称)[:：\s]*([^\n\r\t]+)/g;
