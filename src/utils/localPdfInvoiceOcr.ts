@@ -382,15 +382,22 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
     if (mUser) remarks = mUser[1];
   }
 
-  let itemName = "污水处理费";
-  const mItemFee = cleanText.match(/([\u4e00-\u9fa5（）()]{2,20}(?:污水处理费|水资源费|水费|电费|学费|管理费|排污费|垃圾处理费|规费|服务费))/);
-  if (mItemFee) {
-    itemName = mItemFee[1].trim();
+  let itemName = cleanText.includes("会费") ? "社会团体会费" : "非税规费";
+  const mTableItem = cleanText.match(/(?:项目名称|项目编码)[\s\S]*?(?:\d{3,6})?\s+([\u4e00-\u9fa50-9（）()]{2,25}(?:会费|费用|款|费|金|费))\s+(?:年|次|吨|人|月|套|件|批|项)/);
+  if (mTableItem) {
+    itemName = mTableItem[1].trim();
+  } else {
+    const mItemFee = cleanText.match(
+      /([\u4e00-\u9fa50-9（）()]{2,25}(?:会费|社会团体会费|会员费|污水处理费|水资源费|水费|电费|学费|住宿费|管理费|排污费|垃圾处理费|规费|服务费|捐赠款|医疗费|培训费|考试费))/
+    );
+    if (mItemFee) {
+      itemName = mItemFee[1].trim();
+    }
   }
 
   const items = [{
     id: `item-${Date.now()}-1`,
-    name: `*规费*${itemName}`,
+    name: `*财政票据*${itemName}`,
     amount: totalAmountWithTax,
     quantity: 1,
     taxRate: "免税",
@@ -796,8 +803,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     return parseRailwayTicketTemplate(cleanText, fileName);
   }
 
-  // 2. 财政非税收入票据专属模板
-  if (/非税收入|统一票据|财政电子|医疗收费|学杂费/.test(cleanText)) {
+  // 2. 财政电子票据专属模板（非税收入、社会团体会费、公益捐赠、医疗收费、学杂费等财政部监制票据）
+  if (/非税收入|社会团体|团体会费|会费统一票据|统一票据|财政电子|财政部监制|财政局监制|捐赠统一票据|医疗收费|学杂费/.test(cleanText)) {
     return parseNonTaxInvoiceTemplate(cleanText, fileName);
   }
 
