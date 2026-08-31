@@ -176,26 +176,39 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
   const mTax = cleanText.match(/(?:统一社会信用代码|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/);
   if (mTax) buyerTaxId = mTax[1];
 
+  // 3. 乘车人姓名与脱敏身份证 (支持 10位/6位前缀 + 4星/8星/x 等全格式国铁脱敏及护照)
   let passengerName = "";
   let passengerId = "";
-  const mMasked = cleanText.match(/\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b[\s\n\r]*([\u4e00-\u9fa5]{2,4})(?=[\s\n\r0-9A-Za-z]|$)/) ||
-                  cleanText.match(/([\u4e00-\u9fa5]{2,4})[\s\n\r]*\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b/);
+  const passengerBlacklist = /中国|国家|铁路|集团|有限|开票|发票|客票|网站|总局|税务|购买|信息|说明|服务|南京|北京|上海|广州|深圳|杭州|武汉|成都|二等|一等|商务|硬卧|软卧|硬座|无座|车票|票价|合计|金额|人民币|元整/;
+
+  const mMasked = 
+    cleanText.match(/\b([1-9]\d{2,11}[\*\.\-xX·•★※_]{2,10}\d{1,6}[0-9Xx]?)\b[\s\n\r]*([\u4e00-\u9fa5]{2,4})(?=[\s\n\r0-9A-Za-z]|$)/) ||
+    cleanText.match(/([\u4e00-\u9fa5]{2,4})[\s\n\r]*\b([1-9]\d{2,11}[\*\.\-xX·•★※_]{2,10}\d{1,6}[0-9Xx]?)\b/) ||
+    // 完整 18 位身份证
+    cleanText.match(/\b([1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[0-9Xx])\b[\s\n\r]*([\u4e00-\u9fa5]{2,4})/) ||
+    cleanText.match(/([\u4e00-\u9fa5]{2,4})[\s\n\r]*\b([1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[0-9Xx])\b/) ||
+    // 护照/港澳台通行证
+    cleanText.match(/\b([GEHMPSCDT]\d{7,8})\b[\s\n\r]*([\u4e00-\u9fa5]{2,4})/) ||
+    cleanText.match(/([\u4e00-\u9fa5]{2,4})[\s\n\r]*\b([GEHMPSCDT]\d{7,8})\b/);
+
   if (mMasked) {
-    if (/[1-9]/.test(mMasked[1].slice(0, 1))) {
+    if (/[0-9GEHMPSCDT]/.test(mMasked[1].slice(0, 1))) {
       passengerId = mMasked[1];
-      passengerName = mMasked[2];
+      const cand = mMasked[2].trim();
+      if (!passengerBlacklist.test(cand)) passengerName = cand;
     } else {
       passengerId = mMasked[2];
-      passengerName = mMasked[1];
+      const cand = mMasked[1].trim();
+      if (!passengerBlacklist.test(cand)) passengerName = cand;
     }
   }
+
   if (!passengerName) {
-    const mDirectP = cleanText.match(/(?:乘车人|旅客姓名|姓名)[:：\s]*([\u4e00-\u9fa5]{2,4})(?=[\s\n\r0-9A-Za-z]|$)/);
-    if (mDirectP && !/中国|铁路|发票|客票|网站|总局|税务/.test(mDirectP[1])) {
-      passengerName = mDirectP[1];
+    const mDirectP = cleanText.match(/(?:乘车人|旅客姓名|乘机人|出行人|姓名)[:：\s]*([\u4e00-\u9fa5]{2,4})(?=[\s\n\r0-9A-Za-z]|$)/);
+    if (mDirectP && !passengerBlacklist.test(mDirectP[1])) {
+      passengerName = mDirectP[1].trim();
     }
   }
-  if (!passengerName) passengerName = "张三";
 
   const mTrainNo = cleanText.match(/\b([GDCKTZYS][0-9]{1,4})\b/i) || cleanText.match(/\b(?!202\d|203\d|19\d\d)([1-9][0-9]{3})\b/);
   let trainNo = mTrainNo ? mTrainNo[1].toUpperCase() : "";
@@ -225,6 +238,7 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
 
   const trainRoute = startStation && endStation ? `${startStation}站 ${trainNo} ${endStation}站` : (trainNo ? `${trainNo} 铁路客票` : "铁路电子客票");
 
+  // 5. 发车时间
   let trainDepartureTime = "";
   const mFullDep = cleanText.match(/(\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日)[\s\n\rA-Za-z0-9车号座卧]*?(\d{1,2}[:：]\d{2}(?:\s*开)?)/);
   if (mFullDep) {
@@ -234,6 +248,7 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
     trainDepartureTime = `${d} ${t}`;
   }
 
+  // 6. 票价金额
   let totalAmountWithTax = 0;
   const mPrice = cleanText.match(/(?:票价|车票票价|合计|金额|小写)\s*[:：]?\s*[¥￥]?\s*([0-9,，\s]+\.\s*\d{2})/) ||
                  cleanText.match(/[¥￥]\s*([0-9,，\s]+\.\s*\d{2})/);
@@ -244,7 +259,7 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
   const remarks = trainDepartureTime ? `${trainRoute} ${trainDepartureTime}` : trainRoute;
   const items = [{
     id: `item-${Date.now()}-1`,
-    name: `乘车: ${passengerName}`,
+    name: passengerName ? `乘车: ${passengerName}` : "铁路客运服务",
     amount: totalAmountWithTax,
     quantity: 1,
     taxRate: "0%",

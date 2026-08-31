@@ -270,7 +270,7 @@ export async function processInvoiceFileUnified(
       ? [
           {
             id: `item-${Date.now()}-1`,
-            name: `乘车: ${resolvedPassengerName || "张三"}`,
+            name: resolvedPassengerName ? `乘车: ${resolvedPassengerName}` : "铁路客票/客运服务",
             amount: totalAmt,
             quantity: 1,
             taxRate: rawData.taxRate || "0%",
