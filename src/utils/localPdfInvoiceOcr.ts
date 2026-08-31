@@ -457,6 +457,24 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
   const headerSectionMatch = cleanText.match(/[\s\S]*?(?=(?:项目名称|规格型号|货物或应税|合\s*计|价税合计|$))/);
   const headerSection = headerSectionMatch ? headerSectionMatch[0] : cleanText;
 
+  // 实体名称专用深度清洗器（剔除数电发票左右边框竖排散落的 "购 买 销 售 方 信 息" 字样）
+  const cleanPartyEntityName = (rawVal: string): string => {
+    if (!rawVal) return "";
+    let val = rawVal.trim();
+    val = val.replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
+    val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+    
+    // 清洗开头处散落的数电发票边框字 (如 "买 售 北京xxx科技...")
+    val = val.replace(/^(?:[购买销售方信息\s|/\\-])+/, "").trim();
+    // 清洗结尾处散落的数电发票边框字 (如 "北京xxx科技有限公司 售", "广州xxx有限公司 方")
+    val = val.replace(/[\s\n\r]+(?:购|买|销|售|方|信|息)+$/, "").trim();
+    val = val.replace(/(?:公司|分公司|厂|院|店|社|所|部|局|行|中心|委员会|大学|小学|中学|企业|集团|组织)(?:[购买销售方信息\s]+)$/, (m) => {
+      return m.replace(/[购买销售方信息\s]+$/, "");
+    }).trim();
+
+    return val;
+  };
+
   // 提取所有 "名称:" 实体 (严格排除 "项目名称" / "服务名称" / "货物名称")
   const nameRegex = /(?<!项目|服务|劳务|货物)(?:名\s*称)[:：\s]*([^\n\r\t]+)/g;
   const nameEntries: string[] = [];
@@ -464,8 +482,7 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
   while ((mNameMatch = nameRegex.exec(headerSection)) !== null) {
     const parts = mNameMatch[1].split(/(?:(?<!项目|服务|劳务|货物)名\s*称[:：\s]*|销\s*售\s*方|购\s*买\s*方)/);
     for (const p of parts) {
-      let val = p.replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
-      val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+      const val = cleanPartyEntityName(p);
       if (
         val.length >= 2 &&
         !/^(?:统一社会|纳税人|信用代码|地址|电话|发票|项目|货物|规格|金额|税率|税额|单位|数量)/.test(val) &&
@@ -481,7 +498,7 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
     const mDirectBuyer = headerSection.match(/(?:购\s*买\s*方|客\s*户|抬\s*头|交\s*款\s*人)(?:信息)?[:：\s]*([^\n\r\t]{2,50})/);
     if (mDirectBuyer) {
       let val = mDirectBuyer[1].replace(/^(?:名称|名\s*称)[:：\s]*/, "").replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|销\s*售\s*方).*/, "").trim();
-      val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+      val = cleanPartyEntityName(val);
       if (val.length >= 2 && !nameEntries.includes(val) && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) {
         nameEntries.unshift(val);
       }
@@ -489,7 +506,7 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
     const mDirectSeller = headerSection.match(/(?:销\s*售\s*方|出\s*票\s*单\s*位|出\s*票\s*机\s*构|收\s*款\s*单\s*位|开\s*票\s*单\s*位)(?:信息)?[:：\s]*([^\n\r\t]{2,50})/);
     if (mDirectSeller) {
       let val = mDirectSeller[1].replace(/^(?:名称|名\s*称)[:：\s]*/, "").replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|备\s*注).*/, "").trim();
-      val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+      val = cleanPartyEntityName(val);
       if (val.length >= 2 && !nameEntries.includes(val) && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) {
         nameEntries.push(val);
       }
@@ -509,15 +526,15 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
   }
 
   if (nameEntries.length >= 2) {
-    buyerName = nameEntries[0];
-    sellerName = nameEntries[1];
+    buyerName = cleanPartyEntityName(nameEntries[0]);
+    sellerName = cleanPartyEntityName(nameEntries[1]);
   } else if (nameEntries.length === 1) {
     const namePos = headerSection.indexOf(nameEntries[0]);
     const sellerPos = headerSection.indexOf("销售方");
     if (sellerPos !== -1 && namePos > sellerPos) {
-      sellerName = nameEntries[0];
+      sellerName = cleanPartyEntityName(nameEntries[0]);
     } else {
-      buyerName = nameEntries[0];
+      buyerName = cleanPartyEntityName(nameEntries[0]);
     }
   }
 
