@@ -337,52 +337,13 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
   }
 
   // 划分发票的 表头区、中间明细区、底部结算区
-  const tableIndex = cleanText.search(/(?:项\s*目\s*编\s*码|项\s*目\s*名\s*称|货\s*物\s*或\s*应\s*税)/);
+  const tableIndex = cleanText.search(/(?:项\s*目\s*编\s*码|项\s*目\s*名\s*称|货\s*物\s*或\s*应\s*税|金\s*额\s*合\s*计|其\s*他\s*信\s*息|其\s*它\s*信\s*息|收\s*款\s*单\s*位)/);
   const footerIndex = cleanText.search(/(?:收\s*款\s*单\s*位|其\s*他\s*信\s*息|其\s*它\s*信\s*息|金\s*额\s*合\s*计|合\s*计)/);
 
   const headerSection = tableIndex !== -1 ? cleanText.slice(0, tableIndex) : cleanText;
   const footerSection = footerIndex !== -1 ? cleanText.slice(footerIndex) : cleanText;
 
-  // 2. 交款人信息 (购买方网格锚点：交款人)
-  let buyerName = "个人";
-  // 策略 A: 匹配同行或明确声明的交款人
-  const payerMatches = Array.from(
-    headerSection.matchAll(
-      /(?:(?:^|[\s\n\r])(?:交\s*款\s*人|交\s*款\s*单\s*位|客\s*户|付\s*款\s*人|交\s*款\s*方|购\s*买\s*方|购\s*买\s*单\s*位))(?:\s*[（(][^）)]+[）)])?(?![\s\t]*(?:统一社会信用|统一信用|纳税人识别|纳税人|信用代码|税号|代码|识别号))[:：\s]*([^\n\r\t]+)/g
-    )
-  );
-
-  for (const m of payerMatches) {
-    let b = m[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码|项目编码|项目名称|代码).*/, "").trim();
-    b = cleanPartyEntityName(b);
-    if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码|校验码|开票日期|代码|税号|项目)/.test(b)) {
-      buyerName = b;
-      break;
-    }
-  }
-
-  // 策略 B: 换行或者单独企业/机构实体扫描
-  if (buyerName === "个人") {
-    const candidateEntities = Array.from(
-      headerSection.matchAll(/([\u4e00-\u9fa5]{4,40}(?:有限责任公司|股份有限公司|有限公司|分公司|公司|学校|局|院|所|中心|委员会|大学|小学|中学|企业|集团|协会|学会|联合会|商会|基金会|部|队|馆|社))/g)
-    ).map(m => cleanPartyEntityName(m[1])).filter(e => !/^(?:非税收入|统一票据|电子票据|财政部|财政局|社会团体|交款人|收款单位)/.test(e));
-
-    if (candidateEntities.length > 0) {
-      buyerName = candidateEntities[0];
-    }
-  }
-
-  // 3. 统一社会信用代码 (交款人税号)
-  let buyerTaxId = "";
-  const mTax = cleanText.match(/(?:交\s*款\s*人\s*统\s*一\s*社\s*会\s*信\s*用\s*代\s*码|交\s*款\s*人\s*统\s*一\s*信\s*用\s*代\s*码|交\s*款\s*人\s*纳\s*税\s*人\s*识\s*别\s*号|统\s*一\s*社\s*会\s*信\s*用\s*代\s*码|纳\s*税\s*人\s*识\s*别\s*号|信\s*用\s*代\s*码|税\s*号)[:：\s]*([A-Za-z0-9]{15,20})/);
-  if (mTax) {
-    buyerTaxId = mTax[1].trim();
-  } else {
-    const mCreditCode = headerSection.match(/\b([1-9A-GY][1-9]\d{5}[0-9A-HJ-NPQRTUWXY]{10}[0-9A-HJ-NPQRTUWXY]?)\b/);
-    if (mCreditCode) buyerTaxId = mCreditCode[1];
-  }
-
-  // 4. 收款单位（章）
+  // 1. 先提取收款单位（章）- 销售方网格锚点
   let sellerName = "出票服务单位";
   const mPayee = cleanText.match(/(?:收\s*款\s*单\s*位\s*(?:（\s*章\s*）|\(\s*章\s*\)|（章）|\(章\))?|执\s*贴\s*单\s*位|开\s*票\s*单\s*位|收\s*款\s*方|出\s*票\s*机\s*构)[:：\s]*([^\n\r\t]+)/);
   if (mPayee) {
@@ -405,6 +366,45 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
 
   if (sellerName === "出票服务单位" && cleanText.includes("自来水")) {
     sellerName = "北京市自来水集团有限责任公司";
+  }
+
+  // 2. 交款人信息 (购买方网格锚点：交款人)
+  let buyerName = "个人";
+  // 策略 A: 匹配同行或换行的交款人
+  const payerMatches = Array.from(
+    headerSection.matchAll(
+      /(?:(?:^|[\s\n\r])(?:交\s*款\s*人|交\s*款\s*单\s*位|客\s*户|付\s*款\s*人|交\s*款\s*方|购\s*买\s*方|购\s*买\s*单\s*位))(?:\s*[（(][^）)]+[）)])?(?![\s\t]*(?:统一社会信用|统一信用|纳税人识别|纳税人|信用代码|税号|代码|识别号))[:：\s]*\n*([^\n\r\t]+)/g
+    )
+  );
+
+  for (const m of payerMatches) {
+    let b = m[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码|项目编码|项目名称|代码).*/, "").trim();
+    b = cleanPartyEntityName(b);
+    if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码|校验码|开票日期|代码|税号|项目)/.test(b) && b !== sellerName) {
+      buyerName = b;
+      break;
+    }
+  }
+
+  // 策略 B: 从表头区扫描政府机关、企事业单位或社会机构（支持联络处/办事处/政府）
+  if (buyerName === "个人") {
+    const candidateEntities = Array.from(
+      headerSection.matchAll(/([\u4e00-\u9fa5]{4,40}(?:有限责任公司|股份有限公司|有限公司|分公司|公司|学校|局|院|所|中心|委员会|大学|小学|中学|企业|集团|组织|协会|学会|联合会|商会|基金会|政府|联络处|办事处|部|队|馆|社))/g)
+    ).map(m => cleanPartyEntityName(m[1])).filter(e => !/^(?:非税收入|统一票据|电子票据|财政部|财政局|社会团体|交款人|收款单位)/.test(e) && e !== sellerName);
+
+    if (candidateEntities.length > 0) {
+      buyerName = candidateEntities[0];
+    }
+  }
+
+  // 3. 统一社会信用代码 (交款人税号)
+  let buyerTaxId = "";
+  const mTax = cleanText.match(/(?:交\s*款\s*人\s*统\s*一\s*社\s*会\s*信\s*用\s*代\s*码|交\s*款\s*人\s*统\s*一\s*信\s*用\s*代\s*码|交\s*款\s*人\s*纳\s*税\s*人\s*识\s*别\s*号|统\s*一\s*社\s*会\s*信\s*用\s*代\s*码|纳\s*税\s*人\s*识\s*别\s*号|信\s*用\s*代\s*码|税\s*号)[:：\s]*([A-Za-z0-9]{15,20})/);
+  if (mTax) {
+    buyerTaxId = mTax[1].trim();
+  } else {
+    const mCreditCode = headerSection.match(/\b([1-9A-GY][1-9]\d{5}[0-9A-HJ-NPQRTUWXY]{10}[0-9A-HJ-NPQRTUWXY]?)\b/);
+    if (mCreditCode) buyerTaxId = mCreditCode[1];
   }
 
   let totalAmountWithTax = 0;
