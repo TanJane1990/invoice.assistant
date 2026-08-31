@@ -486,37 +486,41 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
 
     // 4. 车次与全国所有出发站/到达站精准匹配
-    const mTrainNo = cleanText.match(/\b([GDCKTZYS][0-9]{1,5})\b/) || cleanText.match(/\b([1-9][0-9]{3})\b/);
-    const trainNo = mTrainNo ? mTrainNo[1] : "";
+    // 严格优先匹配 G/D/C/K/T/Z/Y/S 开头的火车车次（严禁将 2026/2025 年份误识别为车次）
+    const mTrainNo =
+      cleanText.match(/\b([GDCKTZYS][0-9]{1,4})\b/i) ||
+      cleanText.match(/\b(?!202\d|203\d|19\d\d)([1-9][0-9]{3})\b/);
+    let trainNo = mTrainNo ? mTrainNo[1].toUpperCase() : "";
 
     let startStation = "";
     let endStation = "";
 
-    // 模式 A: 车站 车次 车站 (跨越拼音/换行/空格)
-    const mRouteBlock = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)(?:[\s\n\rA-Za-z]+)?\b([GDCKTZYS][0-9]{1,5}|[1-9][0-9]{3})\b(?:[\s\n\rA-Za-z]+)?([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)/);
+    // 模式 A: 始发车站 车次 终到车站 (跨越拼音/换行/空格)
+    const mRouteBlock = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)(?:[^\u4e00-\u9fa50-9]{0,35})\b([GDCKTZYS][0-9]{1,4})\b(?:[^\u4e00-\u9fa50-9]{0,35})([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)/i);
     if (mRouteBlock) {
       const s1 = mRouteBlock[1].replace(/站$/, "").replace(/^(?:始发|乘车|开票|改签|退票)/, "").trim();
       const s2 = mRouteBlock[3].replace(/站$/, "").replace(/^(?:到达|终到|终点)/, "").trim();
-      if (s1.length >= 2 && s2.length >= 2 && !/中国|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|铁路|发票|客票|网站|总局|税务/.test(s2)) {
+      if (s1.length >= 2 && s2.length >= 2 && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s2)) {
         startStation = s1;
         endStation = s2;
+        trainNo = mRouteBlock[2].toUpperCase();
       }
     }
 
-    // 模式 B: 车站 至/到/-> 车站
+    // 模式 B: 始发车站 至/到/-> 终到车站
     if (!startStation || !endStation) {
       const mArrowRoute = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站)?)\s*(?:至|到|➔|->|--|-|—)\s*([\u4e00-\u9fa5]{2,8}(?:站)?)/);
       if (mArrowRoute) {
         const s1 = mArrowRoute[1].replace(/站$/, "").trim();
         const s2 = mArrowRoute[2].replace(/站$/, "").trim();
-        if (s1.length >= 2 && s2.length >= 2 && !/中国|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|铁路|发票|客票|网站|总局|税务/.test(s2)) {
+        if (s1.length >= 2 && s2.length >= 2 && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s2)) {
           startStation = s1;
           endStation = s2;
         }
       }
     }
 
-    // 模式 C: 提取所有包含 "站" 的火车站名
+    // 模式 C: 提取包含 "站" 的火车站名
     if (!startStation || !endStation) {
       const stationMatches = Array.from(cleanText.matchAll(/([\u4e00-\u9fa5]{2,6}站)/g))
         .map(m => m[1].replace(/站$/, ""))

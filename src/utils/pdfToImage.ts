@@ -64,7 +64,17 @@ export async function extractTextFromPdf(pdfDataUri: string): Promise<string> {
     for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
       const page = await pdfDoc.getPage(pageNum);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items
+      const sortedItems = [...(textContent.items || [])].sort((a: any, b: any) => {
+        const yA = a.transform ? a.transform[5] : 0;
+        const yB = b.transform ? b.transform[5] : 0;
+        if (Math.abs(yA - yB) > 6) {
+          return yB - yA; // 从上至下
+        }
+        const xA = a.transform ? a.transform[4] : 0;
+        const xB = b.transform ? b.transform[4] : 0;
+        return xA - xB; // 从左至右
+      });
+      const pageText = sortedItems
         .map((item: any) => item.str || "")
         .join(" ");
       fullText += pageText + "\n";
