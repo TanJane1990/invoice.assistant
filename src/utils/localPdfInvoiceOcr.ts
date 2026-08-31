@@ -316,47 +316,73 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
     issueDate = `${mDate[1]}-${String(mDate[2]).padStart(2, "0")}-${String(mDate[3]).padStart(2, "0")}`;
   }
 
+  // 划分发票的 表头区、中间明细区、底部结算区
+  const tableIndex = cleanText.search(/(?:项目编码|项目名称|货物或应税)/);
+  const footerIndex = cleanText.search(/(?:收款单位|其他信息|其它信息|金额合计|合计)/);
+
+  const headerSection = tableIndex !== -1 ? cleanText.slice(0, tableIndex) : cleanText;
+  const footerSection = footerIndex !== -1 ? cleanText.slice(footerIndex) : cleanText;
+
   // 2. 交款人信息 (购买方网格锚点：交款人)
   let buyerName = "个人";
+  // 策略 A: 匹配同行或明确声明的交款人
   const payerMatches = Array.from(
-    cleanText.matchAll(
+    headerSection.matchAll(
       /(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人|交款方|购买方|购买单位))(?:\s*[（(][^）)]+[）)])?(?![\s\t]*(?:统一社会信用|统一信用|纳税人识别|纳税人|信用代码|税号|代码|识别号))[:：\s]*([^\n\r\t]+)/g
     )
   );
 
   for (const m of payerMatches) {
-    let b = m[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码|项目编码|项目名称).*/, "").trim();
-    b = b.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-    if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码|校验码|开票日期|项目编码|项目名称|代码|税号)/.test(b)) {
+    let b = m[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码|项目编码|项目名称|代码).*/, "").trim();
+    b = cleanPartyEntityName(b);
+    if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码|校验码|开票日期|代码|税号|项目)/.test(b)) {
       buyerName = b;
       break;
     }
   }
 
+  // 策略 B: 换行或者单独企业/机构实体扫描
   if (buyerName === "个人") {
-    const mNextLine = cleanText.match(
-      /(?:(?:^|[\s\n\r])(?:交款人|交款单位|付款人|交款方))(?![\s\t]*(?:统一社会信用|纳税人识别|代码))[:：\s]*[\n\r]+([^\n\r\t]{2,50})/
-    );
-    if (mNextLine) {
-      let b = mNextLine[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码|项目编码|项目名称).*/, "").trim();
-      b = b.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-      if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码|校验码|开票日期|项目编码|项目名称|代码|税号)/.test(b)) {
-        buyerName = b;
-      }
+    const candidateEntities = Array.from(
+      headerSection.matchAll(/([\u4e00-\u9fa5]{4,40}(?:有限责任公司|股份有限公司|有限公司|分公司|公司|学校|局|院|所|中心|委员会|大学|小学|中学|企业|集团|协会|学会|联合会|商会|基金会|部|队|馆|社))/g)
+    ).map(m => cleanPartyEntityName(m[1])).filter(e => !/^(?:非税收入|统一票据|电子票据|财政部|财政局|社会团体|交款人|收款单位)/.test(e));
+
+    if (candidateEntities.length > 0) {
+      buyerName = candidateEntities[0];
     }
   }
 
+  // 3. 统一社会信用代码 (交款人税号)
   let buyerTaxId = "";
-  const mTax = cleanText.match(/(?:交款人统一社会信用代码|交款人统一信用代码|交款人纳税人识别号|统一社会信用代码|纳税人识别号)[:：\s]*([A-Za-z0-9]{8,20})/);
-  if (mTax) buyerTaxId = mTax[1];
-
-  let sellerName = "出票服务单位";
-  const mPayee = cleanText.match(/(?:收款单位（章）|收款单位|执贴单位|开票单位|收款方|出票机构)[:：\s]*([^\n\r\t]+)/);
-  if (mPayee) {
-    let s = mPayee[1].replace(/(?:复核人|收款人|开票人|项目编码|统一社会信用).*/, "").trim();
-    s = s.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-    if (s && s.length >= 2) sellerName = s;
+  const mTax = cleanText.match(/(?:交款人统一社会信用代码|交款人统一信用代码|交款人纳税人识别号|统一社会信用代码|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/);
+  if (mTax) {
+    buyerTaxId = mTax[1].trim();
+  } else {
+    const mCreditCode = headerSection.match(/\b([1-9A-GY][1-9]\d{5}[0-9A-HJ-NPQRTUWXY]{10}[0-9A-HJ-NPQRTUWXY]?)\b/);
+    if (mCreditCode) buyerTaxId = mCreditCode[1];
   }
+
+  // 4. 收款单位（章）
+  let sellerName = "出票服务单位";
+  const mPayee = cleanText.match(/(?:收款单位\s*(?:（\s*章\s*）|\(\s*章\s*\)|（章）|\(章\))?|执贴单位|开票单位|收款方|出票机构)[:：\s]*([^\n\r\t]+)/);
+  if (mPayee) {
+    let s = mPayee[1].replace(/(?:复核人|收款人|开票人|项目编码|统一社会信用|业务专用章|财务专用章|发票专用章|其他信息).*/, "").trim();
+    s = cleanPartyEntityName(s);
+    if (s && s.length >= 2 && !/^(?:复核人|收款人|开票人|统一社会|其他信息)/.test(s)) {
+      sellerName = s;
+    }
+  }
+
+  if (sellerName === "出票服务单位") {
+    const candidatePayees = Array.from(
+      footerSection.matchAll(/([\u4e00-\u9fa5]{4,40}(?:协会|学会|联合会|商会|基金会|办事处|管理局|自来水|燃气|供电|水务|集团|公司|中心|委员会|学校|局|院|所|社))/g)
+    ).map(m => cleanPartyEntityName(m[1])).filter(e => !/^(?:非税收入|统一票据|财政部|财政局|电子票据|收款单位|复核人|收款人|其他信息)/.test(e));
+
+    if (candidatePayees.length > 0) {
+      sellerName = candidatePayees[0];
+    }
+  }
+
   if (sellerName === "出票服务单位" && cleanText.includes("自来水")) {
     sellerName = "北京市自来水集团有限责任公司";
   }
