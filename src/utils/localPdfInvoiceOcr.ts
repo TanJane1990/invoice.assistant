@@ -298,27 +298,27 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
   const invoiceType = "非税收入统一票据";
 
   let invoiceCode = "";
-  const mCode = cleanText.match(/(?:票据代码|发票代码)[:：\s]*(\d{8,12})/);
+  const mCode = cleanText.match(/(?:票\s*据\s*代\s*码|发\s*票\s*代\s*码)[:：\s]*(\d{8,12})/);
   if (mCode) invoiceCode = mCode[1];
 
   let invoiceNumber = "";
-  const mNum = cleanText.match(/(?:票据号码|发票号码|发票号|票据号)[:：\s]*(\d{8,20})/) || cleanText.match(/\b(0\d{9})\b/);
+  const mNum = cleanText.match(/(?:票\s*据\s*号\s*码|发\s*票\s*号\s*码|发\s*票\s*号|票\s*据\s*号)[:：\s]*(\d{8,20})/) || cleanText.match(/\b(0\d{9})\b/);
   if (mNum) invoiceNumber = mNum[1];
 
   let checkCode = "";
-  const mCheck = cleanText.match(/(?:校验码|校\s*验\s*码)[:：\s]*([0-9a-zA-Z]{6,20})/);
+  const mCheck = cleanText.match(/(?:校\s*验\s*码)[:：\s]*([0-9a-zA-Z]{6,20})/);
   if (mCheck) checkCode = mCheck[1].trim();
 
   let issueDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
-  const mDate = cleanText.match(/(?:开票日期|日期)[:：\s]*(\d{4})\s*年?\s*(\d{1,2})\s*月?\s*(\d{1,2})/) ||
+  const mDate = cleanText.match(/(?:开\s*票\s*日\s*期|日\s*期)[:：\s]*(\d{4})\s*年?\s*(\d{1,2})\s*月?\s*(\d{1,2})/) ||
                 cleanText.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
   if (mDate) {
     issueDate = `${mDate[1]}-${String(mDate[2]).padStart(2, "0")}-${String(mDate[3]).padStart(2, "0")}`;
   }
 
   // 划分发票的 表头区、中间明细区、底部结算区
-  const tableIndex = cleanText.search(/(?:项目编码|项目名称|货物或应税)/);
-  const footerIndex = cleanText.search(/(?:收款单位|其他信息|其它信息|金额合计|合计)/);
+  const tableIndex = cleanText.search(/(?:项\s*目\s*编\s*码|项\s*目\s*名\s*称|货\s*物\s*或\s*应\s*税)/);
+  const footerIndex = cleanText.search(/(?:收\s*款\s*单\s*位|其\s*他\s*信\s*息|其\s*它\s*信\s*息|金\s*额\s*合\s*计|合\s*计)/);
 
   const headerSection = tableIndex !== -1 ? cleanText.slice(0, tableIndex) : cleanText;
   const footerSection = footerIndex !== -1 ? cleanText.slice(footerIndex) : cleanText;
@@ -328,7 +328,7 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
   // 策略 A: 匹配同行或明确声明的交款人
   const payerMatches = Array.from(
     headerSection.matchAll(
-      /(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人|交款方|购买方|购买单位))(?:\s*[（(][^）)]+[）)])?(?![\s\t]*(?:统一社会信用|统一信用|纳税人识别|纳税人|信用代码|税号|代码|识别号))[:：\s]*([^\n\r\t]+)/g
+      /(?:(?:^|[\s\n\r])(?:交\s*款\s*人|交\s*款\s*单\s*位|客\s*户|付\s*款\s*人|交\s*款\s*方|购\s*买\s*方|购\s*买\s*单\s*位))(?:\s*[（(][^）)]+[）)])?(?![\s\t]*(?:统一社会信用|统一信用|纳税人识别|纳税人|信用代码|税号|代码|识别号))[:：\s]*([^\n\r\t]+)/g
     )
   );
 
@@ -354,7 +354,7 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
 
   // 3. 统一社会信用代码 (交款人税号)
   let buyerTaxId = "";
-  const mTax = cleanText.match(/(?:交款人统一社会信用代码|交款人统一信用代码|交款人纳税人识别号|统一社会信用代码|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/);
+  const mTax = cleanText.match(/(?:交\s*款\s*人\s*统\s*一\s*社\s*会\s*信\s*用\s*代\s*码|交\s*款\s*人\s*统\s*一\s*信\s*用\s*代\s*码|交\s*款\s*人\s*纳\s*税\s*人\s*识\s*别\s*号|统\s*一\s*社\s*会\s*信\s*用\s*代\s*码|纳\s*税\s*人\s*识\s*别\s*号|信\s*用\s*代\s*码|税\s*号)[:：\s]*([A-Za-z0-9]{15,20})/);
   if (mTax) {
     buyerTaxId = mTax[1].trim();
   } else {
@@ -364,7 +364,7 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
 
   // 4. 收款单位（章）
   let sellerName = "出票服务单位";
-  const mPayee = cleanText.match(/(?:收款单位\s*(?:（\s*章\s*）|\(\s*章\s*\)|（章）|\(章\))?|执贴单位|开票单位|收款方|出票机构)[:：\s]*([^\n\r\t]+)/);
+  const mPayee = cleanText.match(/(?:收\s*款\s*单\s*位\s*(?:（\s*章\s*）|\(\s*章\s*\)|（章）|\(章\))?|执\s*贴\s*单\s*位|开\s*票\s*单\s*位|收\s*款\s*方|出\s*票\s*机\s*构)[:：\s]*([^\n\r\t]+)/);
   if (mPayee) {
     let s = mPayee[1].replace(/(?:复核人|收款人|开票人|项目编码|统一社会信用|业务专用章|财务专用章|发票专用章|其他信息).*/, "").trim();
     s = cleanPartyEntityName(s);
