@@ -318,17 +318,38 @@ function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): Parsed
     issueDate = `${mDate[1]}-${String(mDate[2]).padStart(2, "0")}-${String(mDate[3]).padStart(2, "0")}`;
   }
 
+  // 2. 交款人信息 (购买方网格锚点：交款人)
   let buyerName = "个人";
-  const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人|购买方))(?!统一社会信用|纳税人识别|识别号|税号|代码)[:：\s]*([^\n\r\t]+)/);
-  if (mPayer) {
-    let b = mPayer[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码).*/, "").trim();
+  const payerMatches = Array.from(
+    cleanText.matchAll(
+      /(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人|交款方|购买方|购买单位))(?:\s*[（(][^）)]+[）)])?(?![\s\t]*(?:统一社会信用|统一信用|纳税人识别|纳税人|信用代码|税号|代码|识别号))[:：\s]*([^\n\r\t]+)/g
+    )
+  );
+
+  for (const m of payerMatches) {
+    let b = m[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码|项目编码|项目名称).*/, "").trim();
     b = b.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-    if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码)/.test(b)) {
+    if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码|校验码|开票日期|项目编码|项目名称|代码|税号)/.test(b)) {
       buyerName = b;
+      break;
     }
   }
+
+  if (buyerName === "个人") {
+    const mNextLine = cleanText.match(
+      /(?:(?:^|[\s\n\r])(?:交款人|交款单位|付款人|交款方))(?![\s\t]*(?:统一社会信用|纳税人识别|代码))[:：\s]*[\n\r]+([^\n\r\t]{2,50})/
+    );
+    if (mNextLine) {
+      let b = mNextLine[1].replace(/(?:票据号码|发票号码|统一社会信用|纳税人识别|信用代码|税号|开票日期|校验码|项目编码|项目名称).*/, "").trim();
+      b = b.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+      if (b.length >= 2 && !/^(?:统一社会|纳税人|信用代码|票据号码|校验码|开票日期|项目编码|项目名称|代码|税号)/.test(b)) {
+        buyerName = b;
+      }
+    }
+  }
+
   let buyerTaxId = "";
-  const mTax = cleanText.match(/(?:交款人统一社会信用代码|统一社会信用代码|纳税人识别号)[:：\s]*([A-Za-z0-9]{8,20})/);
+  const mTax = cleanText.match(/(?:交款人统一社会信用代码|交款人统一信用代码|交款人纳税人识别号|统一社会信用代码|纳税人识别号)[:：\s]*([A-Za-z0-9]{8,20})/);
   if (mTax) buyerTaxId = mTax[1];
 
   let sellerName = "出票服务单位";
