@@ -449,48 +449,69 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
     issueDate = `${mDate[1]}-${String(mDate[2]).padStart(2, "0")}-${String(mDate[3]).padStart(2, "0")}`;
   }
 
-  const buyerBlockMatch = cleanText.match(/(?:购\s*买\s*方|交\s*款\s*人|付\s*款\s*人|客\s*户|抬\s*头)[\s\S]*?(?=(?:销\s*售\s*方|收\s*款\s*单\s*位|出\s*票\s*单\s*位|出\s*票\s*机\s*构|密\s*码\s*区|项\s*目\s*名\s*称|合\s*计|$))/);
-  const buyerBlock = buyerBlockMatch ? buyerBlockMatch[0] : "";
-
-  const sellerBlockMatch = cleanText.match(/(?:销\s*售\s*方|收\s*款\s*单\s*位|出\s*票\s*单\s*位|出\s*票\s*机\s*构|开\s*票\s*单\s*位|收\s*款\s*方)[\s\S]*?(?=(?:备\s*注|其\s*他\s*信\s*息|开\s*票\s*人|复\s*核|收\s*款\s*人|$))/);
-  const sellerBlock = sellerBlockMatch ? sellerBlockMatch[0] : "";
-
-  const extractPartyName = (block: string): string => {
-    if (!block) return "";
-    const mName = block.match(/(?:名\s*称)[:：\s]*([^\n\r]+)/);
-    if (mName) {
-      let val = mName[1].replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
-      val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-      if (val && val.length >= 2 && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) return val;
-    }
-    const lines = block.split(/\n+/).map(l => l.trim()).filter(Boolean);
-    for (const line of lines) {
-      if (!/^(?:购买方|销售方|购买方信息|销售方信息|收款方|交款人|付款人|出票机构)$/.test(line)) {
-        let val = line.replace(/^(?:购买方|销售方|名称|名\s*称|交款人|付款人|收款方)[:：\s|/\\-]*/, "").trim();
-        val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-        val = val.replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
-        if (val && val.length >= 2 && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) return val;
-      }
-    }
-    return "";
-  };
-
+  // 2. 购买方与销售方主体及税号提取 (适配数电发票左右双列并排与传统发票上下分块版面)
   let buyerName = "个人";
   let buyerTaxId = "";
-  if (buyerBlock) {
-    const extracted = extractPartyName(buyerBlock);
-    if (extracted) buyerName = extracted;
-    const mTax = buyerBlock.match(/(?:统一社会信用代码|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/);
-    if (mTax) buyerTaxId = mTax[1];
-  }
-
   let sellerName = "出票服务单位";
   let sellerTaxId = "";
-  if (sellerBlock) {
-    const extracted = extractPartyName(sellerBlock);
-    if (extracted) sellerName = extracted;
-    const mTax = sellerBlock.match(/(?:统一社会信用代码|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/);
-    if (mTax) sellerTaxId = mTax[1];
+
+  // 截取发票表头主体信息区（在项目名称/规格型号/货物或应税劳务/合计之前）
+  const headerSectionMatch = cleanText.match(/[\s\S]*?(?=(?:项目名称|规格型号|货物或应税|合\s*计|价税合计|$))/);
+  const headerSection = headerSectionMatch ? headerSectionMatch[0] : cleanText;
+
+  // 提取所有 "名称:" 实体 (严格排除 "项目名称" / "服务名称" / "货物名称")
+  const nameRegex = /(?<!项目|服务|劳务|货物)(?:名\s*称)[:：\s]*([^\n\r\t]+)/g;
+  const nameEntries: string[] = [];
+  let mNameMatch: RegExpExecArray | null;
+  while ((mNameMatch = nameRegex.exec(headerSection)) !== null) {
+    const parts = mNameMatch[1].split(/(?:(?<!项目|服务|劳务|货物)名\s*称[:：\s]*|销\s*售\s*方|购\s*买\s*方)/);
+    for (const p of parts) {
+      let val = p.replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
+      val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+      if (
+        val.length >= 2 &&
+        !/^(?:统一社会|纳税人|信用代码|地址|电话|发票|项目|货物|规格|金额|税率|税额|单位|数量)/.test(val) &&
+        !/(?:规格型号|单位|数量|单价|金额|税率|税额)/.test(val)
+      ) {
+        nameEntries.push(val);
+      }
+    }
+  }
+
+  // 提取所有 15-20 位税号
+  const taxIdMatches = Array.from(
+    headerSection.matchAll(/(?:统一社会信用代码(?:\/纳税人识别号)?|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/g)
+  ).map(m => m[1]);
+
+  if (taxIdMatches.length === 0) {
+    const rawTaxIds = Array.from(headerSection.matchAll(/\b([A-Za-z0-9]{15,20})\b/g))
+      .map(m => m[1])
+      .filter(id => !/^\d{20}$/.test(id) && !id.startsWith("202") && !id.startsWith("26"));
+    taxIdMatches.push(...rawTaxIds);
+  }
+
+  if (nameEntries.length >= 2) {
+    buyerName = nameEntries[0];
+    sellerName = nameEntries[1];
+  } else if (nameEntries.length === 1) {
+    const namePos = headerSection.indexOf(nameEntries[0]);
+    const sellerPos = headerSection.indexOf("销售方");
+    if (sellerPos !== -1 && namePos > sellerPos) {
+      sellerName = nameEntries[0];
+    } else {
+      buyerName = nameEntries[0];
+    }
+  }
+
+  if (taxIdMatches.length >= 2) {
+    buyerTaxId = taxIdMatches[0];
+    sellerTaxId = taxIdMatches[1];
+  } else if (taxIdMatches.length === 1) {
+    if (sellerName !== "出票服务单位" && buyerName === "个人") {
+      sellerTaxId = taxIdMatches[0];
+    } else {
+      buyerTaxId = taxIdMatches[0];
+    }
   }
 
   let totalAmountWithTax = 0;
