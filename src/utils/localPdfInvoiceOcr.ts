@@ -341,13 +341,15 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
   const cleanOrgOrPersonName = (rawName?: string): string => {
     if (!rawName) return "";
-    let name = rawName
-      .replace(/^(?:信息|名称|名\s*称|购买方|销售方|出票机构|开票单位|收款单位|付款人|交款人|抬头|客户)[:：\s|/\\-]*/, "")
-      .replace(/^[（(][^）)]+[）)][:：\s]*/, "")
-      .replace(/^(?:有限责任公司代收|代收)\s*/, "")
-      .replace(/(?:销售方|购买方|纳税人识别号|统一社会信用代码|纳税人|信用代码|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码|开票人|收款人|复核|发票号码|开票日期|税率|税额|金额|项目名称).*/, "")
-      .replace(/^[\s0-9a-zA-Z._\-\/]{4,}\s*(?=[\u4e00-\u9fa5]{2,})/, "")
-      .trim();
+    let name = rawName.trim();
+    const mPrefix = name.match(/^(?:信息|名称|名\s*称|购买方|销售方|出票机构|开票单位|收款单位|付款人|交款人|抬头|客户)[:：\s|/\\-]*(.*)/);
+    if (mPrefix) {
+      name = mPrefix[1].trim();
+    }
+    const mOrgEntity = name.match(new RegExp(`([\\u4e00-\\u9fa5（）()·]{2,45}(?:${ORG_SUFFIX_REGEX_PART}))`));
+    if (mOrgEntity) {
+      name = mOrgEntity[1].trim();
+    }
 
     if (!isValidOrgOrPersonName(name)) {
       return "";
@@ -356,7 +358,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   };
 
   const mPayer =
-    cleanText.match(/(?:购买方(?:[^\n\r]{0,40}?)(?:名称|名\s*称)|购买方|客户|交款人|交款单位|付款人|抬头)(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/) ||
+    cleanText.match(new RegExp(`(?:购买方[\\s\\S]{0,40}?(?:名称|名\\s*称)|购买方|客户|交款人|交款单位|付款人|抬头)(?:\\s*[（(][^）)]+[）)])?[:：\\s|/\\\\-]*([\\u4e00-\\u9fa5（）()·]{2,45}(?:${ORG_SUFFIX_REGEX_PART}))`)) ||
     cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|交款单位|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
   if (mPayer) {
     const cleaned = cleanOrgOrPersonName(mPayer[1]);
@@ -366,7 +368,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
 
   const mPayee =
-    cleanText.match(/(?:销售方(?:[^\n\r]{0,40}?)(?:名称|名\s*称)|销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/) ||
+    cleanText.match(new RegExp(`(?:销售方[\\s\\S]{0,40}?(?:名称|名\\s*称)|销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\\s)*(?:名称)?[:：\\s]*([\\u4e00-\\u9fa5（）()·]{2,45}(?:${ORG_SUFFIX_REGEX_PART}))`)) ||
     cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayee) {
     const cleaned = cleanOrgOrPersonName(mPayee[1]);
@@ -390,7 +392,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     sellerName = "中国国家铁路集团有限公司";
     sellerTaxId = "-";
 
-    // 1. 购买方名称提取 (优先匹配机关、企业、高校、事业单位全称，过滤干扰词)
+    // 1. 购买方名称提取 (正向完整匹配机关、企业、高校、事业单位全称)
     let rawBuyer = "";
     const mTrainBuyerOrg = cleanText.match(new RegExp(`(?:购买方|购买方名称|抬头|客户|交款人)[\\s\\S]{0,60}?([\\u4e00-\\u9fa5（）()·]{3,45}(?:${ORG_SUFFIX_REGEX_PART}))`));
     if (mTrainBuyerOrg) {
@@ -414,14 +416,13 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     const passengerBlacklist = /开票|日期|发票|客票|铁路|购买|始发|改签|乘车|总局|国家|名称|统一|社会|信用|代码|中国|愉快|旅途|请到|车票|票价|旅客|乘机|出行|席位|座位|信息/;
 
-    // 2. 乘车人与脱敏身份证
+    // 2. 乘车人与脱敏身份证 (正向定界提取)
     const mMasked1 =
-      cleanText.match(/\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/) ||
-      cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/);
+      cleanText.match(/\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b[\s\n\r]*([\u4e00-\u9fa5]{2,4})(?=[\s\n\r0-9A-Za-z]|$)/) ||
+      cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})[\s\n\r]*([\u4e00-\u9fa5]{2,4})(?=[\s\n\r0-9A-Za-z]|$)/);
     if (mMasked1) {
       passengerId = mMasked1[1];
-      let candidateName = mMasked1[2].replace(/\s+/g, "");
-      candidateName = candidateName.replace(/(?:电子|客票|发票|号码|代码|开票|乘车|始发|改签|退票|补票).*/, "").trim();
+      let candidateName = mMasked1[2].trim();
       if (candidateName.length >= 2 && !passengerBlacklist.test(candidateName)) {
         passengerName = candidateName;
       }
@@ -429,11 +430,10 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     if (!passengerName) {
       const mMasked2 =
-        cleanText.match(/([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})[\s\n\r]*\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b/) ||
-        cleanText.match(/([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})[\s\n\r]*(\d{4,10}\*{2,8}\d{2,6})/);
+        cleanText.match(/([\u4e00-\u9fa5]{2,4})[\s\n\r]*\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b/) ||
+        cleanText.match(/([\u4e00-\u9fa5]{2,4})[\s\n\r]*(\d{4,10}\*{2,8}\d{2,6})/);
       if (mMasked2) {
-        let candidateName = mMasked2[1].replace(/\s+/g, "");
-        candidateName = candidateName.replace(/(?:电子|客票|发票|号码|代码|开票|乘车|始发|改签|退票|补票).*/, "").trim();
+        let candidateName = mMasked2[1].trim();
         if (candidateName.length >= 2 && !passengerBlacklist.test(candidateName)) {
           passengerName = candidateName;
           passengerId = mMasked2[2];
@@ -442,9 +442,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
 
     if (!passengerName) {
-      const mDirectPassenger = cleanText.match(/(?:乘车人|旅客姓名|乘机人|出行人|姓名)[:：\s]*([\u4e00-\u9fa5]{2,4})/);
+      const mDirectPassenger = cleanText.match(/(?:乘车人|旅客姓名|乘机人|出行人|姓名)[:：\s]*([\u4e00-\u9fa5]{2,4})(?=[\s\n\r0-9A-Za-z]|$)/);
       if (mDirectPassenger && !passengerBlacklist.test(mDirectPassenger[1])) {
-        passengerName = mDirectPassenger[1].replace(/(?:电子|客票|发票|号码|代码|开票).*/, "").trim();
+        passengerName = mDirectPassenger[1].trim();
       }
     }
 
