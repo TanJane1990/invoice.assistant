@@ -214,23 +214,25 @@ export async function processInvoiceFileUnified(
     ? "交通费"
     : (rawData.category as any) || "其他";
 
-  const resolvedPassengerName = rawData.passengerName || (isTrainTicket ? "张三" : undefined);
-  const rawRoute = rawData.trainRoute || "南京南站 G2789 江宁西站";
-  const resolvedTrainRoute = isTrainTicket
+  const resolvedPassengerName = rawData.passengerName || undefined;
+  const rawRoute = rawData.trainRoute || "";
+  const resolvedTrainRoute = isTrainTicket && rawRoute
     ? (rawRoute.includes("站") ? rawRoute : rawRoute.replace(/([^\s-]+)[-至]([^\s]+)\s*([A-Z0-9]+)/, "$1站 $3 $2站"))
     : rawData.trainRoute;
 
   const departureTime = rawData.trainDepartureTime || "";
   let resolvedRemarks = rawData.remarks || fileName;
   if (isTrainTicket) {
-    if (rawData.remarks && rawData.remarks !== fileName && rawData.remarks !== "发票识别") {
+    if (rawData.remarks && rawData.remarks !== fileName && rawData.remarks !== "发票识别" && !rawData.remarks.includes("南京南站 G2789")) {
       resolvedRemarks = rawData.remarks;
     } else if (resolvedTrainRoute && departureTime) {
       resolvedRemarks = `${resolvedTrainRoute} ${departureTime}`;
+    } else if (resolvedTrainRoute) {
+      resolvedRemarks = resolvedTrainRoute;
     } else if (departureTime) {
       resolvedRemarks = departureTime;
     } else {
-      resolvedRemarks = resolvedTrainRoute || "南京南站 G2789 江宁西站";
+      resolvedRemarks = "铁路电子客票";
     }
   }
 

@@ -305,34 +305,49 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let trainDepartureTime = "";
   let trainSeat = "";
 
-  const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
-  if (mPayer) {
-    let rawPayer = mPayer[1].replace(/^(信息|名称)[:：\s]*/, "").trim();
-    rawPayer = rawPayer.replace(/^[（(][\s\S]*?[）)][:：\s]*/, "").trim();
-    rawPayer = rawPayer.replace(/^[\s|/\\:：_.\-]+/, "").trim();
-    rawPayer = rawPayer.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
-    if (rawPayer.includes("个人")) {
-      rawPayer = "个人";
+  const isValidOrgOrPersonName = (name?: string): boolean => {
+    if (!name) return false;
+    const trimmed = name.trim();
+    if (trimmed.length < 2 || trimmed.length > 50) return false;
+    // 拦截非法开头（地址、电话、纳税人、开户行、银行账号、密码、项目、规格、金额、开票人等）
+    if (/^(?:地\s*址|电\s*话|纳税人|统一社会信用|信用代码|税号|开户行|账\s*号|密\s*码|开票人|收款人|复核|备\s*注|项\s*目|规\s*格|价\s*税|金\s*额|税\s*率|税\s*额|车次|乘车|座席|车票)/.test(trimmed)) {
+      return false;
     }
-    if (!rawPayer.includes("监制章") && !rawPayer.includes("税务总局")) {
-      buyerName = rawPayer;
+    if (trimmed.includes("监制章") || trimmed.includes("发票监制章") || trimmed.includes("国家税务总局")) {
+      return false;
     }
-  }
+    return true;
+  };
 
-  if (!buyerName && (cleanText.includes("个人") || cleanText.includes("交款人"))) {
-    buyerName = "个人";
+  const cleanOrgOrPersonName = (rawName?: string): string => {
+    if (!rawName) return "";
+    let name = rawName
+      .replace(/^(?:信息|名称|名\s*称|购买方|销售方|出票机构|开票单位|收款单位|付款人|交款人|抬头|客户)[:：\s|/\\-]*/, "")
+      .replace(/^[（(][^）)]+[）)][:：\s]*/, "")
+      .replace(/^(?:有限责任公司代收|代收)\s*/, "")
+      .replace(/(?:纳税人识别号|统一社会信用代码|纳税人|信用代码|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "")
+      .replace(/^[\s0-9a-zA-Z._\-\/]{4,}\s*(?=[\u4e00-\u9fa5]{2,})/, "")
+      .trim();
+
+    if (!isValidOrgOrPersonName(name)) {
+      return "";
+    }
+    return name;
+  };
+
+  const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|交款单位|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
+  if (mPayer) {
+    const cleaned = cleanOrgOrPersonName(mPayer[1]);
+    if (cleaned) {
+      buyerName = cleaned;
+    }
   }
 
   const mPayee = cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayee) {
-    let rawPayee = mPayee[1]
-      .replace(/^(信息|名称)[:：\s]*/, "")
-      .replace(/^(出票服务单位|服务单位|开票单位|收款单位)[:：\s]*/, "")
-      .replace(/^有限责任公司代收\s*/, "")
-      .trim();
-    rawPayee = rawPayee.replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
-    if (!rawPayee.includes("项目名称") && !rawPayee.includes("规格型号") && !rawPayee.includes("监制章") && !rawPayee.includes("统一社会信用")) {
-      sellerName = rawPayee;
+    const cleaned = cleanOrgOrPersonName(mPayee[1]);
+    if (cleaned && !cleaned.includes("项目名称") && !cleaned.includes("出票服务单位")) {
+      sellerName = cleaned;
     }
   }
 
@@ -364,32 +379,18 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
 
     if (rawBuyer) {
-      rawBuyer = rawBuyer
-        .replace(/统一社会信用代码.*/, "")
-        .replace(/^(?:购买方|购买方名称|名称|抬头|客户|信息)[:：\s]*/, "")
-        .replace(/^(?:始发改签|改签|退票|补票|原票|换票)\s*/, "")
-        .trim();
+      rawBuyer = cleanOrgOrPersonName(rawBuyer);
     }
 
-    if (
-      !rawBuyer ||
-      rawBuyer === "名称" ||
-      rawBuyer === "名称:" ||
-      rawBuyer === "名称：" ||
-      rawBuyer === "信息" ||
-      rawBuyer === "购买方信息" ||
-      rawBuyer === "个人" ||
-      rawBuyer.includes("监制章") ||
-      rawBuyer.includes("税务总局")
-    ) {
-      buyerName = "个人";
-    } else {
+    if (rawBuyer && isValidOrgOrPersonName(rawBuyer) && rawBuyer !== "个人") {
       buyerName = rawBuyer;
+    } else {
+      buyerName = "个人";
     }
 
     const passengerBlacklist = /开票|日期|发票|客票|铁路|购买|始发|改签|乘车|总局|国家|名称|统一|社会|信用|代码|中国|愉快|旅途|请到|车票|票价|旅客|乘机|出行|席位|座位|信息/;
 
-    // 2. 模式 A: 脱敏身份证后跟姓名 (如: 25611981****0114 张某某 或 25611981****0114 张 三)
+    // 2. 乘车人与脱敏身份证
     const mMasked1 =
       cleanText.match(/\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/) ||
       cleanText.match(/(\d{4,10}\*{2,8}\d{2,6})[\s\n\r]*([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})/);
@@ -402,7 +403,6 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
 
-    // 模式 B: 姓名后跟脱敏身份证 (如: 张某某 25611981****0114)
     if (!passengerName) {
       const mMasked2 =
         cleanText.match(/([\u4e00-\u9fa5]{1,2}\s*[\u4e00-\u9fa5]{1,2})[\s\n\r]*\b([1-9]\d{5}\d{0,2}\*{2,8}\d{2,4}[0-9Xx]?)\b/) ||
@@ -417,7 +417,6 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
 
-    // 模式 C: 明确标签提取 (如: 乘车人: 某某 / 旅客: 某某)
     if (!passengerName) {
       const mDirectPassenger = cleanText.match(/(?:乘车人|旅客姓名|乘机人|出行人|姓名)[:：\s]*([\u4e00-\u9fa5]{2,4})/);
       if (mDirectPassenger && !passengerBlacklist.test(mDirectPassenger[1])) {
@@ -435,7 +434,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     const mSeat = cleanText.match(/(二等座|一等座|商务座|特等座|硬卧|软卧|硬座|软座|无座)/);
     if (mSeat) trainSeat = mSeat[1];
 
-    // 3. 发车时间/乘车时间 (如: 2026年02月11日 13:54开 或 2025年12月31日 08:00开)
+    // 3. 发车时间 (如: 2026年01月21日 09:01开)
     trainDepartureTime = "";
     const mFullDep =
       cleanText.match(/(\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日)[\s\n\rA-Za-z0-9车号座卧]*?(\d{1,2}[:：]\d{2}(?:\s*开)?)/) ||
@@ -453,10 +452,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
         const allDates = Array.from(cleanText.matchAll(/(\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日)/g))
           .map(m => m[1].replace(/\s+/g, ""));
-        const mIssueDate = cleanText.match(/开票日期[:：\s]*(\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日)/);
-        const issueDateStr = mIssueDate ? mIssueDate[1].replace(/\s+/g, "") : "";
-
-        const depDateCandidate = allDates.find(d => d !== issueDateStr) || allDates[0];
+        const depDateCandidate = allDates[0];
         if (depDateCandidate) {
           trainDepartureTime = `${depDateCandidate} ${tStr}`;
         } else {
@@ -465,47 +461,49 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
 
-    // 4. 车次与始发/终到站 (如: 始发站 G22 终点站 或 始发站 G123 目的站)
-    const mTrainNo = cleanText.match(/\b([GDCKTZY][0-9]{1,5})\b/);
+    // 4. 车次与全国所有出发站/到达站精准匹配
+    const mTrainNo = cleanText.match(/\b([GDCKTZYS][0-9]{1,5})\b/) || cleanText.match(/\b([1-9][0-9]{3})\b/);
     const trainNo = mTrainNo ? mTrainNo[1] : "";
 
     let startStation = "";
     let endStation = "";
 
-    const mRouteBlock = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北)?)(?:[\s\n\r]+[A-Za-z]+)?[\s\n\r]*([GDCKTZY][0-9]{1,5})[\s\n\r]*([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北)?)/);
+    // 模式 A: 车站 车次 车站 (跨越拼音/换行/空格)
+    const mRouteBlock = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)(?:[\s\n\rA-Za-z]+)?\b([GDCKTZYS][0-9]{1,5}|[1-9][0-9]{3})\b(?:[\s\n\rA-Za-z]+)?([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)/);
     if (mRouteBlock) {
-      startStation = mRouteBlock[1].replace(/站$/, "").trim();
-      endStation = mRouteBlock[3].replace(/站$/, "").trim();
-    }
-
-    if (!startStation || !endStation) {
-      const mTwoStations = cleanText.match(/([\u4e00-\u9fa5]{2,8}站)[\s\n\rA-Za-z]*([\u4e00-\u9fa5]{2,8}站)[\s\n\rA-Za-z]*([GDCKTZY][0-9]{1,5})/);
-      if (mTwoStations) {
-        startStation = mTwoStations[1].replace(/站$/, "").trim();
-        endStation = mTwoStations[2].replace(/站$/, "").trim();
+      const s1 = mRouteBlock[1].replace(/站$/, "").replace(/^(?:始发|乘车|开票|改签|退票)/, "").trim();
+      const s2 = mRouteBlock[3].replace(/站$/, "").replace(/^(?:到达|终到|终点)/, "").trim();
+      if (s1.length >= 2 && s2.length >= 2 && !/中国|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|铁路|发票|客票|网站|总局|税务/.test(s2)) {
+        startStation = s1;
+        endStation = s2;
       }
     }
 
+    // 模式 B: 车站 至/到/-> 车站
     if (!startStation || !endStation) {
-      const mArrowRoute = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站)?)\s*(?:至|➔|->|--|-)\s*([\u4e00-\u9fa5]{2,8}(?:站)?)/);
+      const mArrowRoute = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站)?)\s*(?:至|到|➔|->|--|-|—)\s*([\u4e00-\u9fa5]{2,8}(?:站)?)/);
       if (mArrowRoute) {
-        startStation = mArrowRoute[1].replace(/站$/, "").trim();
-        endStation = mArrowRoute[2].replace(/站$/, "").trim();
+        const s1 = mArrowRoute[1].replace(/站$/, "").trim();
+        const s2 = mArrowRoute[2].replace(/站$/, "").trim();
+        if (s1.length >= 2 && s2.length >= 2 && !/中国|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|铁路|发票|客票|网站|总局|税务/.test(s2)) {
+          startStation = s1;
+          endStation = s2;
+        }
       }
     }
 
+    // 模式 C: 提取所有包含 "站" 的火车站名
     if (!startStation || !endStation) {
       const stationMatches = Array.from(cleanText.matchAll(/([\u4e00-\u9fa5]{2,6}站)/g))
         .map(m => m[1].replace(/站$/, ""))
-        .filter(s => !/中国|国家|铁路|集团|有限|开票|发票|客票|网站|总局|税务/.test(s));
+        .filter(s => !/中国|国家|铁路|集团|有限|开票|发票|客票|网站|总局|税务|购买|信息|说明|服务/.test(s));
       if (stationMatches.length >= 2) {
         startStation = stationMatches[0];
         endStation = stationMatches[1];
+      } else if (stationMatches.length === 1) {
+        startStation = stationMatches[0];
       }
     }
-
-    startStation = startStation.replace(/^(?:[年月日期号车开次至从于到])\s*/, "").trim();
-    endStation = endStation.replace(/^(?:[年月日期号车开次至从于到])\s*/, "").trim();
 
     if (startStation && endStation) {
       trainRoute = trainNo ? `${startStation}站 ${trainNo} ${endStation}站` : `${startStation}站 ${endStation}站`;
@@ -540,11 +538,11 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
 
     const mPayerText = cleanText.match(/(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人|购买方|购买单位))(?:\s*[（(][^）)]+[）)])?[:：\s]*([^\n\r\t]{2,50})/) || cleanText.match(new RegExp(`(?:交款人|交款单位|购买方)[\\s\\S]{0,25}?([\\u4e00-\\u9fa5（）()·]{3,45}(?:${ORG_SUFFIX_REGEX_PART}))`));
     if (mPayerText) {
-      let raw = mPayerText[1].replace(/^(?:统一社会信用代码|纳税人识别号)[:：\s]*/, "").replace(/^[（(][\s\S]*?[）)][:：\s]*/, "").replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
-      if (!raw.includes("监制章") && raw !== sellerName) buyerName = raw;
+      let raw = cleanOrgOrPersonName(mPayerText[1]);
+      if (raw && raw !== sellerName) buyerName = raw;
     }
     if (!buyerName || buyerName === sellerName) {
-      const otherComp = companies.find(c => c !== sellerName && !c.includes("自来水") && !c.includes("电网"));
+      const otherComp = companies.find(c => c !== sellerName && isValidOrgOrPersonName(c) && !c.includes("自来水") && !c.includes("电网"));
       if (otherComp) buyerName = otherComp;
       else buyerName = "个人";
     }
@@ -554,47 +552,47 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
     const mPayeeText = cleanText.match(/(?:执贴单位|收款单位|收款人|开票单位|收款方)[^：:\n]*[:：\s]*(?:名\s*称[:：\s]*)?([^\n\r\t]{2,50})/);
     if (mPayeeText) {
-      let raw = mPayeeText[1].replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").replace(/代收$/, "").trim();
-      if (!raw.includes("监制章")) sellerName = raw;
+      let raw = cleanOrgOrPersonName(mPayeeText[1]);
+      if (raw) sellerName = raw;
     }
     if (!sellerName || sellerName === "出票服务单位") {
       const mNonTaxComp = cleanText.match(new RegExp(`([\\u4e00-\\u9fa5（）()·]{3,45}(?:${ORG_SUFFIX_REGEX_PART}))(?:代收)?`));
       if (mNonTaxComp) {
-        sellerName = mNonTaxComp[1].replace(/代收$/, "").trim();
+        sellerName = cleanOrgOrPersonName(mNonTaxComp[1]) || sellerName;
       }
     }
   }
   // 模式 4: 数电发票 / 增值税电子发票
   else {
-    const mDigitalBuyer = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方\s*名\s*称|购\s*买\s*方|客\s*户\s*名\s*称|抬\s*头|交\s*款\s*人)[\s\S]{0,45}?名\s*称\s*[:：]?\s*([^\n\r\t]{2,50})/);
-    if (mDigitalBuyer && !mDigitalBuyer[1].includes("纳税人识别") && !mDigitalBuyer[1].includes("项目名称")) {
-      const name = mDigitalBuyer[1].trim();
-      if (!name.includes("监制章")) buyerName = name;
+    const mDigitalBuyer = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方\s*名\s*称|购\s*买\s*方|客\s*户\s*名\s*称|抬\s*头|交\s*款\s*人)[\s\S]{0,45}?(?:名\s*称[:：\s]*)?([^\n\r\t]{2,50})/);
+    if (mDigitalBuyer) {
+      const name = cleanOrgOrPersonName(mDigitalBuyer[1]);
+      if (name) buyerName = name;
     }
 
     const mDigitalBuyerTaxId = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方)[\s\S]{0,50}?(?:纳税人识别号|统一社会信用代码)\s*[:：]?\s*([A-Za-z0-9]{15,20})/);
     if (mDigitalBuyerTaxId) buyerTaxId = mDigitalBuyerTaxId[1];
 
-    const mDigitalSeller = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方\s*名\s*称|销\s*售\s*方)[\s\S]{0,45}?名\s*称\s*[:：]?\s*([^\n\r\t]{2,50})/);
-    if (mDigitalSeller && !mDigitalSeller[1].includes("纳税人识别") && !mDigitalSeller[1].includes("项目名称")) {
-      const name = mDigitalSeller[1].trim();
-      if (!name.includes("监制章")) sellerName = name;
+    const mDigitalSeller = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方\s*名\s*称|销\s*售\s*方)[\s\S]{0,45}?(?:名\s*称[:：\s]*)?([^\n\r\t]{2,50})/);
+    if (mDigitalSeller) {
+      const name = cleanOrgOrPersonName(mDigitalSeller[1]);
+      if (name) sellerName = name;
     }
 
     const mDigitalSellerTaxId = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方)[\s\S]{0,50}?(?:纳税人识别号|统一社会信用代码)\s*[:：]?\s*([A-Za-z0-9]{15,20})/);
     if (mDigitalSellerTaxId) sellerTaxId = mDigitalSellerTaxId[1];
 
-    if (!sellerName || sellerName.includes("纳税人识别") || sellerName.includes("项目名称") || sellerName === "出票服务单位") {
+    if (!sellerName || !isValidOrgOrPersonName(sellerName) || sellerName === "出票服务单位") {
       if (companies.length > 0) {
         sellerName = companies[0];
       }
     }
 
-    if (!buyerName || buyerName.includes("纳税人识别") || buyerName.includes("项目名称") || buyerName === "个人") {
-      const otherBuyerOrg = companies.find(c => c !== sellerName && !c.includes("国家铁路") && !c.includes("自来水"));
+    if (!buyerName || !isValidOrgOrPersonName(buyerName) || buyerName === "个人") {
+      const otherBuyerOrg = companies.find(c => c !== sellerName && isValidOrgOrPersonName(c) && !c.includes("国家铁路") && !c.includes("自来水"));
       if (otherBuyerOrg) {
         buyerName = otherBuyerOrg;
-      } else if (companies.length >= 2 && companies[1] !== sellerName) {
+      } else if (companies.length >= 2 && companies[1] !== sellerName && isValidOrgOrPersonName(companies[1])) {
         buyerName = companies[1];
       } else {
         buyerName = "个人";
@@ -602,23 +600,28 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  if (!sellerName || sellerName === "出票服务单位") {
+  if (!sellerName || !isValidOrgOrPersonName(sellerName) || sellerName === "出票服务单位") {
     const mHeaderCompany = cleanText.match(/^([^\n\r\t]{3,40}(?:公司|单位|中心|集团))/);
     if (mHeaderCompany) {
-      const comp = mHeaderCompany[1].replace(/(?:电子收据|收据|发票|收款单).*/, "").trim();
-      if (comp && comp.length >= 3 && !comp.includes("监制章") && !comp.includes("发票监制章")) {
+      const comp = cleanOrgOrPersonName(mHeaderCompany[1].replace(/(?:电子收据|收据|发票|收款单).*/, ""));
+      if (comp) {
         sellerName = comp;
       }
     }
   }
 
-  buyerName = (buyerName || "").replace(/^[\s|/\\:：_.\-]+/, "").trim();
-  if (buyerName.includes("个人") || !buyerName) {
-    buyerName = "个人";
+  buyerName = cleanOrgOrPersonName(buyerName) || buyerName;
+  if (!buyerName || buyerName.includes("个人") || buyerName === sellerName) {
+    if (buyerName !== "个人" && companies.length > 0) {
+      const other = companies.find(c => c !== sellerName && isValidOrgOrPersonName(c));
+      buyerName = other || "个人";
+    } else {
+      buyerName = "个人";
+    }
   }
 
-  if (buyerName && sellerName && buyerName === sellerName) {
-    buyerName = "个人";
+  if (sellerName) {
+    sellerName = cleanOrgOrPersonName(sellerName) || sellerName;
   }
 
   // 6. 税号提取
@@ -842,10 +845,12 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   if (invoiceType.includes("铁路") || invoiceType.includes("客票")) {
     if (trainRoute && trainDepartureTime) {
       remarks = `${trainRoute} ${trainDepartureTime}`;
+    } else if (trainRoute) {
+      remarks = trainRoute;
     } else if (trainDepartureTime) {
       remarks = trainDepartureTime;
     } else {
-      remarks = trainRoute || "南京南站 G2789 江宁西站";
+      remarks = "铁路电子客票";
     }
   } else if (invoiceType.includes("航空") || invoiceType.includes("行程单")) {
     const pName = passengerName || "-";
@@ -857,7 +862,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     if (mPeriodRemark) {
       let r = mPeriodRemark[1].replace(/\s+/g, "");
       r = r.replace(/(?:袋?开户行|收款方|名称|账号|开票人|客户|交款人).*/, "").trim();
-      remarks = r || "1-6月生活费";
+      remarks = r || "服务费/生活费";
     } else {
       const mRemark = cleanText.match(/(?:备\s*注|其他信息|其它信息)[：:\s]*([^\n\r]{1,100})/);
       if (mRemark) {

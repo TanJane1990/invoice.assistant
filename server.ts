@@ -60,6 +60,162 @@ async function startServer() {
     });
   };
 
+  // Baidu OCR Token Cache
+  let cachedBaiduToken: { token: string; expiresAt: number; keyHash: string } | null = null;
+
+  async function getBaiduAccessToken(apiKey: string, secretKey: string): Promise<string | null> {
+    const keyHash = `${apiKey}:${secretKey}`;
+    const now = Date.now();
+    if (cachedBaiduToken && cachedBaiduToken.keyHash === keyHash && cachedBaiduToken.expiresAt > now + 60000) {
+      return cachedBaiduToken.token;
+    }
+    try {
+      const tokenUrl = `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${encodeURIComponent(apiKey)}&client_secret=${encodeURIComponent(secretKey)}`;
+      const res = await fetch(tokenUrl, { method: "POST" });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && data.access_token) {
+        cachedBaiduToken = {
+          token: data.access_token,
+          expiresAt: now + ((data.expires_in || 2592000) * 1000),
+          keyHash,
+        };
+        return data.access_token;
+      }
+    } catch (e) {
+      console.warn("Fetch Baidu access token error:", e);
+    }
+    return null;
+  }
+
+  async function callBaiduOcrApi(rawBase64: string, isPdf: boolean, apiKey: string, secretKey: string, fileName?: string): Promise<any | null> {
+    const token = await getBaiduAccessToken(apiKey, secretKey);
+    if (!token) return null;
+
+    const isTrain = fileName?.includes("火车") || fileName?.includes("铁路") || fileName?.includes("客票");
+
+    // 1. 如果是火车票，优先调用百度火车票识别
+    if (isTrain) {
+      try {
+        const trainUrl = `https://aip.baidubce.com/rest/2.0/ocr/v1/train_ticket?access_token=${token}`;
+        const bodyParam = isPdf ? `pdf_file=${encodeURIComponent(rawBase64)}` : `image=${encodeURIComponent(rawBase64)}`;
+        const res = await fetch(trainUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: bodyParam,
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.words_result) {
+            const w = json.words_result;
+            const start = w.starting_station || "";
+            const end = w.destination_station || "";
+            const trainNo = w.train_num || "";
+            const date = w.date || "";
+            const time = w.time || "";
+            const route = (start && end) ? `${start}站 ${trainNo} ${end}站`.trim() : "";
+            const depTime = (date && time) ? `${date} ${time}开` : (date || time);
+            const totalAmt = parseFloat(w.ticket_rates) || 0;
+            return {
+              invoiceType: "电子发票（铁路电子客票）",
+              invoiceCode: "",
+              invoiceNumber: w.ticket_num || "",
+              issueDate: date || new Date().toISOString().split("T")[0],
+              buyerName: "个人",
+              buyerTaxId: "",
+              sellerName: "中国国家铁路集团有限公司",
+              sellerTaxId: "-",
+              totalAmountWithoutTax: totalAmt,
+              totalTaxAmount: 0,
+              totalAmountWithTax: totalAmt,
+              totalAmountWithTaxCN: "",
+              category: "交通费",
+              remarks: route && depTime ? `${route} ${depTime}` : (route || depTime || ""),
+              trainRoute: route,
+              trainDepartureTime: depTime,
+              passengerName: w.name || "",
+              items: [{
+                name: `铁路客票: ${route || (start + "->" + end)}`,
+                amount: totalAmt,
+                quantity: 1,
+                taxRate: "0%",
+                taxAmount: 0
+              }]
+            };
+          }
+        }
+      } catch (e) {
+        console.warn("Baidu train ticket OCR error:", e);
+      }
+    }
+
+    // 2. 增值税发票识别
+    try {
+      const vatUrl = `https://aip.baidubce.com/rest/2.0/ocr/v1/vat_invoice?access_token=${token}&seal_tag=true`;
+      const bodyParam = isPdf ? `pdf_file=${encodeURIComponent(rawBase64)}` : `image=${encodeURIComponent(rawBase64)}`;
+      const res = await fetch(vatUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: bodyParam,
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.words_result) {
+          const w = json.words_result;
+          const totalWithTax = parseFloat(w.AmountInFiguers) || 0;
+          const totalTax = parseFloat(w.TotalTax) || 0;
+          const totalNoTax = parseFloat(w.TotalAmount) || (totalWithTax - totalTax);
+
+          let items: any[] = [];
+          if (Array.isArray(w.CommodityName) && w.CommodityName.length > 0) {
+            items = w.CommodityName.map((cn: any, idx: number) => {
+              const name = cn.word || "";
+              const amt = w.CommodityAmount && w.CommodityAmount[idx] ? parseFloat(w.CommodityAmount[idx].word) || 0 : 0;
+              const tax = w.CommodityTax && w.CommodityTax[idx] ? parseFloat(w.CommodityTax[idx].word) || 0 : 0;
+              const rate = w.CommodityTaxRate && w.CommodityTaxRate[idx] ? w.CommodityTaxRate[idx].word : "0%";
+              return {
+                id: `item-${Date.now()}-${idx}`,
+                name,
+                amount: amt,
+                quantity: 1,
+                taxRate: rate,
+                taxAmount: tax,
+              };
+            });
+          }
+
+          let dateStr = w.InvoiceDate || "";
+          const mD = dateStr.match(/(\d{4})[年/.-](\d{1,2})[月/.-](\d{1,2})/);
+          if (mD) {
+            dateStr = `${mD[1]}-${String(mD[2]).padStart(2, "0")}-${String(mD[3]).padStart(2, "0")}`;
+          }
+
+          return {
+            invoiceType: w.InvoiceType || "增值税电子普通发票",
+            invoiceCode: w.InvoiceCode || "",
+            invoiceNumber: w.InvoiceNum || "",
+            issueDate: dateStr || new Date().toISOString().split("T")[0],
+            checkCode: w.CheckCode || "",
+            buyerName: w.PurchaserName || "个人",
+            buyerTaxId: w.PurchaserRegisterNum || "",
+            sellerName: w.SellerName || "出票服务单位",
+            sellerTaxId: w.SellerRegisterNum || "",
+            totalAmountWithoutTax: totalNoTax,
+            totalTaxAmount: totalTax,
+            totalAmountWithTax: totalWithTax,
+            totalAmountWithTaxCN: w.AmountInWords || "",
+            remarks: w.Remarks || "",
+            items: items.length > 0 ? items : undefined,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("Baidu VAT invoice OCR error:", e);
+    }
+
+    return null;
+  }
+
   // API Health Check
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -517,7 +673,24 @@ async function startServer() {
             });
           }
         } catch (aiErr) {
-          console.warn("Gemini AI API call failed, falling back to Local PDF OCR Engine...", aiErr);
+          console.warn("Gemini AI API call failed, falling back to next OCR engine...", aiErr);
+        }
+      }
+
+      // Strategy 2: Baidu Cloud Official Invoice & Train Ticket OCR API if keys provided
+      if (hasBaiduKey) {
+        try {
+          const baiduResult = await callBaiduOcrApi(rawBase64, isPdf, baiduApiKey, baiduSecretKey, fileName);
+          if (baiduResult) {
+            return res.json({
+              success: true,
+              engine: "baidu_ocr",
+              fileName,
+              data: baiduResult,
+            });
+          }
+        } catch (baiduErr) {
+          console.warn("Baidu Cloud OCR API call failed, falling back to local OCR...", baiduErr);
         }
       }
 

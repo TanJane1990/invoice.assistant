@@ -132,6 +132,16 @@ const cleanBuyerSellerName = (val?: string): string => {
   let cleaned = val.replace(/[\x00-\x1F\x7F-\x9F]/g, "").replace(/_x[0-9a-fA-F]{4}_/g, "").trim();
   // Strip leading noise string (like "8496 11010125 0102244139 6214f3 110100 9.52 北京市自来水集团" -> "北京市自来水集团")
   cleaned = cleaned.replace(/^[\s0-9a-zA-Z._\-\/]{6,}\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+  cleaned = cleaned
+    .replace(/^(?:信息|名称|名\s*称|购买方|销售方|出票机构|开票单位|收款单位|付款人|交款人|抬头|客户)[:：\s|/\\-]*/, "")
+    .replace(/^[（(][^）)]+[）)][:：\s]*/, "")
+    .replace(/^(?:有限责任公司代收|代收)\s*/, "")
+    .replace(/(?:纳税人识别号|统一社会信用代码|纳税人|信用代码|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "")
+    .trim();
+
+  if (/^(?:地\s*址|电\s*话|纳税人|统一社会信用|信用代码|税号|开户行|账\s*号|密\s*码|开票人|收款人|复核)/.test(cleaned)) {
+    return "-";
+  }
   if (cleaned.includes("监制章") || cleaned.includes("税务总局") || cleaned.includes("发票监制章")) {
     return "个人";
   }
