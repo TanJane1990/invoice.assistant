@@ -46,9 +46,9 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
 
   return (
     <div
-      className={`no-print border-b sticky top-14 z-[60] px-4 py-2 flex items-center justify-between text-xs shrink-0 transition-colors shadow-md ${
+      className={`no-print border-b sticky top-[53px] z-[60] px-4 py-2 flex items-center justify-between text-xs shrink-0 transition-colors shadow-xs ${
         isDark
-          ? "border-[#1E293B] bg-[#0B0F19] text-white"
+          ? "border-[#1E293B] bg-[#0F172A] text-white"
           : "border-slate-200 bg-white text-slate-900"
       }`}
     >

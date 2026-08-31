@@ -5,6 +5,7 @@ const LAST_EXPORT_KEY = "smart_invoice_last_export_info";
 
 export interface LastExportInfo {
   fileName: string;
+  filePath?: string;
   lastExportTime: string;
   count: number;
 }
@@ -33,26 +34,26 @@ export const getBackendApiUrl = (endpoint: string): string => {
   return `http://127.0.0.1:3000${endpoint}`;
 };
 
-export const checkDiskFileExists = async (fileName: string): Promise<boolean> => {
+export const checkDiskFileExists = async (fileName: string, filePath?: string): Promise<{ exists: boolean; filePath?: string; fileName?: string }> => {
   if (typeof window !== "undefined" && (window as any).electronAPI?.checkFileExists) {
     try {
-      const res = await (window as any).electronAPI.checkFileExists({ fileName });
-      return Boolean(res?.exists);
+      const res = await (window as any).electronAPI.checkFileExists({ fileName, filePath });
+      return { exists: Boolean(res?.exists), filePath: res?.filePath, fileName: res?.fileName };
     } catch (e) {
-      return false;
+      return { exists: false };
     }
   }
   try {
     const res = await fetch(getBackendApiUrl("/api/check-file-exists"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName }),
+      body: JSON.stringify({ fileName, filePath }),
     });
-    if (!res.ok) return false;
+    if (!res.ok) return { exists: false };
     const data = await res.json();
-    return Boolean(data.exists);
+    return { exists: Boolean(data.exists), filePath: data.filePath, fileName: data.fileName };
   } catch (e) {
-    return false;
+    return { exists: false };
   }
 };
 
@@ -65,13 +66,15 @@ export const clearLastExportInfo = () => {
 export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> => {
   const local = getLastExportInfo();
   const targetFileName = local?.fileName || "发票台账明细表.xlsx";
+  const targetFilePath = local?.filePath;
 
   if (typeof window !== "undefined" && (window as any).electronAPI?.checkFileExists) {
     try {
-      const data = await (window as any).electronAPI.checkFileExists({ fileName: targetFileName });
+      const data = await (window as any).electronAPI.checkFileExists({ fileName: targetFileName, filePath: targetFilePath });
       if (data && data.exists && data.fileName) {
         const updatedInfo: LastExportInfo = {
           fileName: data.fileName,
+          filePath: data.filePath || targetFilePath,
           lastExportTime: local?.lastExportTime || new Date().toLocaleString("zh-CN", { hour12: false }),
           count: local?.count || 0,
         };
@@ -87,7 +90,7 @@ export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> =
     const res = await fetch(getBackendApiUrl("/api/check-file-exists"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName: targetFileName }),
+      body: JSON.stringify({ fileName: targetFileName, filePath: targetFilePath }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -95,6 +98,7 @@ export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> =
         const actualFileName = data.fileName;
         const updatedInfo: LastExportInfo = {
           fileName: actualFileName,
+          filePath: data.filePath || targetFilePath,
           lastExportTime: local?.lastExportTime || new Date().toLocaleString("zh-CN", { hour12: false }),
           count: local?.count || 0,
         };
@@ -486,9 +490,12 @@ export const exportInvoicesToExcel = async (
   let appendedCount = targetInvoices.length;
   let serverMessage = "";
 
+  let targetFilePath = lastInfo?.filePath;
+
   const base64Data = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
   const savePayload = {
     fileName,
+    filePath: targetFilePath,
     base64Data,
     mode,
     protect: isProtected,
@@ -506,6 +513,7 @@ export const exportInvoicesToExcel = async (
         if (saveData.success) {
           directSaved = true;
           if (saveData.fileName) fileName = saveData.fileName;
+          if (saveData.filePath) targetFilePath = saveData.filePath;
           if (saveData.totalCount != null) totalMergedCount = saveData.totalCount;
           if (saveData.appendedCount != null) appendedCount = saveData.appendedCount;
           if (saveData.message) serverMessage = saveData.message;
@@ -535,6 +543,7 @@ export const exportInvoicesToExcel = async (
           if (saveData.success) {
             directSaved = true;
             if (saveData.fileName) fileName = saveData.fileName;
+            if (saveData.filePath) targetFilePath = saveData.filePath;
             if (saveData.totalCount != null) totalMergedCount = saveData.totalCount;
             if (saveData.appendedCount != null) appendedCount = saveData.appendedCount;
             if (saveData.message) serverMessage = saveData.message;
@@ -558,6 +567,7 @@ export const exportInvoicesToExcel = async (
   const nowStr = new Date().toLocaleString("zh-CN", { hour12: false });
   const exportRecord: LastExportInfo = {
     fileName,
+    filePath: targetFilePath,
     lastExportTime: nowStr,
     count: totalMergedCount,
   };

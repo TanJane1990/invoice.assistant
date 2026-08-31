@@ -43,6 +43,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [confirmPassInput, setConfirmPassInput] = useState("");
   const [passError, setPassError] = useState("");
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData(settings);
+      setNewPassInput("");
+      setConfirmPassInput("");
+      setCurrentPassVerification("");
+      setPassError("");
+    }
+  }, [isOpen, settings]);
+
   if (!isOpen) return null;
 
   const hasExistingPassword = Boolean((settings.exportPassword || "").trim());

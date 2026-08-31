@@ -66,13 +66,39 @@ async function startServer() {
   });
 
   // Helper: 智能定位本地电脑（桌面/下载/文档/U盘）真实存在的发票台账 Excel 文件
-  const findInvoiceFileOnDisk = (preferredFileName?: string) => {
+  const findInvoiceFileOnDisk = (preferredFileName?: string, preferredFilePath?: string): { exists: boolean; filePath: string; fileName: string } => {
+    // 0. 最高优先级：如果传入了具体的物理路径且文件真实存在于磁盘上，100% 绝对精准优先命中！
+    if (preferredFilePath && typeof preferredFilePath === "string" && preferredFilePath.trim()) {
+      try {
+        if (fs.existsSync(preferredFilePath)) {
+          return {
+            exists: true,
+            filePath: preferredFilePath,
+            fileName: path.basename(preferredFilePath),
+          };
+        }
+      } catch (e) {}
+    }
+
     const homeDir = os.homedir();
     const searchDirs = [
       path.join(homeDir, "Desktop"),
       path.join(homeDir, "Downloads"),
       path.join(homeDir, "Documents"),
     ];
+
+    if (process.platform === "win32") {
+      const winDrives = ["D:\\", "E:\\", "F:\\", "G:\\"];
+      winDrives.forEach((drv) => {
+        if (fs.existsSync(drv)) {
+          searchDirs.push(drv);
+          const sub1 = path.join(drv, "发票");
+          const sub2 = path.join(drv, "财务");
+          if (fs.existsSync(sub1)) searchDirs.push(sub1);
+          if (fs.existsSync(sub2)) searchDirs.push(sub2);
+        }
+      });
+    }
 
     if (fs.existsSync("/Volumes")) {
       try {
@@ -133,8 +159,8 @@ async function startServer() {
   // API Endpoint: 检查本地电脑上是否存在发票台账文件
   app.post("/api/check-file-exists", (req, res) => {
     try {
-      const { fileName } = req.body;
-      const result = findInvoiceFileOnDisk(fileName);
+      const { fileName, filePath } = req.body;
+      const result = findInvoiceFileOnDisk(fileName, filePath);
       return res.json(result);
     } catch (e) {
       return res.json({ exists: false, filePath: "", fileName: "发票台账明细表.xlsx" });
@@ -144,15 +170,15 @@ async function startServer() {
   // API Endpoint: 直接将导出的 Excel 二进制数据精准写入到本地电脑（桌面/现有发票台账文件）
   app.post("/api/save-excel-direct", (req, res) => {
     try {
-      const { fileName, base64Data, mode = "default" } = req.body;
+      const { fileName, filePath, base64Data, mode = "default" } = req.body;
       if (!base64Data) {
         return res.status(400).json({ success: false, message: "缺少 Excel 数据" });
       }
 
       const incomingBuffer = Buffer.from(base64Data, "base64");
-      const diskCheck = findInvoiceFileOnDisk(fileName);
+      const diskCheck = findInvoiceFileOnDisk(fileName, filePath);
 
-      let targetPath = diskCheck.exists ? diskCheck.filePath : null;
+      let targetPath = diskCheck.exists ? diskCheck.filePath : (filePath && fs.existsSync(path.dirname(filePath)) ? filePath : null);
 
       if (!targetPath) {
         // 如果文件不存在，默认保存到 Mac 桌面 (Desktop)

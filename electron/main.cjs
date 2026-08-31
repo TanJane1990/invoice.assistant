@@ -53,8 +53,21 @@ function getAppIcon() {
   return { iconPath: path.join(__dirname, "../assets/icon.png"), nativeImg: null };
 }
 
-// Helper: 智能定位本地电脑（桌面/下载/文档/U盘/OneDrive）真实存在的发票台账 Excel 文件
-function findInvoiceFileOnDisk(preferredFileName) {
+// Helper: 智能定位本地电脑（桌面/下载/文档/U盘/OneDrive/指定目录）真实存在的发票台账 Excel 文件
+function findInvoiceFileOnDisk(preferredFileName, preferredFilePath) {
+  // 1. 最高优先级：如果传入了具体的物理路径且文件真实存在于磁盘上，100% 绝对精准优先命中！
+  if (preferredFilePath && typeof preferredFilePath === "string" && preferredFilePath.trim()) {
+    try {
+      if (fs.existsSync(preferredFilePath)) {
+        return {
+          exists: true,
+          filePath: preferredFilePath,
+          fileName: path.basename(preferredFilePath),
+        };
+      }
+    } catch (e) {}
+  }
+
   const homeDir = os.homedir();
   const searchDirs = [];
 
@@ -70,7 +83,7 @@ function findInvoiceFileOnDisk(preferredFileName) {
   searchDirs.push(path.join(homeDir, "Downloads"));
   searchDirs.push(path.join(homeDir, "Documents"));
 
-  // Windows 系统特有支持：OneDrive 桌面、D盘/E盘/U盘根目录
+  // Windows 系统特有支持：OneDrive 桌面、D盘/E盘/U盘根目录及常用发票目录
   if (process.platform === "win32") {
     const oneDriveDesktop = path.join(homeDir, "OneDrive", "Desktop");
     const oneDriveDocs = path.join(homeDir, "OneDrive", "Documents");
@@ -81,6 +94,10 @@ function findInvoiceFileOnDisk(preferredFileName) {
     winDrives.forEach((drv) => {
       if (fs.existsSync(drv)) {
         searchDirs.push(drv);
+        const sub1 = path.join(drv, "发票");
+        const sub2 = path.join(drv, "财务");
+        if (fs.existsSync(sub1)) searchDirs.push(sub1);
+        if (fs.existsSync(sub2)) searchDirs.push(sub2);
       }
     });
   }
@@ -140,12 +157,14 @@ function findInvoiceFileOnDisk(preferredFileName) {
 // 注册原生 IPC 通信：彻底摆脱网络端口与跨域限制，100% 毫秒级原生读写本地 Excel
 ipcMain.handle("check-file-exists", async (event, payload) => {
   const fileName = payload ? payload.fileName : undefined;
-  return findInvoiceFileOnDisk(fileName);
+  const filePath = payload ? payload.filePath : undefined;
+  return findInvoiceFileOnDisk(fileName, filePath);
 });
 
 ipcMain.handle("open-file-folder", async (event, payload) => {
   const fileName = payload ? payload.fileName : undefined;
-  const diskCheck = findInvoiceFileOnDisk(fileName);
+  const filePath = payload ? payload.filePath : undefined;
+  const diskCheck = findInvoiceFileOnDisk(fileName, filePath);
   if (diskCheck.exists && diskCheck.filePath) {
     if (process.platform === "darwin") {
       child_process.execFile("open", ["-R", diskCheck.filePath]);
@@ -155,6 +174,25 @@ ipcMain.handle("open-file-folder", async (event, payload) => {
     return { success: true, filePath: diskCheck.filePath };
   }
   return { success: false, message: "文件不存在" };
+});
+
+ipcMain.handle("select-excel-file", async (event) => {
+  const win = BrowserWindow.getFocusedWindow() || mainWindow;
+  const result = await dialog.showOpenDialog(win, {
+    title: "选择现有的发票台账 Excel 文件",
+    filters: [{ name: "Excel 工作簿 (*.xlsx, *.xls)", extensions: ["xlsx", "xls"] }],
+    properties: ["openFile"],
+  });
+  if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+    return { canceled: true };
+  }
+  const chosenPath = result.filePaths[0];
+  return {
+    canceled: false,
+    exists: true,
+    filePath: chosenPath,
+    fileName: path.basename(chosenPath),
+  };
 });
 
 function findTessdataPath() {
@@ -272,7 +310,7 @@ ipcMain.handle("parse-invoice-native", async (event, payload) => {
 
 ipcMain.handle("save-excel-direct", async (event, payload) => {
   try {
-    const { fileName, base64Data, mode, protect, password } = payload || {};
+    const { fileName, filePath, base64Data, mode, protect, password } = payload || {};
     if (!base64Data) {
       return { success: false, message: "缺少 Excel 数据" };
     }
@@ -308,8 +346,8 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
       };
     }
 
-    const diskCheck = findInvoiceFileOnDisk(fileName);
-    let targetPath = diskCheck.exists ? diskCheck.filePath : null;
+    const diskCheck = findInvoiceFileOnDisk(fileName, filePath);
+    let targetPath = diskCheck.exists ? diskCheck.filePath : (filePath && fs.existsSync(path.dirname(filePath)) ? filePath : null);
 
     if (!targetPath) {
       let desktopPath;

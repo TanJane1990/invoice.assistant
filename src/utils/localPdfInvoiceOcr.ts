@@ -250,8 +250,33 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     issueDate = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
 
-  // 5. 主体公司提取
-  const companyPattern = /([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|集团|公司|水务|自来水|供电|电力))/g;
+  // 5. 主体公司与党政机关、事业单位、高校、科研院所、医院等全量组织机构提取
+  const ORG_SUFFIXES = [
+    // 商业企业与公司类
+    "有限责任公司", "股份有限公司", "集团有限公司", "有限合伙企业", "实业有限公司",
+    "科技有限责任公司", "科技有限公司", "工程有限公司", "贸易有限公司", "发展有限公司",
+    "服务有限公司", "有限公司", "分公司", "总公司", "集团", "公司", "合伙企业",
+    "合作社", "事务所", "分行", "支行", "总行", "营业部", "农商行", "信用社", "银行",
+    // 党政机关与政府机构
+    "人民政府", "政府", "管委会", "委员会", "管理局", "街道办事处", "办事处",
+    "公安局", "检察院", "法院", "司法局", "财政局", "税务局", "发改委", "住建局",
+    "人社局", "应急管理局", "市场监督管理局", "生态环境局", "水务局", "交通运输局",
+    "局", "厅", "委", "办", "处", "部",
+    // 事业单位、科研院所、社会组织
+    "研究院", "研究所", "设计院", "勘察院", "规划院", "总院", "服务中心", "交流中心",
+    "培训中心", "中心", "联合会", "促进会", "基金会", "协会", "学会", "商会", "工会",
+    "出版社", "杂志社", "报社", "电视台", "广播电视台", "电台", "社",
+    // 院校与教育机构
+    "职业技术学院", "职业学院", "附属小学", "附属中学", "实验学校", "实验小学", "实验中学",
+    "大学", "学院", "学校", "中学", "小学", "幼儿园",
+    // 医疗卫生机构
+    "妇幼保健院", "附属医院", "人民医院", "中心医院", "中医院", "卫生院", "保健院",
+    "疾控中心", "社区卫生服务中心", "医院", "诊所",
+    // 公用事业
+    "自来水", "水务", "供电", "电力", "燃气", "热力", "铁塔", "电信", "联通", "移动"
+  ];
+  const ORG_SUFFIX_REGEX_PART = ORG_SUFFIXES.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const companyPattern = new RegExp(`([\\u4e00-\\u9fa5（）()·]{3,45}(?:${ORG_SUFFIX_REGEX_PART}))`, 'g');
   const companies: string[] = [];
   const compMatches = cleanText.matchAll(companyPattern);
   const seenComps = new Set<string>();
@@ -259,7 +284,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     const name = cm[1].trim();
     if (
       name &&
-      name.length > 3 &&
+      name.length >= 3 &&
       !seenComps.has(name) &&
       !name.includes("发票监制章") &&
       !name.includes("国家税务总局") &&
@@ -326,13 +351,13 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     sellerName = "中国国家铁路集团有限公司";
     sellerTaxId = "-";
 
-    // 1. 购买方名称提取 (优先匹配机关、企业、单位全称，过滤干扰词)
+    // 1. 购买方名称提取 (优先匹配机关、企业、高校、事业单位全称，过滤干扰词)
     let rawBuyer = "";
-    const mTrainBuyerOrg = cleanText.match(/(?:购买方|购买方名称|抬头|客户)[\s\S]{0,60}?([\u4e00-\u9fa5]{3,40}(?:有限责任公司|股份有限公司|有限公司|集团|公司|联络处|办事处|政府|管理局|局|委员会|部|院|所|中心|支行|分行|总行|学会|协会|学校|大学))/);
+    const mTrainBuyerOrg = cleanText.match(new RegExp(`(?:购买方|购买方名称|抬头|客户|交款人)[\\s\\S]{0,60}?([\\u4e00-\\u9fa5（）()·]{3,45}(?:${ORG_SUFFIX_REGEX_PART}))`));
     if (mTrainBuyerOrg) {
       rawBuyer = mTrainBuyerOrg[1];
     } else {
-      const mTrainBuyerFallback = cleanText.match(/(?:购买方名称|购买方)[\s\S]{0,15}?(?:名称[:：\s]*)?([^\n\r\t]{2,50})/);
+      const mTrainBuyerFallback = cleanText.match(/(?:购买方名称|购买方|抬头|客户)[\s\S]{0,25}?(?:名称[:：\s]*)?([^\n\r\t]{2,50})/);
       if (mTrainBuyerFallback) {
         rawBuyer = mTrainBuyerFallback[1];
       }
@@ -513,13 +538,13 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       invoiceCode = mNonTaxCode[1];
     }
 
-    const mPayerText = cleanText.match(/(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人))(?:\s*[（(][^）)]+[）)])?[:：\s]*([^\n\r\t]{2,50})/) || cleanText.match(/(?:交款人)[\s\S]{0,20}?([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|公司))/);
+    const mPayerText = cleanText.match(/(?:(?:^|[\s\n\r])(?:交款人|交款单位|客户|付款人|购买方|购买单位))(?:\s*[（(][^）)]+[）)])?[:：\s]*([^\n\r\t]{2,50})/) || cleanText.match(new RegExp(`(?:交款人|交款单位|购买方)[\\s\\S]{0,25}?([\\u4e00-\\u9fa5（）()·]{3,45}(?:${ORG_SUFFIX_REGEX_PART}))`));
     if (mPayerText) {
       let raw = mPayerText[1].replace(/^(?:统一社会信用代码|纳税人识别号)[:：\s]*/, "").replace(/^[（(][\s\S]*?[）)][:：\s]*/, "").replace(/^[\s0-9a-zA-Z._\-\/]+\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
       if (!raw.includes("监制章") && raw !== sellerName) buyerName = raw;
     }
     if (!buyerName || buyerName === sellerName) {
-      const otherComp = companies.find(c => c !== sellerName && !c.includes("自来水"));
+      const otherComp = companies.find(c => c !== sellerName && !c.includes("自来水") && !c.includes("电网"));
       if (otherComp) buyerName = otherComp;
       else buyerName = "个人";
     }
@@ -533,7 +558,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       if (!raw.includes("监制章")) sellerName = raw;
     }
     if (!sellerName || sellerName === "出票服务单位") {
-      const mNonTaxComp = cleanText.match(/([\u4e00-\u9fa5]{3,35}(?:有限责任公司|股份有限公司|有限公司|集团|公司|自来水|水务|电力|供电|燃气))(?:代收)?/);
+      const mNonTaxComp = cleanText.match(new RegExp(`([\\u4e00-\\u9fa5（）()·]{3,45}(?:${ORG_SUFFIX_REGEX_PART}))(?:代收)?`));
       if (mNonTaxComp) {
         sellerName = mNonTaxComp[1].replace(/代收$/, "").trim();
       }
@@ -541,7 +566,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
   // 模式 4: 数电发票 / 增值税电子发票
   else {
-    const mDigitalBuyer = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方\s*名\s*称|购\s*买\s*方)[\s\S]{0,35}?名\s*称\s*[:：]?\s*([^\n\r\t]{2,50})/);
+    const mDigitalBuyer = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方\s*名\s*称|购\s*买\s*方|客\s*户\s*名\s*称|抬\s*头|交\s*款\s*人)[\s\S]{0,45}?名\s*称\s*[:：]?\s*([^\n\r\t]{2,50})/);
     if (mDigitalBuyer && !mDigitalBuyer[1].includes("纳税人识别") && !mDigitalBuyer[1].includes("项目名称")) {
       const name = mDigitalBuyer[1].trim();
       if (!name.includes("监制章")) buyerName = name;
@@ -550,7 +575,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     const mDigitalBuyerTaxId = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方)[\s\S]{0,50}?(?:纳税人识别号|统一社会信用代码)\s*[:：]?\s*([A-Za-z0-9]{15,20})/);
     if (mDigitalBuyerTaxId) buyerTaxId = mDigitalBuyerTaxId[1];
 
-    const mDigitalSeller = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方\s*名\s*称|销\s*售\s*方)[\s\S]{0,35}?名\s*称\s*[:：]?\s*([^\n\r\t]{2,50})/);
+    const mDigitalSeller = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方\s*名\s*称|销\s*售\s*方)[\s\S]{0,45}?名\s*称\s*[:：]?\s*([^\n\r\t]{2,50})/);
     if (mDigitalSeller && !mDigitalSeller[1].includes("纳税人识别") && !mDigitalSeller[1].includes("项目名称")) {
       const name = mDigitalSeller[1].trim();
       if (!name.includes("监制章")) sellerName = name;
@@ -565,8 +590,11 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       }
     }
 
-    if (!buyerName || buyerName.includes("纳税人识别") || buyerName.includes("项目名称")) {
-      if (companies.length >= 2 && companies[1] !== sellerName) {
+    if (!buyerName || buyerName.includes("纳税人识别") || buyerName.includes("项目名称") || buyerName === "个人") {
+      const otherBuyerOrg = companies.find(c => c !== sellerName && !c.includes("国家铁路") && !c.includes("自来水"));
+      if (otherBuyerOrg) {
+        buyerName = otherBuyerOrg;
+      } else if (companies.length >= 2 && companies[1] !== sellerName) {
         buyerName = companies[1];
       } else {
         buyerName = "个人";

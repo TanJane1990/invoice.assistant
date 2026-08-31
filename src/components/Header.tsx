@@ -39,9 +39,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className={`no-print border-b px-4 py-2 flex items-center justify-between shrink-0 sticky top-0 z-[70] shadow-md transition-colors ${
+      className={`no-print border-b px-4 py-2.5 flex items-center justify-between shrink-0 sticky top-0 z-[70] shadow-sm transition-colors ${
         isDark
-          ? "border-[#1E293B] bg-[#0B0F19] text-white"
+          ? "border-[#1E293B] bg-[#070B14] text-white"
           : "border-slate-200 bg-white text-slate-900"
       }`}
     >

@@ -100,6 +100,13 @@ export const App: React.FC = () => {
     } catch {}
   }, [invoices]);
 
+  // 自动将系统设置（密码、企业默认抬头等）持久化到本地
+  useEffect(() => {
+    try {
+      localStorage.setItem("system_settings_v1", JSON.stringify(settings));
+    } catch {}
+  }, [settings]);
+
   // 自动将皮肤与设置持久化到本地
   useEffect(() => {
     try {
@@ -274,7 +281,7 @@ export const App: React.FC = () => {
             totalAmount={totalAmount}
             onResetOrder={() => handleUpdateConfig({ sortBy: "date_asc" })}
           />
-          <main className="flex-1 overflow-auto bg-[#0E172B]">
+          <main className={`flex-1 overflow-auto transition-colors ${theme === "dark" ? "bg-[#0A0F1D]" : "bg-[#F1F5F9]"}`}>
             {printConfig.includeCoverPage && selectedInvoices.length > 0 && (
               <div className="a4-print-cover-wrapper pt-6 print:pt-0 print:m-0 print:p-0">
                 <ReimbursementCover
@@ -304,7 +311,7 @@ export const App: React.FC = () => {
       )}
 
       {activeTab === "ledger" && (
-        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0E172B]" : "bg-[#F3F5F9]"}`}>
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0A0F1D]" : "bg-[#F1F5F9]"}`}>
           <InvoiceLedgerTable
             invoices={invoices}
             systemSettings={settings}
@@ -338,7 +345,7 @@ export const App: React.FC = () => {
       )}
 
       {activeTab === "cover" && (
-        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0E172B]" : "bg-[#F3F5F9]"}`}>
+        <main className={`flex-1 overflow-auto py-4 transition-colors ${theme === "dark" ? "bg-[#0A0F1D]" : "bg-[#F1F5F9]"}`}>
           <ReimbursementCover
             selectedInvoices={selectedInvoices}
             invoices={invoices}
@@ -384,7 +391,12 @@ export const App: React.FC = () => {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onSaveSettings={(newSettings) => setSettings(newSettings)}
+        onSaveSettings={(newSettings) => {
+          setSettings(newSettings);
+          try {
+            localStorage.setItem("system_settings_v1", JSON.stringify(newSettings));
+          } catch {}
+        }}
         invoices={invoices}
         onImportInvoicesJson={(imported) => setInvoices(imported)}
         theme={theme}

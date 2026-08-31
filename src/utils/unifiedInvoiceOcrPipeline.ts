@@ -234,7 +234,12 @@ export async function processInvoiceFileUnified(
     }
   }
 
-  const resolvedBuyerName = rawData.buyerName || settings?.defaultCompany || "个人";
+  const resolvedBuyerName =
+    rawData.buyerName && rawData.buyerName !== "个人"
+      ? rawData.buyerName
+      : settings?.defaultCompany && settings.defaultCompany.trim() !== ""
+      ? settings.defaultCompany.trim()
+      : rawData.buyerName || "个人";
 
   const finalInvoice: InvoiceData = {
     id: `inv-uploaded-${Date.now()}-${index}`,

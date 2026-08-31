@@ -4,6 +4,7 @@ import { getBackendApiUrl } from "../utils/exportExcel";
 
 interface LastExportInfo {
   fileName: string;
+  filePath?: string;
   lastExportTime: string;
   count: number;
 }
@@ -35,7 +36,10 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
     if (!lastExportInfo?.fileName) return;
     if (typeof window !== "undefined" && (window as any).electronAPI?.openFileFolder) {
       try {
-        const res = await (window as any).electronAPI.openFileFolder({ fileName: lastExportInfo.fileName });
+        const res = await (window as any).electronAPI.openFileFolder({
+          fileName: lastExportInfo.fileName,
+          filePath: lastExportInfo.filePath,
+        });
         if (res && res.success) return;
       } catch (e) {}
     }
@@ -43,7 +47,7 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
       const res = await fetch(getBackendApiUrl("/api/open-file-folder"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: lastExportInfo.fileName }),
+        body: JSON.stringify({ fileName: lastExportInfo.fileName, filePath: lastExportInfo.filePath }),
       });
       const data = await res.json();
       if (!data || !data.success) {
@@ -58,6 +62,28 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
     } catch (e) {
       onSaveNewFile();
       onClose();
+    }
+  };
+
+  const handleSelectDifferentFile = async () => {
+    if (typeof window !== "undefined" && (window as any).electronAPI?.selectExcelFile) {
+      try {
+        const res = await (window as any).electronAPI.selectExcelFile();
+        if (res && !res.canceled && res.filePath) {
+          const updated = {
+            fileName: res.fileName || "发票台账明细表.xlsx",
+            filePath: res.filePath,
+            lastExportTime: new Date().toLocaleString("zh-CN", { hour12: false }),
+            count: 0,
+          };
+          try {
+            localStorage.setItem("smart_invoice_last_export_info", JSON.stringify(updated));
+          } catch (e) {}
+          onAppendToExisting();
+          onClose();
+          return;
+        }
+      } catch (e) {}
     }
   };
 
@@ -90,6 +116,13 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
                 <Clock className="w-4 h-4" style={{ color: "#64748b" }} />
                 <span style={{ color: "#475569" }}>检测到您之前保存过的 Excel 文件：</span>
               </div>
+              <button
+                type="button"
+                onClick={handleSelectDifferentFile}
+                className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 underline cursor-pointer"
+              >
+                重新选择文件...
+              </button>
             </div>
 
             {/* Clickable File Name Link Button */}
@@ -98,11 +131,18 @@ export const ExcelExportDialog: React.FC<ExcelExportDialogProps> = ({
               title="点击在 Mac Finder / 资源管理器中打开并直接选中该文件"
               className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white hover:border-[#009966] hover:bg-emerald-50/60 transition-all text-left group cursor-pointer shadow-xs"
             >
-              <div className="text-xs font-black font-mono truncate flex items-center space-x-1.5 pr-2" style={{ color: "#0f172a" }}>
-                <span>📄</span>
-                <span className="truncate group-hover:text-[#009966] group-hover:underline">
-                  {lastExportInfo?.fileName || "发票台账明细表.xlsx"}
-                </span>
+              <div className="text-xs font-black font-mono truncate flex flex-col pr-2" style={{ color: "#0f172a" }}>
+                <div className="flex items-center space-x-1.5 truncate">
+                  <span>📄</span>
+                  <span className="truncate group-hover:text-[#009966] group-hover:underline">
+                    {lastExportInfo?.fileName || "发票台账明细表.xlsx"}
+                  </span>
+                </div>
+                {lastExportInfo?.filePath && (
+                  <span className="text-[10px] text-slate-400 font-normal truncate mt-0.5" title={lastExportInfo.filePath}>
+                    {lastExportInfo.filePath}
+                  </span>
+                )}
               </div>
               <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 shrink-0 flex items-center space-x-1 group-hover:bg-[#009966] group-hover:text-white transition-colors">
                 <FolderOpen className="w-3.5 h-3.5 inline mr-0.5" />
