@@ -285,4 +285,18 @@ textarea::placeholder {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* ===== 12. 灰度/黑白打印模式 (彩色打印机按纯黑白/中性灰输出) ===== */
+  .grayscale-mode,
+  .grayscale-mode.a4-print-page,
+  .grayscale-mode.a4-print-cover-page,
+  .grayscale-mode *,
+  .grayscale-mode img,
+  .grayscale-mode svg,
+  .grayscale-mode canvas {
+    filter: grayscale(100%) contrast(108%) !important;
+    -webkit-filter: grayscale(100%) contrast(108%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

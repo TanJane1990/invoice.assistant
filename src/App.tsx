@@ -53,6 +53,7 @@ export const App: React.FC = () => {
     marginSize: "normal",
     sortBy: "date_asc", // 默认排序：按开票时间 (升序)
     includeCoverPage: false,
+    grayscale: false,
   });
 
   // 2. 核心状态：系统设置 & 发票台账列表
@@ -217,11 +218,11 @@ export const App: React.FC = () => {
   // 调起 100% 所见即所得高清 PDF 打印与导出
   const handlePrint = async () => {
     if (activeTab === "layout" || activeTab === "cover") {
-      await generateAndPrintPdf(document.body);
+      await generateAndPrintPdf(document.body, undefined, undefined, !!printConfig.grayscale);
     } else {
       setActiveTab("layout");
       setTimeout(async () => {
-        await generateAndPrintPdf(document.body);
+        await generateAndPrintPdf(document.body, undefined, undefined, !!printConfig.grayscale);
       }, 400);
     }
   };
@@ -229,11 +230,11 @@ export const App: React.FC = () => {
   // 独立打印报销封面单：切到 cover Tab 后调起高清所见即所得打印
   const handlePrintCover = async () => {
     if (activeTab === "cover") {
-      await generateAndPrintPdf(document.body);
+      await generateAndPrintPdf(document.body, undefined, undefined, !!printConfig.grayscale);
     } else {
       setActiveTab("cover");
       setTimeout(async () => {
-        await generateAndPrintPdf(document.body);
+        await generateAndPrintPdf(document.body, undefined, undefined, !!printConfig.grayscale);
       }, 400);
     }
   };

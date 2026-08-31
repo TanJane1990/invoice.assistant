@@ -216,7 +216,9 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
 
       {/* Printable Paper Voucher (Standard Fixed Portrait A4 Voucher: 210×297mm) */}
       <div
-        className="a4-print-page a4-print-cover-page bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative flex flex-col justify-between"
+        className={`a4-print-page a4-print-cover-page bg-white text-slate-900 shadow-2xl border border-slate-300 mx-auto font-sans relative flex flex-col justify-between ${
+          config?.grayscale ? "grayscale-mode" : ""
+        }`}
         style={{
           width: "210mm",
           maxWidth: "210mm",

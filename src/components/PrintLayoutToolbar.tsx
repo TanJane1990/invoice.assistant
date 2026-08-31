@@ -9,6 +9,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Printer,
 } from "lucide-react";
 import { PaperType, PrintConfig } from "../types";
 
@@ -190,8 +191,32 @@ export const PrintLayoutToolbar: React.FC<PrintLayoutToolbarProps> = ({
 
       {/* 右侧控制区块 (对应红框 2：纸张规格/方向 + 汇总统计与缩放) */}
       <div className="flex flex-col space-y-2 items-end">
-        {/* 右侧行 1: 纸张规格 & 纸张方向 */}
+        {/* 右侧行 1: 灰度打印 & 纸张规格 & 纸张方向 */}
         <div className="flex items-center space-x-2">
+          {/* 灰度打印勾选 */}
+          <button
+            onClick={() => onChangeConfig({ grayscale: !config.grayscale })}
+            title="勾选后彩色打印机将以黑白灰度效果打印（发票印章与彩色字体转为高清中性灰）"
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+              config.grayscale
+                ? isDark
+                  ? "bg-[#121827] border-[#334155] text-white ring-1 ring-white/20"
+                  : "bg-white border-[#E8000A] text-[#E8000A] shadow-xs"
+                : isDark
+                ? "bg-[#121827]/60 border-[#1E293B] text-[#94A3B8] hover:text-white"
+                : "bg-[#F3F5F9] border-slate-200 text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={!!config.grayscale}
+              onChange={() => {}}
+              className="accent-[#E8000A] rounded cursor-pointer"
+            />
+            <Printer className={`w-3.5 h-3.5 ${config.grayscale ? "text-[#E8000A]" : "text-slate-400"}`} />
+            <span>灰度打印</span>
+          </button>
+
           <div
             className={`flex items-center space-x-1 rounded-lg px-2.5 py-1.5 font-semibold border ${
               isDark

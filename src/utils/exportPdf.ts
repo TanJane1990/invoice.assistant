@@ -2,10 +2,11 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 /**
- * 后台分步生成高保真多页 PDF（支持封面纵向 + 发票横向独立方向拼合）
+ * 后台分步生成高保真多页 PDF（支持封面纵向 + 发票横向独立方向拼合，支持黑白/灰度打印模式）
  */
 export async function buildMergedPdfDocument(
-  pagesElementContainer: HTMLElement
+  pagesElementContainer: HTMLElement,
+  isGrayscale: boolean = false
 ): Promise<jsPDF | null> {
   const pageNodes = pagesElementContainer.querySelectorAll<HTMLElement>(".a4-print-page");
   if (!pageNodes || pageNodes.length === 0) {
@@ -33,6 +34,29 @@ export async function buildMergedPdfDocument(
         );
       },
     });
+
+    // 若开启灰度打印或页面包含灰度类名，逐像素转换为标准 ITU-R BT.601 中性灰度图
+    const shouldGrayscale = isGrayscale || node.classList.contains("grayscale-mode") || !!node.closest(".grayscale-mode");
+    if (shouldGrayscale) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        try {
+          const imgDataObj = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgDataObj.data;
+          const len = data.length;
+          for (let p = 0; p < len; p += 4) {
+            // Y = 0.299*R + 0.587*G + 0.114*B (工业标准加权亮度计算)
+            const gray = Math.round(0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2]);
+            data[p] = gray;     // R
+            data[p + 1] = gray; // G
+            data[p + 2] = gray; // B
+          }
+          ctx.putImageData(imgDataObj, 0, 0);
+        } catch (e) {
+          console.warn("灰度像素处理跳过:", e);
+        }
+      }
+    }
 
     const imgData = canvas.toDataURL("image/png");
     // 自动判定该页面的方向与物理尺寸
@@ -68,7 +92,8 @@ export async function buildMergedPdfDocument(
 export async function generateAndPrintPdf(
   pagesElementContainer: HTMLElement,
   fileName: string = `发票拼页排版_A4_${new Date().toISOString().split("T")[0]}.pdf`,
-  defaultOrientation: "portrait" | "landscape" = "portrait"
+  defaultOrientation: "portrait" | "landscape" = "portrait",
+  isGrayscale: boolean = false
 ): Promise<void> {
   try {
     const pageNodes = pagesElementContainer.querySelectorAll<HTMLElement>(".a4-print-page");
@@ -83,7 +108,7 @@ export async function generateAndPrintPdf(
 
     if (hasCover && hasLandscape) {
       // 混合方向场景：后台分步合成完整 PDF 并调起打印，确保封面纵向、发票横向 100% 独立无裁切
-      const pdf = await buildMergedPdfDocument(pagesElementContainer);
+      const pdf = await buildMergedPdfDocument(pagesElementContainer, isGrayscale);
       if (pdf) {
         const pdfBlob = pdf.output("blob");
         const blobUrl = URL.createObjectURL(pdfBlob);
@@ -135,10 +160,11 @@ export async function generateAndPrintPdf(
  */
 export async function exportToPdfFile(
   pagesElementContainer: HTMLElement,
-  fileName: string = `发票拼页排版_A4_${new Date().toISOString().split("T")[0]}.pdf`
+  fileName: string = `发票拼页排版_A4_${new Date().toISOString().split("T")[0]}.pdf`,
+  isGrayscale: boolean = false
 ): Promise<void> {
   try {
-    const pdf = await buildMergedPdfDocument(pagesElementContainer);
+    const pdf = await buildMergedPdfDocument(pagesElementContainer, isGrayscale);
     if (!pdf) {
       alert("未找到排版页面，请先勾选发票！");
       return;

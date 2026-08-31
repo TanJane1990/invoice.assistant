@@ -207,6 +207,8 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
               {/* Pixel-Accurate Printable Sheet */}
               <div
                 className={`mx-auto bg-white transition-all print:shadow-none a4-print-page ${
+                  config.grayscale ? "grayscale-mode" : ""
+                } ${
                   isGrid4Landscape ? "landscape-mode" : isGrid1SingleTicket ? "single-ticket-mode" : "portrait-mode"
                 } relative z-0 ${
                   isDark

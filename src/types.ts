@@ -75,6 +75,7 @@ export interface PrintConfig {
   orientation: "portrait" | "landscape";
   includeCoverPage: boolean;
   sortBy: "date_asc" | "date_desc" | "amount_desc" | "category" | "invoice_type";
+  grayscale?: boolean;
 }
 
 export interface ReimbursementCoverData {
