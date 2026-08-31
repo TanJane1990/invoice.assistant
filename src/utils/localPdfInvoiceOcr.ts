@@ -308,36 +308,48 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   let trainDepartureTime = "";
   let trainSeat = "";
 
-  const isValidOrgOrPersonName = (name?: string): boolean => {
-    if (!name) return false;
-    const trimmed = name.trim();
-    if (trimmed.length < 2 || trimmed.length > 50) return false;
-    // 拦截非法开头（地址、电话、纳税人、开户行、银行账号、密码、项目、规格、金额、开票人等）
-    if (/^(?:地\s*址|电\s*话|纳税人|统一社会信用|信用代码|税号|开户行|账\s*号|密\s*码|开票人|收款人|复核|备\s*注|项\s*目|规\s*格|价\s*税|金\s*额|税\s*率|税\s*额|车次|乘车|座席|车票)/.test(trimmed)) {
-      return false;
+  // 5. 结构化物理区块隔离提取 (购买方与销售方物理隔离，彻底杜绝混淆与后缀库依赖)
+  const buyerBlockMatch = cleanText.match(/(?:购\s*买\s*方|交\s*款\s*人|付\s*款\s*人|客\s*户|抬\s*头)[\s\S]*?(?=(?:销\s*售\s*方|收\s*款\s*单\s*位|出\s*票\s*单\s*位|出\s*票\s*机\s*构|密\s*码\s*区|项\s*目\s*名\s*称|合\s*计|$))/);
+  const buyerBlock = buyerBlockMatch ? buyerBlockMatch[0] : "";
+
+  const sellerBlockMatch = cleanText.match(/(?:销\s*售\s*方|收\s*款\s*单\s*位|出\s*票\s*单\s*位|出\s*票\s*机\s*构|开\s*票\s*单\s*位|收\s*款\s*方)[\s\S]*?(?=(?:备\s*注|其\s*他\s*信\s*息|开\s*票\s*人|复\s*核|收\s*款\s*人|$))/);
+  const sellerBlock = sellerBlockMatch ? sellerBlockMatch[0] : "";
+
+  const extractPartyNameFromBlock = (block: string): string => {
+    if (!block) return "";
+    // 1. 优先匹配标准的 "名称: xxx"
+    const mName = block.match(/(?:名\s*称)[:：\s]*([^\n\r]+)/);
+    if (mName) {
+      let val = mName[1].trim();
+      val = val.replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
+      if (val && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) return val;
     }
-    if (
-      trimmed.includes("监制章") ||
-      trimmed.includes("发票监制章") ||
-      trimmed.includes("国家税务总局") ||
-      trimmed.includes("统一社会信用") ||
-      trimmed.includes("统一社会") ||
-      trimmed.includes("社会信用") ||
-      trimmed.includes("信用代码") ||
-      trimmed.includes("信息统一") ||
-      trimmed.includes("统一社") ||
-      trimmed.includes("纳税人识别号") ||
-      trimmed.includes("识别号") ||
-      trimmed.includes("开票人") ||
-      trimmed.includes("收款人") ||
-      trimmed.includes("复核") ||
-      trimmed.includes("发票号码") ||
-      trimmed.includes("开票日期")
-    ) {
-      return false;
+    // 2. 次选匹配第一行有效实体内容
+    const lines = block.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      if (!/^(?:购买方|销售方|购买方信息|销售方信息|收款方|交款人|付款人|出票机构)$/.test(line)) {
+        let val = line.replace(/^(?:购买方|销售方|名称|名\s*称|交款人|付款人|收款方)[:：\s|/\\-]*/, "").trim();
+        val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+        val = val.replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
+        if (val && val.length >= 2 && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) return val;
+      }
     }
-    return true;
+    return "";
   };
+
+  if (buyerBlock) {
+    const extracted = extractPartyNameFromBlock(buyerBlock);
+    if (extracted) buyerName = extracted;
+    const mTax = buyerBlock.match(/(?:统一社会信用代码|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/);
+    if (mTax) buyerTaxId = mTax[1];
+  }
+
+  if (sellerBlock) {
+    const extracted = extractPartyNameFromBlock(sellerBlock);
+    if (extracted) sellerName = extracted;
+    const mTax = sellerBlock.match(/(?:统一社会信用代码|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/);
+    if (mTax) sellerTaxId = mTax[1];
+  }
 
   const cleanOrgOrPersonName = (rawName?: string): string => {
     if (!rawName) return "";
@@ -346,36 +358,19 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     if (mPrefix) {
       name = mPrefix[1].trim();
     }
-    const mOrgEntity = name.match(new RegExp(`([\\u4e00-\\u9fa5（）()·]{2,45}(?:${ORG_SUFFIX_REGEX_PART}))`));
-    if (mOrgEntity) {
-      name = mOrgEntity[1].trim();
-    }
-
-    if (!isValidOrgOrPersonName(name)) {
-      return "";
-    }
+    name = name.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
     return name;
   };
 
-  const mPayer =
-    cleanText.match(new RegExp(`(?:购买方[\\s\\S]{0,40}?(?:名称|名\\s*称)|购买方|客户|交款人|交款单位|付款人|抬头)(?:\\s*[（(][^）)]+[）)])?[:：\\s|/\\\\-]*([\\u4e00-\\u9fa5（）()·]{2,45}(?:${ORG_SUFFIX_REGEX_PART}))`)) ||
-    cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|交款单位|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
-  if (mPayer) {
-    const cleaned = cleanOrgOrPersonName(mPayer[1]);
-    if (cleaned) {
-      buyerName = cleaned;
+  const isValidOrgOrPersonName = (name?: string): boolean => {
+    if (!name) return false;
+    const trimmed = name.trim();
+    if (trimmed.length < 2 || trimmed.length > 60) return false;
+    if (/^(?:地\s*址|电\s*话|纳税人|统一社会信用|信用代码|税号|开户行|账\s*号|密\s*码|开票人|收款人|复核|备\s*注|项\s*目|规\s*格|价\s*税|金\s*额|税\s*率|税\s*额|车次|乘车|座席|车票)/.test(trimmed)) {
+      return false;
     }
-  }
-
-  const mPayee =
-    cleanText.match(new RegExp(`(?:销售方[\\s\\S]{0,40}?(?:名称|名\\s*称)|销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\\s)*(?:名称)?[:：\\s]*([\\u4e00-\\u9fa5（）()·]{2,45}(?:${ORG_SUFFIX_REGEX_PART}))`)) ||
-    cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
-  if (mPayee) {
-    const cleaned = cleanOrgOrPersonName(mPayee[1]);
-    if (cleaned && !cleaned.includes("项目名称") && !cleaned.includes("出票服务单位")) {
-      sellerName = cleaned;
-    }
-  }
+    return true;
+  };
 
   // 公用事业/服务商智能判定
   const utilityKeywords = ["自来水", "供水", "水务", "电力", "供电", "燃气", "热力", "电信", "联通", "移动", "铁塔", "京东", "美团", "滴滴"];
@@ -592,47 +587,21 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
   // 模式 4: 数电发票 / 增值税电子发票
   else {
-    const mDigitalBuyer =
-      cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方)[\s\S]{0,80}?(?:名\s*称|名称)[:：\s]*([^\n\r\t]{2,50})/) ||
-      cleanText.match(/(?:购\s*买\s*方\s*名\s*称|购\s*买\s*方|客\s*户\s*名\s*称|抬\s*头|交\s*款\s*人)[:：\s]*([^\n\r\t]{2,50})/);
-    if (mDigitalBuyer) {
-      const name = cleanOrgOrPersonName(mDigitalBuyer[1]);
-      if (name) buyerName = name;
-    }
-
-    const mDigitalBuyerTaxId = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方)[\s\S]{0,50}?(?:纳税人识别号|统一社会信用代码)\s*[:：]?\s*([A-Za-z0-9]{15,20})/);
-    if (mDigitalBuyerTaxId) buyerTaxId = mDigitalBuyerTaxId[1];
-
-    const mDigitalSeller =
-      cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方)[\s\S]{0,80}?(?:名\s*称|名称)[:：\s]*([^\n\r\t]{2,50})/) ||
-      cleanText.match(/(?:销\s*售\s*方\s*名\s*称|销\s*售\s*方)[:：\s]*([^\n\r\t]{2,50})/);
-    if (mDigitalSeller) {
-      const name = cleanOrgOrPersonName(mDigitalSeller[1]);
-      if (name) sellerName = name;
-    }
-
-    const mDigitalSellerTaxId = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方)[\s\S]{0,50}?(?:纳税人识别号|统一社会信用代码)\s*[:：]?\s*([A-Za-z0-9]{15,20})/);
-    if (mDigitalSellerTaxId) sellerTaxId = mDigitalSellerTaxId[1];
-
-    if (!sellerName || !isValidOrgOrPersonName(sellerName) || sellerName === "出票服务单位") {
-      if (companies.length > 0) {
-        sellerName = companies[0];
+    if (!buyerName) {
+      const mDigitalBuyer = cleanText.match(/(?:购\s*买\s*方\s*名\s*称|购\s*买\s*方|客\s*户\s*名\s*称|抬\s*头|交\s*款\s*人)[:：\s]*([^\n\r\t]{2,50})/);
+      if (mDigitalBuyer) {
+        buyerName = cleanOrgOrPersonName(mDigitalBuyer[1]);
       }
     }
-
-    if (!buyerName || !isValidOrgOrPersonName(buyerName) || buyerName === "个人") {
-      const otherBuyerOrg = companies.find(c => c !== sellerName && isValidOrgOrPersonName(c) && !c.includes("国家铁路") && !c.includes("自来水"));
-      if (otherBuyerOrg) {
-        buyerName = otherBuyerOrg;
-      } else if (companies.length >= 2 && companies[1] !== sellerName && isValidOrgOrPersonName(companies[1])) {
-        buyerName = companies[1];
-      } else {
-        buyerName = "个人";
+    if (!sellerName) {
+      const mDigitalSeller = cleanText.match(/(?:销\s*售\s*方\s*名\s*称|销\s*售\s*方|出\s*票\s*机\s*构|收\s*款\s*单\s*位)[:：\s]*([^\n\r\t]{2,50})/);
+      if (mDigitalSeller) {
+        sellerName = cleanOrgOrPersonName(mDigitalSeller[1]);
       }
     }
   }
 
-  if (!sellerName || !isValidOrgOrPersonName(sellerName) || sellerName === "出票服务单位") {
+  if (!sellerName || sellerName === "出票服务单位") {
     const mHeaderCompany = cleanText.match(/^([^\n\r\t]{3,40}(?:公司|单位|中心|集团))/);
     if (mHeaderCompany) {
       const comp = cleanOrgOrPersonName(mHeaderCompany[1].replace(/(?:电子收据|收据|发票|收款单).*/, ""));
@@ -643,13 +612,8 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
 
   buyerName = cleanOrgOrPersonName(buyerName) || buyerName;
-  if (!buyerName || buyerName.includes("个人") || buyerName === sellerName) {
-    if (buyerName !== "个人" && companies.length > 0) {
-      const other = companies.find(c => c !== sellerName && isValidOrgOrPersonName(c));
-      buyerName = other || "个人";
-    } else {
-      buyerName = "个人";
-    }
+  if (!buyerName || buyerName === sellerName) {
+    buyerName = "个人";
   }
 
   if (sellerName) {
