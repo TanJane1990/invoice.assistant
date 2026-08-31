@@ -143,10 +143,10 @@ function normalizeTextStream(rawText: string): string {
 }
 
 // -------------------------------------------------------------
-// 模板 1：🚄 电子发票（铁路电子客票）专属网格解析器
+// 模板 1：🚄 铁路电子客票专属网格解析器
 // -------------------------------------------------------------
 function parseRailwayTicketTemplate(cleanText: string, fileName: string): ParsedInvoiceResult {
-  const invoiceType = "电子发票（铁路电子客票）";
+  const invoiceType = "铁路电子客票";
   const sellerName = "中国国家铁路集团有限公司";
   const sellerTaxId = "-";
   const category: ParsedInvoiceResult["category"] = "交通费";
@@ -295,10 +295,7 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
 // 模板 2：🏛️ 财政非税收入统一票据专属网格解析器
 // -------------------------------------------------------------
 function parseNonTaxInvoiceTemplate(cleanText: string, fileName: string): ParsedInvoiceResult {
-  let invoiceType = "北京市非税收入统一票据（电子）";
-  const mType = cleanText.match(/([\u4e00-\u9fa5]{2,10}非税收入统一票据(?:（电子）|\(电子\))?)/) ||
-                cleanText.match(/([\u4e00-\u9fa5]+非税收入[\u4e00-\u9fa5（）()]*)/);
-  if (mType) invoiceType = mType[1].trim();
+  const invoiceType = "非税收入统一票据";
 
   let invoiceCode = "";
   const mCode = cleanText.match(/(?:票据代码|发票代码)[:：\s]*(\d{8,12})/);
@@ -673,7 +670,7 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
 // 模板 4：🧾 商业电子收据 / 通用报销小票自适应解析器
 // -------------------------------------------------------------
 function parseCommercialReceiptTemplate(cleanText: string, fileName: string): ParsedInvoiceResult {
-  const invoiceType = "电子收据";
+  const invoiceType = "其他发票";
 
   let invoiceNumber = "";
   const mNum = cleanText.match(/(?:单号|编号|收据号|No\.?)[:：\s]*([0-9A-Za-z-]+)/i) ||

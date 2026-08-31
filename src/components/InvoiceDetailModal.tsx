@@ -137,16 +137,12 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               >
                 <option value="增值税电子普通发票" style={{ color: "#0f172a" }}>增值税电子普通发票</option>
                 <option value="增值税电子专用发票" style={{ color: "#0f172a" }}>增值税电子专用发票</option>
-                <option value="电子发票（铁路电子客票）" style={{ color: "#0f172a" }}>电子发票（铁路电子客票）</option>
-                <option value="北京市非税收入统一票据（电子）" style={{ color: "#0f172a" }}>北京市非税收入统一票据（电子）</option>
-                <option value="电子收据" style={{ color: "#0f172a" }}>电子收据</option>
-                <option value="北京智慧生活有限公司电子收据" style={{ color: "#0f172a" }}>北京智慧生活有限公司电子收据</option>
+                <option value="铁路电子客票" style={{ color: "#0f172a" }}>铁路电子客票</option>
+                <option value="非税收入统一票据" style={{ color: "#0f172a" }}>非税收入统一票据</option>
                 <option value="数电发票（普通发票）" style={{ color: "#0f172a" }}>数电发票（普通发票）</option>
                 <option value="数电发票（专用发票）" style={{ color: "#0f172a" }}>数电发票（专用发票）</option>
-                <option value="增值税普通发票(纸质)" style={{ color: "#0f172a" }}>增值税普通发票（纸质）</option>
-                <option value="增值税专用发票(纸质)" style={{ color: "#0f172a" }}>增值税专用发票（纸质）</option>
-                <option value="航空运输电子客票行程单" style={{ color: "#0f172a" }}>航空运输电子客票行程单</option>
                 <option value="道路通行费电子普通发票" style={{ color: "#0f172a" }}>道路通行费电子普通发票</option>
+                <option value="航空运输电子客票行程单" style={{ color: "#0f172a" }}>航空运输电子客票行程单</option>
                 <option value="通用定额发票" style={{ color: "#0f172a" }}>通用定额发票</option>
                 <option value="海关缴款书" style={{ color: "#0f172a" }}>海关缴款书</option>
                 <option value="其他发票" style={{ color: "#0f172a" }}>其他发票</option>

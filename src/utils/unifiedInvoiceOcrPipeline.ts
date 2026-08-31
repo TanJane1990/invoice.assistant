@@ -203,8 +203,8 @@ export async function processInvoiceFileUnified(
     extractedPdfText.includes("客票");
 
   const resolvedInvoiceType = isTrainTicket
-    ? "电子发票（铁路电子客票）"
-    : rawData.invoiceType || "电子发票(普通发票)";
+    ? "铁路电子客票"
+    : rawData.invoiceType || "增值税电子普通发票";
 
   const resolvedSellerName = isTrainTicket
     ? "中国国家铁路集团有限公司"
