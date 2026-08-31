@@ -8,27 +8,23 @@ if (typeof window !== "undefined" && pdfjsLib?.GlobalWorkerOptions) {
 }
 
 function getPdfCmapUrl(): string {
-  if (typeof window !== "undefined") {
-    if (window.location.protocol === "file:") {
+  if (typeof window !== "undefined" && window.location) {
+    try {
+      return new URL("cmaps/", window.location.href).href;
+    } catch {
       return "./cmaps/";
     }
-    if (window.location.origin && window.location.origin.startsWith("http")) {
-      return `${window.location.origin}/cmaps/`;
-    }
-    return "./cmaps/";
   }
   return "./public/cmaps/";
 }
 
 function getPdfStandardFontsUrl(): string {
-  if (typeof window !== "undefined") {
-    if (window.location.protocol === "file:") {
+  if (typeof window !== "undefined" && window.location) {
+    try {
+      return new URL("standard_fonts/", window.location.href).href;
+    } catch {
       return "./standard_fonts/";
     }
-    if (window.location.origin && window.location.origin.startsWith("http")) {
-      return `${window.location.origin}/standard_fonts/`;
-    }
-    return "./standard_fonts/";
   }
   return "./public/standard_fonts/";
 }

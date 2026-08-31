@@ -478,6 +478,26 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
     }
   }
 
+  // 备用：从 购买方/销售方 关键词直接提取
+  if (nameEntries.length < 2) {
+    const mDirectBuyer = headerSection.match(/(?:购\s*买\s*方|客\s*户|抬\s*头|交\s*款\s*人)(?:信息)?[:：\s]*([^\n\r\t]{2,50})/);
+    if (mDirectBuyer) {
+      let val = mDirectBuyer[1].replace(/^(?:名称|名\s*称)[:：\s]*/, "").replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|销\s*售\s*方).*/, "").trim();
+      val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+      if (val.length >= 2 && !nameEntries.includes(val) && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) {
+        nameEntries.unshift(val);
+      }
+    }
+    const mDirectSeller = headerSection.match(/(?:销\s*售\s*方|出\s*票\s*单\s*位|出\s*票\s*机\s*构|收\s*款\s*单\s*位|开\s*票\s*单\s*位)(?:信息)?[:：\s]*([^\n\r\t]{2,50})/);
+    if (mDirectSeller) {
+      let val = mDirectSeller[1].replace(/^(?:名称|名\s*称)[:：\s]*/, "").replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|备\s*注).*/, "").trim();
+      val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+      if (val.length >= 2 && !nameEntries.includes(val) && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) {
+        nameEntries.push(val);
+      }
+    }
+  }
+
   // 提取所有 15-20 位税号
   const taxIdMatches = Array.from(
     headerSection.matchAll(/(?:统一社会信用代码(?:\/纳税人识别号)?|纳税人识别号|信用代码|税号)[:：\s]*([A-Za-z0-9]{15,20})/g)
