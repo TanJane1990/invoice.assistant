@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* 全局跨平台高清中文字体栈与抗锯齿优化（彻底解决 Win 7 字体发虚、中英混杂、回退到老宋体的问题） */
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "微软雅黑", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 body.theme-dark {
   background-color: #0E172B;
   color: #f1f5f9;
