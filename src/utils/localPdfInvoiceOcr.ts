@@ -257,15 +257,16 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     "科技有限责任公司", "科技有限公司", "工程有限公司", "贸易有限公司", "发展有限公司",
     "服务有限公司", "有限公司", "分公司", "总公司", "集团", "公司", "合伙企业",
     "合作社", "事务所", "分行", "支行", "总行", "营业部", "农商行", "信用社", "银行",
+    "餐馆", "酒楼", "饭店", "酒店", "商厦", "超市", "便利店", "商行",
     // 党政机关与政府机构
     "人民政府", "政府", "管委会", "委员会", "管理局", "街道办事处", "办事处",
     "公安局", "检察院", "法院", "司法局", "财政局", "税务局", "发改委", "住建局",
     "人社局", "应急管理局", "市场监督管理局", "生态环境局", "水务局", "交通运输局",
-    "局", "厅", "委", "办", "处", "部",
+    "行政审批局", "城管局",
     // 事业单位、科研院所、社会组织
     "研究院", "研究所", "设计院", "勘察院", "规划院", "总院", "服务中心", "交流中心",
-    "培训中心", "中心", "联合会", "促进会", "基金会", "协会", "学会", "商会", "工会",
-    "出版社", "杂志社", "报社", "电视台", "广播电视台", "电台", "社",
+    "培训中心", "联合会", "促进会", "基金会", "协会", "学会", "商会", "工会",
+    "出版社", "杂志社", "报社", "电视台", "广播电视台", "电台",
     // 院校与教育机构
     "职业技术学院", "职业学院", "附属小学", "附属中学", "实验学校", "实验小学", "实验中学",
     "大学", "学院", "学校", "中学", "小学", "幼儿园",
@@ -288,7 +289,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       !seenComps.has(name) &&
       !name.includes("发票监制章") &&
       !name.includes("国家税务总局") &&
-      !name.includes("统一社会信用")
+      !name.includes("统一社会信用") &&
+      !name.includes("统一社") &&
+      !name.includes("信息统一")
     ) {
       seenComps.add(name);
       companies.push(name);
@@ -313,7 +316,24 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     if (/^(?:地\s*址|电\s*话|纳税人|统一社会信用|信用代码|税号|开户行|账\s*号|密\s*码|开票人|收款人|复核|备\s*注|项\s*目|规\s*格|价\s*税|金\s*额|税\s*率|税\s*额|车次|乘车|座席|车票)/.test(trimmed)) {
       return false;
     }
-    if (trimmed.includes("监制章") || trimmed.includes("发票监制章") || trimmed.includes("国家税务总局")) {
+    if (
+      trimmed.includes("监制章") ||
+      trimmed.includes("发票监制章") ||
+      trimmed.includes("国家税务总局") ||
+      trimmed.includes("统一社会信用") ||
+      trimmed.includes("统一社会") ||
+      trimmed.includes("社会信用") ||
+      trimmed.includes("信用代码") ||
+      trimmed.includes("信息统一") ||
+      trimmed.includes("统一社") ||
+      trimmed.includes("纳税人识别号") ||
+      trimmed.includes("识别号") ||
+      trimmed.includes("开票人") ||
+      trimmed.includes("收款人") ||
+      trimmed.includes("复核") ||
+      trimmed.includes("发票号码") ||
+      trimmed.includes("开票日期")
+    ) {
       return false;
     }
     return true;
@@ -325,7 +345,7 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       .replace(/^(?:信息|名称|名\s*称|购买方|销售方|出票机构|开票单位|收款单位|付款人|交款人|抬头|客户)[:：\s|/\\-]*/, "")
       .replace(/^[（(][^）)]+[）)][:：\s]*/, "")
       .replace(/^(?:有限责任公司代收|代收)\s*/, "")
-      .replace(/(?:纳税人识别号|统一社会信用代码|纳税人|信用代码|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "")
+      .replace(/(?:销售方|购买方|纳税人识别号|统一社会信用代码|纳税人|信用代码|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码|开票人|收款人|复核|发票号码|开票日期|税率|税额|金额|项目名称).*/, "")
       .replace(/^[\s0-9a-zA-Z._\-\/]{4,}\s*(?=[\u4e00-\u9fa5]{2,})/, "")
       .trim();
 
@@ -335,7 +355,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     return name;
   };
 
-  const mPayer = cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|交款单位|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
+  const mPayer =
+    cleanText.match(/(?:购买方(?:[^\n\r]{0,40}?)(?:名称|名\s*称)|购买方|客户|交款人|交款单位|付款人|抬头)(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/) ||
+    cleanText.match(/(?:(?:^|[\s\n\r])(?:购买方|客户|交款人|交款单位|付款人|抬头))(?:\s*[（(][^）)]+[）)])?[:：\s|/\\-]*([^\n\r\t]{2,50})/);
   if (mPayer) {
     const cleaned = cleanOrgOrPersonName(mPayer[1]);
     if (cleaned) {
@@ -343,7 +365,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     }
   }
 
-  const mPayee = cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
+  const mPayee =
+    cleanText.match(/(?:销售方(?:[^\n\r]{0,40}?)(?:名称|名\s*称)|销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/) ||
+    cleanText.match(/(?:销售方|收款单位|收款方|出票机构|开票单位|出票服务单位|服务单位|收款人)(?:信息|\s)*(?:名称)?[:：\s]*([^\n\r\t]{2,50})/);
   if (mPayee) {
     const cleaned = cleanOrgOrPersonName(mPayee[1]);
     if (cleaned && !cleaned.includes("项目名称") && !cleaned.includes("出票服务单位")) {
@@ -564,7 +588,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   }
   // 模式 4: 数电发票 / 增值税电子发票
   else {
-    const mDigitalBuyer = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方\s*名\s*称|购\s*买\s*方|客\s*户\s*名\s*称|抬\s*头|交\s*款\s*人)[\s\S]{0,45}?(?:名\s*称[:：\s]*)?([^\n\r\t]{2,50})/);
+    const mDigitalBuyer =
+      cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方)[\s\S]{0,80}?(?:名\s*称|名称)[:：\s]*([^\n\r\t]{2,50})/) ||
+      cleanText.match(/(?:购\s*买\s*方\s*名\s*称|购\s*买\s*方|客\s*户\s*名\s*称|抬\s*头|交\s*款\s*人)[:：\s]*([^\n\r\t]{2,50})/);
     if (mDigitalBuyer) {
       const name = cleanOrgOrPersonName(mDigitalBuyer[1]);
       if (name) buyerName = name;
@@ -573,7 +599,9 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     const mDigitalBuyerTaxId = cleanText.match(/(?:购\s*买\s*方\s*信\s*息|购\s*买\s*方)[\s\S]{0,50}?(?:纳税人识别号|统一社会信用代码)\s*[:：]?\s*([A-Za-z0-9]{15,20})/);
     if (mDigitalBuyerTaxId) buyerTaxId = mDigitalBuyerTaxId[1];
 
-    const mDigitalSeller = cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方\s*名\s*称|销\s*售\s*方)[\s\S]{0,45}?(?:名\s*称[:：\s]*)?([^\n\r\t]{2,50})/);
+    const mDigitalSeller =
+      cleanText.match(/(?:销\s*售\s*方\s*信\s*息|销\s*售\s*方)[\s\S]{0,80}?(?:名\s*称|名称)[:：\s]*([^\n\r\t]{2,50})/) ||
+      cleanText.match(/(?:销\s*售\s*方\s*名\s*称|销\s*售\s*方)[:：\s]*([^\n\r\t]{2,50})/);
     if (mDigitalSeller) {
       const name = cleanOrgOrPersonName(mDigitalSeller[1]);
       if (name) sellerName = name;
@@ -867,21 +895,30 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
       const mRemark = cleanText.match(/(?:备\s*注|其他信息|其它信息)[：:\s]*([^\n\r]{1,100})/);
       if (mRemark) {
         let remarkText = mRemark[1].trim();
-        if (!/统一社会信用|纳税人识别|信用代码/.test(remarkText)) {
+        if (!/统一社会信用|纳税人识别|信用代码|开票人|收款人|复核|发票号码|发票代码/.test(remarkText)) {
           const mCleanOther = remarkText.match(/(用户编号[:：\s]*\d+(?:\s*账期[:：\s]*\d{4}-\d{2})?)/);
           if (mCleanOther) {
             remarks = mCleanOther[1].trim();
           } else {
-            remarks = remarkText.slice(0, 35).trim();
+            let r = remarkText.replace(/(?:开票人|收款人|复核|发票号码|销售方|购买方|\d{16,20}).*/, "").trim();
+            remarks = r ? r.slice(0, 35).trim() : "-";
           }
+        } else {
+          remarks = "-";
         }
       } else {
         const mUserNo = cleanText.match(/(用户编号[:：\s]*\d+)/);
         if (mUserNo) {
           remarks = mUserNo[1].trim();
+        } else {
+          remarks = "-";
         }
       }
     }
+  }
+
+  if (remarks && (remarks.endsWith(".pdf") || remarks.endsWith(".png") || remarks === "发票识别")) {
+    remarks = "-";
   }
 
   // 12. 明细商品全量抽取 (深度清洗截断，剔除数量、单价、大写、小写、备注乱串)
