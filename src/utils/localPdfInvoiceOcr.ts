@@ -116,28 +116,29 @@ export function isGarbledCipher(text: string): boolean {
 }
 
 /**
- * 文本空间规整化引擎
+ * 文本空间规整化引擎（非破坏性格式规整，保留字段与实体间的自然空格定界）
  */
 function normalizeTextStream(rawText: string): string {
   let cleanText = rawText.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ");
-  for (let i = 0; i < 4; i++) {
-    cleanText = cleanText.replace(/([\u4e00-\u9fa5])[ \t]+([\u4e00-\u9fa5])/g, "$1$2");
-    cleanText = cleanText.replace(/(\d)[ \t]+(\d)/g, "$1$2");
-    cleanText = cleanText.replace(/(\d)[ \t]+\*/g, "$1*");
-    cleanText = cleanText.replace(/\*[ \t]+(\d)/g, "*$1");
-    cleanText = cleanText.replace(/(\d)[ \t]*\.[ \t]*(\d)/g, "$1.$2");
-    cleanText = cleanText.replace(/([¥￥])[ \t]*(\d)/g, "$1$2");
-  }
-  cleanText = cleanText.replace(/([\u4e00-\u9fa5])\s+([:：()（）])/g, "$1$2");
-  cleanText = cleanText.replace(/([:：()（）])\s+([\u4e00-\u9fa5])/g, "$1$2");
+
+  // 1. 消除冒号周围的冗余空格 (如 "名称 : " -> "名称:")
+  cleanText = cleanText.replace(/\s*([:：])\s*/g, "$1");
+
+  // 2. 规整金额与货币符号 (如 "￥ 11 . 00" -> "￥11.00")
+  cleanText = cleanText.replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
+  cleanText = cleanText.replace(/([¥￥])\s*(\d)/g, "$1$2");
+
+  // 3. 规整标准中文日期 (如 "2026 年 03 月 19 日" -> "2026年03月19日")
   cleanText = cleanText.replace(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*(?:日|\b)/g, "$1年$2月$3日");
 
+  // 4. 拼接铁路客票断开的发票号码
   if (!cleanText.match(/发票号码[:：\s]*\d{18,20}/)) {
     const mTrainInvSplit = cleanText.match(/(26\d{9})[\s\n\r]+(\d{7,10})/);
     if (mTrainInvSplit) {
       cleanText = `发票号码:${mTrainInvSplit[1]}${mTrainInvSplit[2]}\n` + cleanText;
     }
   }
+
   return cleanText;
 }
 
@@ -215,10 +216,10 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
 
   let startStation = "";
   let endStation = "";
-  const mRouteBlock = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)(?:[^\u4e00-\u9fa50-9]{0,35})\b([GDCKTZYS][0-9]{1,4})\b(?:[^\u4e00-\u9fa50-9]{0,35})([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)/i);
+  const mRouteBlock = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:\s*站|\s*东|\s*南|\s*西|\s*北|\s*新区|\s*机场)?)(?:[^\u4e00-\u9fa50-9]{0,35})\b([GDCKTZYS][0-9]{1,4})\b(?:[^\u4e00-\u9fa50-9]{0,35})([\u4e00-\u9fa5]{2,8}(?:\s*站|\s*东|\s*南|\s*西|\s*北|\s*新区|\s*机场)?)/i);
   if (mRouteBlock) {
-    const s1 = mRouteBlock[1].replace(/^(?:[年月日号期票站开乘发到终始位]|始发|乘车|开票|改签|退票|旅客)+/, "").replace(/站$/, "").trim();
-    const s2 = mRouteBlock[3].replace(/^(?:[年月日号期票站开乘发到终始位]|到达|终到|终点)+/, "").replace(/站$/, "").trim();
+    const s1 = mRouteBlock[1].replace(/^(?:[年月日号期票站开乘发到终始位]|始发|乘车|开票|改签|退票|旅客)+/, "").replace(/\s*站$/, "").trim();
+    const s2 = mRouteBlock[3].replace(/^(?:[年月日号期票站开乘发到终始位]|到达|终到|终点)+/, "").replace(/\s*站$/, "").trim();
     if (s1.length >= 2 && s2.length >= 2 && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s2)) {
       startStation = s1;
       trainNo = mRouteBlock[2].toUpperCase();
@@ -227,8 +228,8 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
   }
 
   if (!startStation || !endStation) {
-    const stationMatches = Array.from(cleanText.matchAll(/([\u4e00-\u9fa5]{2,6}站)/g))
-      .map(m => m[1].replace(/^(?:[年月日号期票站开乘发到终始位]|始发|乘车|开票|改签|退票|旅客)+/, "").replace(/站$/, "").trim())
+    const stationMatches = Array.from(cleanText.matchAll(/([\u4e00-\u9fa5]{2,6}\s*站)/g))
+      .map(m => m[1].replace(/^(?:[年月日号期票站开乘发到终始位]|始发|乘车|开票|改签|退票|旅客)+/, "").replace(/\s*站$/, "").trim())
       .filter(s => s.length >= 2 && !/中国|国家|铁路|集团|有限|开票|发票|客票|网站|总局|税务|购买|信息|说明|服务/.test(s));
     if (stationMatches.length >= 2) {
       startStation = stationMatches[0];
