@@ -88,17 +88,18 @@ export function parseInvoiceQrString(qrText: string): QrInvoiceResult | null {
     };
   }
 
-  // 1.5 财政电子非税票据二维码 (CZ-EI-11, 1.1.0, 票据代码, 票据号码, 校验码, 开票日期, 金额)
-  if (parts.length >= 7 && (parts[0].startsWith("CZ-EI") || parts[0].includes("CZ"))) {
-    const invoiceCode = parts[2] || "";
-    const invoiceNumber = parts[3] || "";
-    const checksum = parts[4] || "";
-    const rawDate = parts[5] || "";
+  // 1.5 财政电子非税/会费票据二维码 (CZ-EI, 1.0, 票据代码, 票据号码, 校验码, 开票日期, 金额)
+  if (parts.length >= 6 && (cleanText.includes("CZ") || cleanText.includes("EI") || parts[0].startsWith("11") || parts[0] === "02")) {
+    const invoiceCode = parts.find((p) => /^\d{8,12}$/.test(p)) || parts[2] || "";
+    const invoiceNumber = parts.find((p) => p !== invoiceCode && /^\d{8,20}$/.test(p)) || parts[3] || "";
+    const checksum = parts.find((p) => p.length >= 6 && p.length <= 10 && /[a-zA-Z0-9]/.test(p) && p !== invoiceCode && p !== invoiceNumber) || "";
+    const datePart = parts.find((p) => /^\d{8}$/.test(p) && (p.startsWith("202") || p.startsWith("201")));
     let issueDate = "";
-    if (rawDate.length === 8 && /^\d{8}$/.test(rawDate)) {
-      issueDate = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
+    if (datePart) {
+      issueDate = `${datePart.slice(0, 4)}-${datePart.slice(4, 6)}-${datePart.slice(6, 8)}`;
     }
-    const totalAmountWithTax = parseFloat(parts[6]) || 0;
+    const amtPart = parts.find((p) => /^\d+(\.\d{1,2})?$/.test(p) && p !== invoiceCode && p !== invoiceNumber && p !== datePart && p !== "1.0" && p !== "1.1");
+    const totalAmountWithTax = amtPart ? parseFloat(amtPart) : 0;
 
     return {
       invoiceCode,
@@ -110,6 +111,63 @@ export function parseInvoiceQrString(qrText: string): QrInvoiceResult | null {
       checksum,
       rawQrText: cleanText,
     };
+  }
+
+  // 1.8 如果是财政票据/发票官方查验 URL (如 https://pjcy.czb.gov.cn/.../?billCode=...&billNo=...)
+  if (cleanText.startsWith("http://") || cleanText.startsWith("https://")) {
+    try {
+      const url = new URL(cleanText);
+      const params = url.searchParams;
+      const invoiceCode = params.get("billCode") || params.get("bill_code") || params.get("k") || params.get("code") || "";
+      const invoiceNumber = params.get("billNo") || params.get("bill_no") || params.get("no") || params.get("num") || "";
+      const checksum = params.get("checkCode") || params.get("random") || params.get("check_code") || params.get("chk") || "";
+      const rawDate = params.get("date") || params.get("billDate") || params.get("issueDate") || "";
+      const rawAmt = params.get("amount") || params.get("totalAmount") || params.get("amt") || "0";
+      const totalAmountWithTax = parseFloat(rawAmt) || 0;
+
+      let issueDate = "";
+      if (rawDate.length === 8 && /^\d{8}$/.test(rawDate)) {
+        issueDate = `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`;
+      }
+
+      if (invoiceNumber || invoiceCode) {
+        return {
+          invoiceCode,
+          invoiceNumber,
+          totalAmountWithoutTax: totalAmountWithTax,
+          totalTaxAmount: 0,
+          totalAmountWithTax,
+          issueDate,
+          checksum,
+          rawQrText: cleanText,
+        };
+      }
+    } catch (e) {}
+  }
+
+  // 1.9 如果是 JSON 格式
+  if (cleanText.startsWith("{") && cleanText.endsWith("}")) {
+    try {
+      const obj = JSON.parse(cleanText);
+      const invoiceCode = obj.billCode || obj.invoiceCode || obj.code || "";
+      const invoiceNumber = obj.billNo || obj.invoiceNumber || obj.num || "";
+      const checksum = obj.checkCode || obj.checksum || "";
+      const totalAmountWithTax = parseFloat(obj.totalAmount || obj.amount || 0) || 0;
+      let issueDate = obj.issueDate || obj.date || "";
+      if (issueDate.length === 8 && /^\d{8}$/.test(issueDate)) {
+        issueDate = `${issueDate.slice(0, 4)}-${issueDate.slice(4, 6)}-${issueDate.slice(6, 8)}`;
+      }
+      return {
+        invoiceCode,
+        invoiceNumber,
+        totalAmountWithoutTax: totalAmountWithTax,
+        totalTaxAmount: 0,
+        totalAmountWithTax,
+        issueDate,
+        checksum,
+        rawQrText: cleanText,
+      };
+    } catch (e) {}
   }
 
   // 2. 如果包含数值和日期
