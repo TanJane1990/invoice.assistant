@@ -204,15 +204,19 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
   let endStation = "";
   const mRouteBlock = cleanText.match(/([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)(?:[^\u4e00-\u9fa50-9]{0,35})\b([GDCKTZYS][0-9]{1,4})\b(?:[^\u4e00-\u9fa50-9]{0,35})([\u4e00-\u9fa5]{2,8}(?:站|东|南|西|北|新区|机场)?)/i);
   if (mRouteBlock) {
-    startStation = mRouteBlock[1].replace(/站$/, "").trim();
-    trainNo = mRouteBlock[2].toUpperCase();
-    endStation = mRouteBlock[3].replace(/站$/, "").trim();
+    const s1 = mRouteBlock[1].replace(/^(?:[年月日号期票站开乘发到终始位]|始发|乘车|开票|改签|退票|旅客)+/, "").replace(/站$/, "").trim();
+    const s2 = mRouteBlock[3].replace(/^(?:[年月日号期票站开乘发到终始位]|到达|终到|终点)+/, "").replace(/站$/, "").trim();
+    if (s1.length >= 2 && s2.length >= 2 && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s1) && !/中国|国家|铁路|发票|客票|网站|总局|税务/.test(s2)) {
+      startStation = s1;
+      trainNo = mRouteBlock[2].toUpperCase();
+      endStation = s2;
+    }
   }
 
   if (!startStation || !endStation) {
     const stationMatches = Array.from(cleanText.matchAll(/([\u4e00-\u9fa5]{2,6}站)/g))
-      .map(m => m[1].replace(/站$/, ""))
-      .filter(s => !/中国|国家|铁路|集团|有限|开票|发票|客票|网站|总局|税务|购买|信息|说明|服务/.test(s));
+      .map(m => m[1].replace(/^(?:[年月日号期票站开乘发到终始位]|始发|乘车|开票|改签|退票|旅客)+/, "").replace(/站$/, "").trim())
+      .filter(s => s.length >= 2 && !/中国|国家|铁路|集团|有限|开票|发票|客票|网站|总局|税务|购买|信息|说明|服务/.test(s));
     if (stationMatches.length >= 2) {
       startStation = stationMatches[0];
       endStation = stationMatches[1];
