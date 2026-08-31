@@ -277,10 +277,15 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
     totalAmountWithTax = parseFloat(mPrice[1].replace(/[,，\s]/g, ""));
   }
 
-  const remarks = trainDepartureTime ? `${trainRoute} ${trainDepartureTime}` : trainRoute;
+  const remarks = [
+    trainRoute,
+    passengerName ? `乘车人:${passengerName}` : "",
+    trainDepartureTime,
+  ].filter(Boolean).join(" ");
+
   const items = [{
     id: `item-${Date.now()}-1`,
-    name: passengerName ? `乘车: ${passengerName}` : "铁路客运服务",
+    name: passengerName ? `*客运服务*(${passengerName})` : "*铁路客运服务*",
     amount: totalAmountWithTax,
     quantity: 1,
     taxRate: "0%",
@@ -748,25 +753,26 @@ function parseCommercialReceiptTemplate(cleanText: string, fileName: string): Pa
 
   // 3. 销售方名称 (出票公司 / 收款方)
   let sellerName = "出票服务单位";
-  const mPayeeBlock = cleanText.match(/(?:收款方|收款单位)[\s\S]*?(?:名\s*称)[:：\s]*([^\n\r\t]+)/);
-  if (mPayeeBlock) {
-    let s = mPayeeBlock[1].replace(/(?:开户行|账号|收款方|开票人|备注).*/, "").trim();
-    s = cleanPartyEntityName(s);
-    if (s && s.length >= 2) sellerName = s;
+  const mTopCompany = cleanText.match(/([^\n\r\t]{3,40}(?:有限责任公司|股份有限公司|有限公司|分公司|公司|超市|酒店|饭店|商行|中心|商户|部|社))/);
+  if (mTopCompany) {
+    let s = cleanPartyEntityName(mTopCompany[1]);
+    if (s && s.length >= 2 && !/^(?:电子收据|收据|开户行|客户)/.test(s)) sellerName = s;
   }
   if (sellerName === "出票服务单位") {
-    const mTopCompany = cleanText.match(/^[\s\n\r]*([^\n\r\t]{3,40}(?:有限责任公司|股份有限公司|有限公司|分公司|公司|超市|酒店|饭店|商行|中心|商户|部|社))/);
-    if (mTopCompany) {
-      let s = cleanPartyEntityName(mTopCompany[1]);
+    const mPayeeBlock = cleanText.match(/(?:收款方|收款单位|出票单位)[\s\S]*?(?:名\s*称)[:：\s]*([^\n\r\t]+)/);
+    if (mPayeeBlock) {
+      let s = mPayeeBlock[1].replace(/(?:开户行|账号|收款方|开票人|备注).*/, "").trim();
+      s = cleanPartyEntityName(s);
       if (s && s.length >= 2) sellerName = s;
     }
   }
 
   // 4. 购买方名称 (客户/交款人)
   let buyerName = "个人";
-  const mPayer = cleanText.match(/(?:客户\s*[（(][^）)]+[）)]|客户|交\s*款\s*人|付\s*款\s*人|交\s*款\s*单\s*位)[:：\s]*([^\n\r\t]+)/);
+  const mPayer = cleanText.match(/(?:客户\s*[（(][^）)]+[）)]|交\s*款\s*人\s*[（(][^）)]+[）)]|客户|交\s*款\s*人|付\s*款\s*人|交\s*款\s*单\s*位)[:：\s|]*([^\n\r\t]+)/);
   if (mPayer) {
-    let b = mPayer[1].replace(/(?:序号|项目名称|金额|合计|日期|开票日期|规格型号|单价).*/, "").trim();
+    let b = mPayer[1].replace(/^(?:[交款人单位（(）)]|\/|\\|\||:)+/, "").trim();
+    b = b.replace(/(?:序号|项目名称|金额|合计|日期|开票日期|规格型号|单价).*/, "").trim();
     b = cleanPartyEntityName(b);
     if (b && b.length >= 2 && b !== sellerName) buyerName = b;
   }
@@ -790,11 +796,11 @@ function parseCommercialReceiptTemplate(cleanText: string, fileName: string): Pa
   const mRemark = cleanText.match(/(?:备\s*注)[:：\s]*([^\n\r\t]+)/);
   if (mRemark) {
     let r = mRemark[1].replace(/(?:开票人|收款人|复核人).*/, "").trim();
-    if (r) remarks = r;
+    if (r && r !== "-") remarks = r;
   }
 
   // 7. 商品明细项
-  let itemName = "服务费";
+  let itemName = "生活费";
   const mReceiptItem = cleanText.match(/(?:1|01)\s+([\u4e00-\u9fa50-9（）()]{2,20})\s+(?:[0-9,，\s]+\.?\d*)/) ||
                        cleanText.match(/(?:项目名称|费用名称|款项内容|项目|事由|用途)[:：\s]*([\u4e00-\u9fa5]{2,15})/) ||
                        cleanText.match(/([\u4e00-\u9fa5]{2,10}(?:生活费|房租|租金|物业费|水电费|水费|电费|服务费|管理费|押金|预付款|学费))/);

@@ -223,16 +223,17 @@ export async function processInvoiceFileUnified(
   const departureTime = rawData.trainDepartureTime || "";
   let resolvedRemarks = rawData.remarks || fileName;
   if (isTrainTicket) {
-    if (rawData.remarks && rawData.remarks !== fileName && rawData.remarks !== "发票识别" && !rawData.remarks.includes("南京南站 G2789")) {
-      resolvedRemarks = rawData.remarks;
+    const passengerPart = rawData.passengerName ? `乘车人:${rawData.passengerName}` : "";
+    if (rawData.remarks && rawData.remarks !== fileName && rawData.remarks !== "发票识别") {
+      resolvedRemarks = rawData.remarks.includes("乘车人")
+        ? rawData.remarks
+        : [rawData.remarks, passengerPart].filter(Boolean).join(" ");
     } else if (resolvedTrainRoute && departureTime) {
-      resolvedRemarks = `${resolvedTrainRoute} ${departureTime}`;
+      resolvedRemarks = [resolvedTrainRoute, passengerPart, departureTime].filter(Boolean).join(" ");
     } else if (resolvedTrainRoute) {
-      resolvedRemarks = resolvedTrainRoute;
-    } else if (departureTime) {
-      resolvedRemarks = departureTime;
+      resolvedRemarks = [resolvedTrainRoute, passengerPart].filter(Boolean).join(" ");
     } else {
-      resolvedRemarks = "铁路电子客票";
+      resolvedRemarks = passengerPart ? `铁路电子客票 ${passengerPart}` : "铁路电子客票";
     }
   }
 
