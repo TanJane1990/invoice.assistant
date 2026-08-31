@@ -825,17 +825,24 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
   const cleanText = normalizeTextStream(rawText);
 
   // 1. 铁路电子客票专属模板
-  if (/铁路电子客票|火车票|铁路电子|电子客票|12306/.test(cleanText)) {
+  if (/铁\s*路\s*电\s*子\s*客\s*票|火\s*车\s*票|铁\s*路\s*电\s*子|电\s*子\s*客\s*票|12306/.test(cleanText)) {
     return parseRailwayTicketTemplate(cleanText, fileName);
   }
 
-  // 2. 财政电子票据专属模板（非税收入、社会团体会费、公益捐赠、医疗收费、学杂费等财政部监制票据）
-  if (/非税收入|社会团体|团体会费|会费统一票据|统一票据|财政电子|财政部监制|财政局监制|捐赠统一票据|医疗收费|学杂费/.test(cleanText)) {
+  // 2. 财政电子票据专属模板（非税收入、社会团体会费、公益捐赠、医疗收费、学杂费等财政部/财政局监制票据）
+  if (
+    /非\s*税\s*收\s*入|社\s*会\s*团\s*体|团\s*体\s*会\s*费|会\s*费\s*统\s*一\s*票\s*据|统\s*一\s*票\s*据|财\s*政\s*电\s*子|财\s*政\s*部\s*监\s*制|财\s*政\s*局\s*监\s*制|捐\s*赠\s*统\s*一\s*票\s*据|医\s*疗\s*收\s*费|学\s*杂\s*费|交\s*款\s*人/.test(
+      cleanText
+    ) ||
+    fileName.includes("非税") ||
+    fileName.includes("会费") ||
+    fileName.includes("票据")
+  ) {
     return parseNonTaxInvoiceTemplate(cleanText, fileName);
   }
 
   // 3. 商业电子收据 / 报销小票模板
-  if (/收据|电子收据|收条|收款凭证|交款单/.test(cleanText) || fileName.includes("收据") || fileName.includes("副本")) {
+  if (/收\s*据|电\s*子\s*收\s*据|收\s*条|收\s*款\s*凭\s*证|交\s*款\s*单/.test(cleanText) || fileName.includes("收据") || fileName.includes("副本")) {
     return parseCommercialReceiptTemplate(cleanText, fileName);
   }
 

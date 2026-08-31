@@ -59,7 +59,7 @@ export async function processInvoiceFileUnified(
     if (isPdf) {
       try {
         const pdfTask = extractTextFromPdf(fileBase64);
-        const pdfTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 2500));
+        const pdfTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 5000));
         extractedPdfText = await Promise.race([pdfTask, pdfTimeout]);
       } catch (e) {
         console.warn("PDF extract text info:", e);
@@ -70,7 +70,7 @@ export async function processInvoiceFileUnified(
     if (!extractedPdfText || extractedPdfText.trim().length < 40) {
       try {
         const ocrTask = recognizeImageTextWithTesseract(previewFileUrl || fileBase64);
-        const ocrTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 3500));
+        const ocrTimeout = new Promise<string>((resolve) => setTimeout(() => resolve(""), 6000));
         const ocrText = await Promise.race([ocrTask, ocrTimeout]);
         if (ocrText) {
           extractedPdfText = (extractedPdfText + "\n" + ocrText).trim();
@@ -89,7 +89,7 @@ export async function processInvoiceFileUnified(
           mimeType,
           fileName,
         });
-        const nativeTimeout = new Promise<any>((resolve) => setTimeout(() => resolve(null), 3500));
+        const nativeTimeout = new Promise<any>((resolve) => setTimeout(() => resolve(null), 6000));
         const nativeRes = await Promise.race([nativeTask, nativeTimeout]);
         if (nativeRes && nativeRes.success) {
           serverResult = nativeRes;
