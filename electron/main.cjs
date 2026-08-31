@@ -11,6 +11,9 @@ const fs = require("fs");
 const os = require("os");
 const child_process = require("child_process");
 
+// 统一设置应用名称
+app.name = "智能发票管理助手";
+
 // 关键：Windows 系统任务栏图标绑定与识别（彻底解决 Win 打开后任务栏图标不全/空白/默认图标问题）
 if (process.platform === "win32") {
   app.setAppUserModelId("com.invoice.assistant");
