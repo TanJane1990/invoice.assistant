@@ -719,72 +719,84 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
 }
 
 // -------------------------------------------------------------
-// 模板 4：🧾 商业电子收据 / 通用报销小票自适应解析器
+// 模板 4：🧾 商业电子收据专属高精度网格解析器
 // -------------------------------------------------------------
 function parseCommercialReceiptTemplate(cleanText: string, fileName: string): ParsedInvoiceResult {
   const invoiceType = "其他发票";
 
+  // 1. 收据单号 (优先提取 No. 44322051-00001445 或 收款单号: 1537850742643612366)
   let invoiceNumber = "";
-  const mNum = cleanText.match(/(?:单号|编号|收据号|No\.?)[:：\s]*([0-9A-Za-z-]+)/i) ||
-               cleanText.match(/\b([A-Za-z0-9]{8,18})\b/);
-  if (mNum) invoiceNumber = mNum[1];
+  const mNo = cleanText.match(/(?:No\.?|收据号|收据单号|单号|编号)[:：\s]*([0-9A-Za-z-]+)/i);
+  if (mNo) {
+    invoiceNumber = mNo[1].trim();
+  } else {
+    const mPayOrder = cleanText.match(/(?:收款单号|单号)[:：\s]*(\d{10,25})/);
+    if (mPayOrder) invoiceNumber = mPayOrder[1].trim();
+    else {
+      const mAnyNum = cleanText.match(/\b([A-Za-z0-9-]{8,22})\b/);
+      if (mAnyNum) invoiceNumber = mAnyNum[1];
+    }
+  }
 
+  // 2. 开票日期
   let issueDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
-  const mDate = cleanText.match(/(?:日期|时间)[:：\s]*(\d{4})\s*年?\s*(\d{1,2})\s*月?\s*(\d{1,2})/) ||
+  const mDate = cleanText.match(/(?:开\s*票\s*日\s*期|日\s*期|时\s*间)[:：\s]*(\d{4})\s*年?\s*(\d{1,2})\s*月?\s*(\d{1,2})/) ||
                 cleanText.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
   if (mDate) {
     issueDate = `${mDate[1]}-${String(mDate[2]).padStart(2, "0")}-${String(mDate[3]).padStart(2, "0")}`;
   }
 
-  let buyerName = "个人";
-  const mPayer = cleanText.match(/(?:交款人|付款人|客户|交款单位|付款方)[:：\s]*([^\n\r\t]+)/);
-  if (mPayer) {
-    let b = mPayer[1].replace(/(?:收款人|金额|合计|日期).*/, "").trim();
-    if (b && b.length >= 2) buyerName = b;
-  }
-
-  let sellerName = "示例服务提供商";
-  const mPayee = cleanText.match(/(?:收款单位|收款方|出票单位|商户名称|收款人)[:：\s]*([^\n\r\t]+)/) ||
-                 cleanText.match(/^([^\n\r\t]{3,35}(?:公司|超市|饭店|商行|中心))/);
-  if (mPayee) {
-    let s = mPayee[1].replace(/(?:电子收据|收据|付款人|交款人).*/, "").trim();
+  // 3. 销售方名称 (出票公司 / 收款方)
+  let sellerName = "出票服务单位";
+  const mPayeeBlock = cleanText.match(/(?:收款方|收款单位)[\s\S]*?(?:名\s*称)[:：\s]*([^\n\r\t]+)/);
+  if (mPayeeBlock) {
+    let s = mPayeeBlock[1].replace(/(?:开户行|账号|收款方|开票人|备注).*/, "").trim();
+    s = cleanPartyEntityName(s);
     if (s && s.length >= 2) sellerName = s;
   }
+  if (sellerName === "出票服务单位") {
+    const mTopCompany = cleanText.match(/^[\s\n\r]*([^\n\r\t]{3,40}(?:有限责任公司|股份有限公司|有限公司|分公司|公司|超市|酒店|饭店|商行|中心|商户|部|社))/);
+    if (mTopCompany) {
+      let s = cleanPartyEntityName(mTopCompany[1]);
+      if (s && s.length >= 2) sellerName = s;
+    }
+  }
 
+  // 4. 购买方名称 (客户/交款人)
+  let buyerName = "个人";
+  const mPayer = cleanText.match(/(?:客户\s*[（(][^）)]+[）)]|客户|交\s*款\s*人|付\s*款\s*人|交\s*款\s*单\s*位)[:：\s]*([^\n\r\t]+)/);
+  if (mPayer) {
+    let b = mPayer[1].replace(/(?:序号|项目名称|金额|合计|日期|开票日期|规格型号|单价).*/, "").trim();
+    b = cleanPartyEntityName(b);
+    if (b && b.length >= 2 && b !== sellerName) buyerName = b;
+  }
+
+  // 5. 金额合计
   let totalAmountWithTax = 0;
   const cnAmount = parseChineseAmount(cleanText);
   if (cnAmount && cnAmount > 0) totalAmountWithTax = cnAmount;
 
   if (totalAmountWithTax === 0) {
-    const mPrice = cleanText.match(/(?:实收|应收|金额|合计|小写)\s*[:：]?\s*[¥￥]?\s*([0-9,，\s]+\.?\d*)/) ||
+    const mPrice = cleanText.match(/(?:（小写）|\(小写\)|小写|实收|应收|合计|金额)\s*[:：]?\s*[¥￥]?\s*([0-9,，\s]+\.?\d*)/) ||
                    cleanText.match(/[¥￥]\s*([0-9,，\s]+\.?\d*)/);
     if (mPrice) {
       let val = parseFloat(mPrice[1].replace(/[,，\s]/g, ""));
-      if (!isNaN(val)) {
-        if (val >= 10000 && val % 100 === 0) val = val / 100;
-        totalAmountWithTax = val;
-      }
+      if (!isNaN(val)) totalAmountWithTax = val;
     }
   }
 
-  // 特别保障：电子收据金额防丢位纠偏 (3300)
-  if ((totalAmountWithTax === 0 || totalAmountWithTax === 300 || totalAmountWithTax === 30) &&
-      (cleanText.includes("3300") || cleanText.includes("330000") || cleanText.includes("3300.00") || cleanText.includes("叁仟叁佰"))) {
-    totalAmountWithTax = 3300;
-  }
-
-  // 备注 (周期)
+  // 6. 备注
   let remarks = "-";
-  const mPeriod = cleanText.match(/(\d{1,2}[-~至到]\d{1,2}\s*月[\u4e00-\u9fa5]*|\d{4}年[\u4e00-\u9fa5]*生活费|\d{1,2}月[\u4e00-\u9fa5]*生活费)/);
-  if (mPeriod) {
-    let r = mPeriod[1].replace(/\s+/g, "");
-    r = r.replace(/(?:袋?开户行|收款方|名称|账号|开票人|客户|交款人).*/, "").trim();
-    remarks = r || "生活费";
+  const mRemark = cleanText.match(/(?:备\s*注)[:：\s]*([^\n\r\t]+)/);
+  if (mRemark) {
+    let r = mRemark[1].replace(/(?:开票人|收款人|复核人).*/, "").trim();
+    if (r) remarks = r;
   }
 
-  // 商品明细
-  let itemName = "生活费";
-  const mReceiptItem = cleanText.match(/(?:项目名称|费用名称|款项内容|项目|事由|用途)[:：\s]*([\u4e00-\u9fa5]{2,15})/) ||
+  // 7. 商品明细项
+  let itemName = "服务费";
+  const mReceiptItem = cleanText.match(/(?:1|01)\s+([\u4e00-\u9fa50-9（）()]{2,20})\s+(?:[0-9,，\s]+\.?\d*)/) ||
+                       cleanText.match(/(?:项目名称|费用名称|款项内容|项目|事由|用途)[:：\s]*([\u4e00-\u9fa5]{2,15})/) ||
                        cleanText.match(/([\u4e00-\u9fa5]{2,10}(?:生活费|房租|租金|物业费|水电费|水费|电费|服务费|管理费|押金|预付款|学费))/);
   if (mReceiptItem) {
     let it = mReceiptItem[1].replace(/(?:收据|公司).*/, "").trim();
@@ -821,7 +833,7 @@ function parseCommercialReceiptTemplate(cleanText: string, fileName: string): Pa
 }
 
 /**
- * 主调度引擎：智能分流至四大法定/标准模板解析器
+ * 主调度引擎：智能分流至各大法定/标准模板解析器
  */
 export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""): ParsedInvoiceResult {
   const cleanText = normalizeTextStream(rawText);
@@ -831,9 +843,17 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     return parseRailwayTicketTemplate(cleanText, fileName);
   }
 
-  // 2. 财政电子票据专属模板（非税收入、社会团体会费、公益捐赠、医疗收费、学杂费等财政部/财政局监制票据）
+  // 2. 商业电子收据专属模板 (如企业自开电子收据、报销小票、收款凭证，无国家防伪二维码)
   if (
-    /非\s*税\s*收\s*入|社\s*会\s*团\s*体|团\s*体\s*会\s*费|会\s*费\s*统\s*一\s*票\s*据|统\s*一\s*票\s*据|财\s*政\s*电\s*子|财\s*政\s*部\s*监\s*制|财\s*政\s*局\s*监\s*制|捐\s*赠\s*统\s*一\s*票\s*据|医\s*疗\s*收\s*费|学\s*杂\s*费|交\s*款\s*人/.test(
+    (/电\s*子\s*收\s*据|收\s*据|收\s*款\s*单\s*号|收\s*款\s*凭\s*证|收\s*条/.test(cleanText) || fileName.includes("收据")) &&
+    !/非\s*税\s*收\s*入|社\s*会\s*团\s*体|团\s*体\s*会\s*费|财\s*政\s*部\s*监\s*制|财\s*政\s*局\s*监\s*制|增\s*值\s*税/.test(cleanText)
+  ) {
+    return parseCommercialReceiptTemplate(cleanText, fileName);
+  }
+
+  // 3. 财政电子票据专属模板（非税收入、社会团体会费、公益捐赠、医疗收费、学杂费等财政部/财政局监制票据）
+  if (
+    /非\s*税\s*收\s*入|社\s*会\s*团\s*体|团\s*体\s*会\s*费|会\s*费\s*统\s*一\s*票\s*据|统\s*一\s*票\s*据|财\s*政\s*电\s*子|财\s*政\s*部\s*监\s*制|财\s*政\s*局\s*监\s*制|捐\s*赠\s*统\s*一\s*票\s*据|医\s*疗\s*收\s*费|学\s*杂\s*费/.test(
       cleanText
     ) ||
     fileName.includes("非税") ||
@@ -843,12 +863,12 @@ export function parseInvoiceTextWithRules(rawText: string, fileName: string = ""
     return parseNonTaxInvoiceTemplate(cleanText, fileName);
   }
 
-  // 3. 商业电子收据 / 报销小票模板
-  if (/收\s*据|电\s*子\s*收\s*据|收\s*条|收\s*款\s*凭\s*证|交\s*款\s*单/.test(cleanText) || fileName.includes("收据") || fileName.includes("副本")) {
+  // 4. 通用商业收据兜底
+  if (/收\s*据|收\s*条|交\s*款\s*单/.test(cleanText) || fileName.includes("收据") || fileName.includes("副本")) {
     return parseCommercialReceiptTemplate(cleanText, fileName);
   }
 
-  // 4. 数电发票 / 增值税电子发票标准模板 (默认)
+  // 5. 数电发票 / 增值税电子发票标准模板 (默认)
   return parseDigitalVatInvoiceTemplate(cleanText, fileName);
 }
 
