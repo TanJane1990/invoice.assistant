@@ -507,29 +507,29 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         </div>
       </div>
 
-      {/* 2. 中间控制栏：搜索、分类、周期、批次胶囊与导出操作 */}
-      <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: "#ffffff" }}>
-        {/* 左侧: 搜索框 & 分类 & 周期 & 批次筛选胶囊 */}
-        <div className="flex flex-wrap items-center space-x-3 gap-y-2">
+      {/* 2. 中间控制栏：统一规整排版（左侧筛选控制，右侧功能操作） */}
+      <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-wrap lg:flex-nowrap items-center justify-between gap-2.5" style={{ backgroundColor: "#ffffff" }}>
+        {/* 左侧: 搜索框 & 批次胶囊 & 周期 & 分类 & 查重 */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* 搜索框 */}
-          <div className="relative w-48">
-            <Search className="w-4 h-4 absolute left-3 top-2.5" style={{ color: "#64748b" }} />
+          <div className="relative w-40">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5" style={{ color: "#64748b" }} />
             <input
               type="text"
               placeholder="搜索号码、商户..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ color: "#0f172a", backgroundColor: "#F8FAFC" }}
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-300 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
 
           {/* 批次筛选切换胶囊 */}
-          <div className="flex items-center p-1 rounded-xl border space-x-1" style={{ backgroundColor: "#f1f5f9", borderColor: "#cbd5e1" }}>
+          <div className="flex items-center p-0.5 rounded-xl border space-x-0.5" style={{ backgroundColor: "#f1f5f9", borderColor: "#cbd5e1" }}>
             <button
               type="button"
               onClick={() => setBatchFilter("all")}
-              className="px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
+              className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
               style={{
                 backgroundColor: batchFilter === "all" ? "#0f172a" : "transparent",
                 color: batchFilter === "all" ? "#ffffff" : "#334155",
@@ -540,42 +540,28 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
             <button
               type="button"
               onClick={() => setBatchFilter("unexported")}
-              className="px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
+              className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
               style={{
                 backgroundColor: batchFilter === "unexported" ? "#059669" : "transparent",
                 color: batchFilter === "unexported" ? "#ffffff" : unexportedCount > 0 ? "#047857" : "#64748b",
               }}
             >
-              <Sparkles className="w-3.5 h-3.5" style={{ color: batchFilter === "unexported" ? "#ffffff" : "#047857" }} />
+              <Sparkles className="w-3 h-3" style={{ color: batchFilter === "unexported" ? "#ffffff" : "#047857" }} />
               <span>新导入 ({unexportedCount})</span>
             </button>
             <button
               type="button"
               onClick={() => setBatchFilter("exported")}
-              className="px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
+              className="px-2.5 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-black flex items-center space-x-1 shadow-2xs"
               style={{
                 backgroundColor: batchFilter === "exported" ? "#334155" : "transparent",
                 color: batchFilter === "exported" ? "#ffffff" : "#475569",
               }}
             >
-              <Archive className="w-3.5 h-3.5" style={{ color: batchFilter === "exported" ? "#ffffff" : "#475569" }} />
+              <Archive className="w-3 h-3" style={{ color: batchFilter === "exported" ? "#ffffff" : "#475569" }} />
               <span>已归档 ({exportedCount})</span>
             </button>
           </div>
-
-          {/* 归档管理与封存快捷按钮 */}
-          {exportedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsArchiveModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-colors cursor-pointer flex items-center space-x-1 shadow-2xs"
-              style={{ color: "#334155", backgroundColor: "#f8fafc" }}
-              title="导出历史已归档发票 ZIP 完整备份包或安全清空已归档数据"
-            >
-              <Archive className="w-3.5 h-3.5 text-slate-600" />
-              <span>🗄️ 归档封存管理</span>
-            </button>
-          )}
 
           {/* 周期/年份/月份快捷筛选 */}
           <div className="flex items-center space-x-1">
@@ -584,7 +570,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
               style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-              className="border border-slate-300 text-xs rounded-xl px-2.5 py-1.5 font-bold focus:outline-none cursor-pointer"
+              className="border border-slate-300 text-xs rounded-xl px-2 py-1.5 font-bold focus:outline-none cursor-pointer"
             >
               <option value="all">📅 全部时间</option>
               <option value="last_1_month">⚡ 近 1 个月</option>
@@ -617,7 +603,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-              className="border border-slate-300 text-xs rounded-xl px-2.5 py-1.5 font-bold focus:outline-none cursor-pointer"
+              className="border border-slate-300 text-xs rounded-xl px-2 py-1.5 font-bold focus:outline-none cursor-pointer"
             >
               <option value="all" style={{ color: "#0f172a" }}>全部分类</option>
               <option value="餐饮费" style={{ color: "#0f172a" }}>餐饮费</option>
@@ -632,23 +618,36 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           </div>
 
           {/* 仅筛选重复发票 */}
-          <label className="flex items-center space-x-1.5 text-xs cursor-pointer px-2.5 py-1.5 rounded-xl border font-bold" style={{ color: "#78350f", backgroundColor: "#fffbeb", borderColor: "#fcd34d" }}>
+          <label className="flex items-center space-x-1 text-xs cursor-pointer px-2 py-1.5 rounded-xl border font-bold" style={{ color: "#78350f", backgroundColor: "#fffbeb", borderColor: "#fcd34d" }}>
             <input
               type="checkbox"
               checked={filterDuplicateOnly}
               onChange={(e) => setFilterDuplicateOnly(e.target.checked)}
               className="accent-amber-600 rounded cursor-pointer"
             />
-            <span style={{ color: "#78350f" }}>仅重复 ({duplicateCount}张)</span>
+            <span style={{ color: "#78350f" }}>仅重复 ({duplicateCount})</span>
           </label>
         </div>
 
-        {/* 右侧: 导出 Excel 按钮 */}
-        <div className="flex items-center space-x-3">
+        {/* 右侧: 操作按钮区 (归档管理 + 导出 Excel 永远居右且不换行) */}
+        <div className="flex items-center space-x-2 shrink-0 ml-auto">
+          {exportedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsArchiveModalOpen(true)}
+              className="px-3 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-2xs shrink-0"
+              style={{ color: "#334155", backgroundColor: "#f8fafc" }}
+              title="导出历史已归档发票 ZIP 完整备份包或安全清空已归档数据"
+            >
+              <Archive className="w-3.5 h-3.5 text-slate-600" />
+              <span>🗄️ 归档封存管理</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportButtonClick}
             style={{ color: "#ffffff", backgroundColor: "#009966" }}
-            className="px-4 py-2 hover:bg-[#008055] rounded-xl text-xs font-extrabold shadow-sm transition-colors cursor-pointer flex items-center space-x-1.5"
+            className="px-3.5 py-2 hover:bg-[#008055] rounded-xl text-xs font-extrabold shadow-sm transition-colors cursor-pointer flex items-center space-x-1.5 shrink-0"
           >
             <FileSpreadsheet className="w-4 h-4" style={{ color: "#ffffff" }} />
             <span style={{ color: "#ffffff" }}>
