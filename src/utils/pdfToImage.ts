@@ -70,9 +70,34 @@ export async function extractTextFromPdf(pdfDataUri: string): Promise<string> {
         const xB = b.transform ? b.transform[4] : 0;
         return xA - xB; // 从左至右
       });
-      const pageText = sortedItems
-        .map((item: any) => item.str || "")
-        .join(" ");
+
+      let pageText = "";
+      for (let i = 0; i < sortedItems.length; i++) {
+        const item = sortedItems[i];
+        const str = item.str || "";
+        if (!str) continue;
+        if (!pageText) {
+          pageText = str;
+        } else {
+          const prevItem = sortedItems[i - 1];
+          const yA = prevItem.transform ? prevItem.transform[5] : 0;
+          const yB = item.transform ? item.transform[5] : 0;
+          const isSameLine = Math.abs(yA - yB) < 6;
+          
+          if (isSameLine) {
+            // 同一行内如果字符为中文、代码或标点符号，无缝紧密拼接，杜绝字间散落空格
+            const prevStr = pageText.slice(-1);
+            const nextChar = str.slice(0, 1);
+            if (/[\u4e00-\u9fa5\d\w:：*()（）/—\-_.]/.test(prevStr) && /[\u4e00-\u9fa5\d\w:：*()（）/—\-_.]/.test(nextChar)) {
+              pageText += str;
+            } else {
+              pageText += " " + str;
+            }
+          } else {
+            pageText += "\n" + str;
+          }
+        }
+      }
       fullText += pageText + "\n";
     }
     return fullText;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { InvoiceData, InvoiceCategory } from "../types";
 import { numberToRMB } from "../utils/numberToRMB";
+import { cleanSpacedChineseAndCodes, cleanPartyEntityName } from "../utils/localPdfInvoiceOcr";
 import { X, Save, Edit3 } from "lucide-react";
 
 interface InvoiceDetailModalProps {
@@ -23,7 +24,24 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
   useEffect(() => {
     if (invoice) {
-      setForm({ ...invoice });
+      let cleanSeller = cleanPartyEntityName(invoice.sellerName || "");
+      if (!cleanSeller || /^(?:代码|统一社会|纳税人)/.test(cleanSeller)) {
+        cleanSeller = invoice.sellerName && !/^(?:代码|统一社会|纳税人)/.test(invoice.sellerName)
+          ? cleanSpacedChineseAndCodes(invoice.sellerName)
+          : "出票服务单位";
+      }
+      setForm({
+        ...invoice,
+        buyerName: cleanPartyEntityName(invoice.buyerName || "") || "个人",
+        sellerName: cleanSeller,
+        invoiceNumber: cleanSpacedChineseAndCodes(invoice.invoiceNumber || ""),
+        invoiceCode: cleanSpacedChineseAndCodes(invoice.invoiceCode || ""),
+        totalAmountWithTaxCN: numberToRMB(invoice.totalAmountWithTax || 0),
+        items: (invoice.items || []).map((it) => ({
+          ...it,
+          name: cleanSpacedChineseAndCodes(it.name),
+        })),
+      });
     }
   }, [invoice]);
 
@@ -132,7 +150,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               <select
                 value={form.invoiceType || "增值税电子普通发票"}
                 onChange={(e) => setForm({ ...form, invoiceType: e.target.value })}
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-bold cursor-pointer"
               >
                 <option value="增值税电子普通发票" style={{ color: "#0f172a" }}>增值税电子普通发票</option>
@@ -156,7 +174,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               <select
                 value={form.category || "办公用品"}
                 onChange={(e) => setForm({ ...form, category: e.target.value as InvoiceCategory })}
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 font-bold cursor-pointer"
               >
                 {categories.map((c) => (
@@ -179,7 +197,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 value={form.invoiceCode || ""}
                 onChange={(e) => setForm({ ...form, invoiceCode: e.target.value })}
                 placeholder="无代码可留空"
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-mono font-bold"
               />
             </div>
@@ -193,7 +211,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 value={form.invoiceNumber || ""}
                 onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })}
                 placeholder="8-20位数字号码"
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-mono font-extrabold text-[#E8000A]"
               />
             </div>
@@ -206,7 +224,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 type="date"
                 value={form.issueDate || new Date().toISOString().split("T")[0]}
                 onChange={(e) => setForm({ ...form, issueDate: e.target.value })}
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-bold cursor-pointer"
               />
             </div>
@@ -223,7 +241,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 value={form.buyerName || ""}
                 onChange={(e) => setForm({ ...form, buyerName: e.target.value })}
                 placeholder="请输入购买方抬头名称"
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
               />
             </div>
@@ -237,7 +255,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 value={form.sellerName || ""}
                 onChange={(e) => setForm({ ...form, sellerName: e.target.value })}
                 placeholder="请输入销售方或商家名称"
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
               />
             </div>
@@ -266,9 +284,9 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               <input
                 type="text"
                 readOnly
-                value={form.totalAmountWithTaxCN || numberToRMB(form.totalAmountWithTax || 0)}
-                style={{ color: "#991b1b", backgroundColor: "#fef2f2" }}
-                className="w-full p-2.5 border border-red-200 rounded-xl font-serif font-bold text-sm text-red-900"
+                value={numberToRMB(form.totalAmountWithTax || 0)}
+                style={{ color: "#991b1b", backgroundColor: "#fef2f2", caretColor: "#991b1b" }}
+                className="w-full p-2.5 border border-red-200 rounded-xl font-serif font-bold text-sm text-red-900 select-text"
               />
             </div>
           </div>
@@ -284,7 +302,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 value={form.items && form.items.length > 0 ? form.items[0].name : ""}
                 onChange={(e) => handleItemNameChange(e.target.value)}
                 placeholder="*其他*物品/服务"
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
               />
             </div>
@@ -298,7 +316,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 value={form.remarks || ""}
                 onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                 placeholder="无备注可留空"
-                style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}
+                style={{ color: "#0f172a", backgroundColor: "#f8fafc", caretColor: "#0f172a" }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
               />
             </div>

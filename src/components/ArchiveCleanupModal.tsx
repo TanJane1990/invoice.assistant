@@ -4,6 +4,8 @@ import {
   Download,
   Trash2,
   Lock,
+  Eye,
+  EyeOff,
   CheckCircle2,
   X,
   FileArchive,
@@ -29,6 +31,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
 }) => {
   const [selectedAction, setSelectedAction] = useState<"backup_and_clear" | "backup_only" | "clear_only">("backup_and_clear");
   const [passwordInput, setPasswordInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phraseInput, setPhraseInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -272,14 +275,33 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                   <label className="block text-[11px] font-bold" style={{ color: "#78350f" }}>
                     请输入系统管理密码：
                   </label>
-                  <input
-                    type="password"
-                    placeholder="输入系统设置中的管理密码"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    style={{ backgroundColor: "#ffffff", color: "#0f172a", borderColor: "#f59e0b" }}
-                    className="w-full p-2.5 bg-white border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="输入系统设置中的管理密码"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      autoComplete="off"
+                      autoFocus
+                      style={{
+                        backgroundColor: "#ffffff",
+                        color: "#0f172a",
+                        caretColor: "#0f172a",
+                        borderColor: "#f59e0b",
+                        userSelect: "text",
+                        WebkitUserSelect: "text",
+                      }}
+                      className="w-full p-2.5 pr-10 bg-white border rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs cursor-text select-text"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                      title={showPassword ? "隐藏密码明文" : "显示密码明文"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4 text-amber-700" /> : <Eye className="w-4 h-4 text-amber-700" />}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -291,8 +313,17 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                     placeholder="请输入 确认清空"
                     value={phraseInput}
                     onChange={(e) => setPhraseInput(e.target.value)}
-                    style={{ backgroundColor: "#ffffff", color: "#0f172a", borderColor: "#f59e0b" }}
-                    className="w-full p-2.5 bg-white border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                    autoComplete="off"
+                    autoFocus
+                    style={{
+                      backgroundColor: "#ffffff",
+                      color: "#0f172a",
+                      caretColor: "#0f172a",
+                      borderColor: "#f59e0b",
+                      userSelect: "text",
+                      WebkitUserSelect: "text",
+                    }}
+                    className="w-full p-2.5 bg-white border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs cursor-text select-text"
                   />
                 </div>
               )}

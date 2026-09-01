@@ -934,6 +934,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           isOpen={isArchiveModalOpen}
           onClose={() => setIsArchiveModalOpen(false)}
           invoices={invoices}
+          systemSettings={systemSettings}
           onCleanupSuccess={(deletedIds) => {
             if (onCleanupArchived) {
               onCleanupArchived(deletedIds);

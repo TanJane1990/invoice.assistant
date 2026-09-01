@@ -12,6 +12,8 @@ import {
   FileSpreadsheet,
   Upload,
   Lock,
+  Eye,
+  EyeOff,
   ShieldCheck,
   Package,
   FileArchive,
@@ -46,6 +48,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newPassInput, setNewPassInput] = useState("");
   const [confirmPassInput, setConfirmPassInput] = useState("");
   const [passError, setPassError] = useState("");
+  const [showAiKey, setShowAiKey] = useState(false);
+  const [showBaiduAk, setShowBaiduAk] = useState(false);
+  const [showBaiduSk, setShowBaiduSk] = useState(false);
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -171,16 +179,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <label className="block font-bold mb-1 text-slate-800" style={{ color: "#1e293b" }}>
                 通用 AI 大模型 API Key
               </label>
-              <input
-                type="password"
-                placeholder="sk-..."
-                value={formData.aiApiKey || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, aiApiKey: e.target.value })
-                }
-                style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-red-500 focus:outline-none shadow-2xs"
-              />
+              <div className="relative">
+                <input
+                  type={showAiKey ? "text" : "password"}
+                  placeholder="sk-..."
+                  value={formData.aiApiKey || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, aiApiKey: e.target.value })
+                  }
+                  autoComplete="off"
+                  style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                  className="w-full p-2.5 pr-10 bg-white border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-red-500 focus:outline-none shadow-2xs cursor-text select-text"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAiKey(!showAiKey)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                  title={showAiKey ? "隐藏明文" : "显示明文"}
+                >
+                  {showAiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -209,31 +228,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block font-bold mb-1 text-slate-800" style={{ color: "#1e293b" }}>
                   百度云 API Key (AK)
                 </label>
-                <input
-                  type="password"
-                  placeholder="填入百度云 API Key"
-                  value={formData.baiduApiKey || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, baiduApiKey: e.target.value })
-                  }
-                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                  className="w-full p-2 bg-white border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-red-500 focus:outline-none shadow-2xs"
-                />
+                <div className="relative">
+                  <input
+                    type={showBaiduAk ? "text" : "password"}
+                    placeholder="填入百度云 API Key"
+                    value={formData.baiduApiKey || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, baiduApiKey: e.target.value })
+                    }
+                    autoComplete="off"
+                    style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                    className="w-full p-2 pr-9 bg-white border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-red-500 focus:outline-none shadow-2xs cursor-text select-text"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBaiduAk(!showBaiduAk)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                    title={showBaiduAk ? "隐藏明文" : "显示明文"}
+                  >
+                    {showBaiduAk ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block font-bold mb-1 text-slate-800" style={{ color: "#1e293b" }}>
                   百度云 Secret Key (SK)
                 </label>
-                <input
-                  type="password"
-                  placeholder="填入百度云 Secret Key"
-                  value={formData.baiduSecretKey || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, baiduSecretKey: e.target.value })
-                  }
-                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                  className="w-full p-2 bg-white border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-red-500 focus:outline-none shadow-2xs"
-                />
+                <div className="relative">
+                  <input
+                    type={showBaiduSk ? "text" : "password"}
+                    placeholder="填入百度云 Secret Key"
+                    value={formData.baiduSecretKey || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, baiduSecretKey: e.target.value })
+                    }
+                    autoComplete="off"
+                    style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                    className="w-full p-2 pr-9 bg-white border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-red-500 focus:outline-none shadow-2xs cursor-text select-text"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBaiduSk(!showBaiduSk)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                    title={showBaiduSk ? "隐藏明文" : "显示明文"}
+                  >
+                    {showBaiduSk ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -454,14 +495,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="block text-[11px] font-bold text-slate-700 mb-1" style={{ color: "#334155" }}>
                       1. 输入当前原保护密码 (修改必填)：
                     </label>
-                    <input
-                      type="password"
-                      placeholder="验证当前原密码"
-                      value={currentPassVerification}
-                      onChange={(e) => setCurrentPassVerification(e.target.value)}
-                      style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showCurrentPass ? "text" : "password"}
+                        placeholder="验证当前原密码"
+                        value={currentPassVerification}
+                        onChange={(e) => setCurrentPassVerification(e.target.value)}
+                        autoComplete="off"
+                        style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                        className="w-full p-2 pr-9 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-text select-text"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPass(!showCurrentPass)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                        title={showCurrentPass ? "隐藏明文" : "显示明文"}
+                      >
+                        {showCurrentPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-1">
@@ -469,27 +521,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="block text-[11px] font-bold text-slate-700 mb-1" style={{ color: "#334155" }}>
                         2. 输入新保护密码：
                       </label>
-                      <input
-                        type="password"
-                        placeholder="输入新密码 (若清空则留空)"
-                        value={newPassInput}
-                        onChange={(e) => setNewPassInput(e.target.value)}
-                        style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showNewPass ? "text" : "password"}
+                          placeholder="输入新密码 (若清空则留空)"
+                          value={newPassInput}
+                          onChange={(e) => setNewPassInput(e.target.value)}
+                          autoComplete="off"
+                          style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                          className="w-full p-2 pr-9 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-text select-text"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPass(!showNewPass)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                          title={showNewPass ? "隐藏明文" : "显示明文"}
+                        >
+                          {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1" style={{ color: "#334155" }}>
                         3. 再次确认新密码：
                       </label>
-                      <input
-                        type="password"
-                        placeholder="重复确认新密码"
-                        value={confirmPassInput}
-                        onChange={(e) => setConfirmPassInput(e.target.value)}
-                        style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                        className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showConfirmPass ? "text" : "password"}
+                          placeholder="重复确认新密码"
+                          value={confirmPassInput}
+                          onChange={(e) => setConfirmPassInput(e.target.value)}
+                          autoComplete="off"
+                          style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                          className="w-full p-2 pr-9 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-text select-text"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPass(!showConfirmPass)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                          title={showConfirmPass ? "隐藏明文" : "显示明文"}
+                        >
+                          {showConfirmPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -499,27 +573,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="block text-[11px] font-bold text-slate-700 mb-1" style={{ color: "#334155" }}>
                       设置防篡改工作表保护密码：
                     </label>
-                    <input
-                      type="password"
-                      placeholder="设置自定义密码 (例如 123456)"
-                      value={newPassInput}
-                      onChange={(e) => setNewPassInput(e.target.value)}
-                      style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPass ? "text" : "password"}
+                        placeholder="设置自定义密码 (例如 123456)"
+                        value={newPassInput}
+                        onChange={(e) => setNewPassInput(e.target.value)}
+                        autoComplete="off"
+                        style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                        className="w-full p-2 pr-9 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-text select-text"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                        title={showNewPass ? "隐藏明文" : "显示明文"}
+                      >
+                        {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1" style={{ color: "#334155" }}>
                       再次确认密码：
                     </label>
-                    <input
-                      type="password"
-                      placeholder="再次确认新密码"
-                      value={confirmPassInput}
-                      onChange={(e) => setConfirmPassInput(e.target.value)}
-                      style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPass ? "text" : "password"}
+                        placeholder="再次确认新密码"
+                        value={confirmPassInput}
+                        onChange={(e) => setConfirmPassInput(e.target.value)}
+                        autoComplete="off"
+                        style={{ color: "#0f172a", backgroundColor: "#ffffff", caretColor: "#0f172a", userSelect: "text", WebkitUserSelect: "text" }}
+                        className="w-full p-2 pr-9 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-text select-text"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPass(!showConfirmPass)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                        title={showConfirmPass ? "隐藏明文" : "显示明文"}
+                      >
+                        {showConfirmPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

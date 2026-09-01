@@ -313,3 +313,15 @@ textarea::placeholder {
     print-color-adjust: exact !important;
   }
 }
+
+/* 全局增强所有 input 和 textarea 的光标可见性与文字选择 */
+input, textarea, select {
+  caret-color: #0f172a !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+input[type="password"] {
+  caret-color: #0f172a !important;
+  letter-spacing: 0.05em;
+}
