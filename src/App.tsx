@@ -18,7 +18,6 @@ import { exportInvoicesToExcel, getLastExportInfoAsync, LastExportInfo } from ".
 import { ExcelExportDialog } from "./components/ExcelExportDialog";
 import { generateAndPrintPdf } from "./utils/exportPdf";
 import { loadInvoicesFromDb, saveInvoicesToDb } from "./utils/db";
-import { SplashScreen } from "./components/SplashScreen";
 
 const DEFAULT_SETTINGS: SystemSettings = {
   aiApiKey: "",
@@ -37,7 +36,6 @@ const DEFAULT_SETTINGS: SystemSettings = {
 
 export const App: React.FC = () => {
   // 1. 所有 useState Hooks 统一在最顶层声明（避免 React Hook 顺序错乱异常）
-  const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<"layout" | "ledger" | "cover">("layout");
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [zoom, setZoom] = useState<number>(0.9);
@@ -436,9 +434,6 @@ export const App: React.FC = () => {
         onAppendToExisting={() => exportInvoicesToExcel(invoices, settings, "append", undefined, handleExportSuccess)}
         onSaveNewFile={() => exportInvoicesToExcel(invoices, settings, "new", undefined, handleExportSuccess)}
       />
-
-      {/* 4. 应用开机瞬时启动动画（无缝平滑淡入，完全采用 Tailwind 样式组件） */}
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
     </div>
   );
 };
