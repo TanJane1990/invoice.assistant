@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  ShieldAlert,
   Archive,
   Download,
   Trash2,
@@ -9,7 +8,6 @@ import {
   X,
   FileArchive,
   AlertTriangle,
-  KeyRound,
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
 import { createInvoiceArchiveZip, triggerDownloadBlob } from "../utils/backupZip";
@@ -110,13 +108,19 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
   };
 
   return (
-    <div className="no-print print:hidden fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 flex flex-col font-sans">
+    <div className="no-print print:hidden fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto font-sans">
+      <div
+        className="rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 flex flex-col"
+        style={{ backgroundColor: "#ffffff", color: "#0f172a" }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800">
+        <div
+          className="flex items-center justify-between px-6 py-4 text-white border-b border-slate-800"
+          style={{ backgroundColor: "#0E172B", color: "#ffffff" }}
+        >
           <div className="flex items-center space-x-2">
             <Archive className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-extrabold text-base tracking-wide text-white">
+            <h3 className="font-extrabold text-base tracking-wide" style={{ color: "#ffffff" }}>
               历史归档发票管理与安全封存
             </h3>
           </div>
@@ -129,52 +133,71 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-5 text-xs bg-white text-slate-800">
+        <div className="p-6 space-y-5 text-xs" style={{ backgroundColor: "#ffffff", color: "#0f172a" }}>
           {/* 归档发票状态横幅 */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="text-[11px] font-bold text-slate-500">当前已归档发票状态</span>
+          <div
+            className="p-4 rounded-2xl border flex items-center justify-between"
+            style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}
+          >
+            <div className="space-y-1">
+              <span className="text-[11px] font-bold block" style={{ color: "#64748b" }}>
+                当前已归档发票状态
+              </span>
               <div className="flex items-baseline space-x-2">
-                <span className="text-xl font-black text-slate-900">{archivedInvoices.length}</span>
-                <span className="text-xs font-bold text-slate-600">张发票</span>
-                <span className="text-xs font-mono font-black text-emerald-700">
+                <span className="text-2xl font-black" style={{ color: "#0f172a" }}>
+                  {archivedInvoices.length}
+                </span>
+                <span className="text-xs font-bold" style={{ color: "#334155" }}>
+                  张发票
+                </span>
+                <span className="text-xs font-mono font-black" style={{ color: "#059669" }}>
                   (合计: ¥{totalAmount.toFixed(2)})
                 </span>
               </div>
             </div>
-            <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <span
+              className="px-3 py-1 text-[11px] font-extrabold rounded-lg border shadow-2xs"
+              style={{ backgroundColor: "#d1fae5", color: "#065f46", borderColor: "#a7f3d0" }}
+            >
               已导出入账
             </span>
           </div>
 
           {/* 三种操作方式卡片 */}
-          <div className="space-y-2.5">
-            <label className="block font-bold text-slate-900">请选择操作方式：</label>
+          <div className="space-y-3">
+            <label className="block font-black text-sm" style={{ color: "#0f172a" }}>
+              请选择操作方式：
+            </label>
 
             {/* 选项 1: 备份并清空 */}
             <div
               onClick={() => setSelectedAction("backup_and_clear")}
-              className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-start space-x-3 ${
-                selectedAction === "backup_and_clear"
-                  ? "border-emerald-600 bg-emerald-50/50 shadow-xs"
-                  : "border-slate-200 hover:border-slate-300 bg-white"
-              }`}
+              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 shadow-xs"
+              style={{
+                backgroundColor: selectedAction === "backup_and_clear" ? "#f0fdf4" : "#ffffff",
+                borderColor: selectedAction === "backup_and_clear" ? "#059669" : "#cbd5e1",
+              }}
             >
               <input
                 type="radio"
                 name="archiveAction"
                 checked={selectedAction === "backup_and_clear"}
                 onChange={() => setSelectedAction("backup_and_clear")}
-                className="mt-0.5 accent-emerald-600 cursor-pointer"
+                className="mt-1 accent-emerald-600 cursor-pointer"
               />
               <div className="flex-1 space-y-1">
                 <div className="flex items-center space-x-2">
-                  <span className="font-extrabold text-slate-900">🛡️ 导出完整备份 ZIP 并清空已归档</span>
-                  <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-emerald-200 text-emerald-900">
+                  <span className="font-extrabold text-sm" style={{ color: "#0f172a" }}>
+                    🛡️ 导出完整备份 ZIP 并清空已归档
+                  </span>
+                  <span
+                    className="px-2 py-0.5 text-[10px] font-black rounded-md border"
+                    style={{ backgroundColor: "#bbf7d0", color: "#14532d", borderColor: "#86efac" }}
+                  >
                     强烈推荐
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <p className="text-[11px] leading-relaxed" style={{ color: "#334155" }}>
                   将所有已归档发票（含高清原图 + Excel 台账 + 还原快照）打包为 ZIP 保存至电脑。确认保存成功后，安全清空已归档数据，让台账轻装上阵。
                 </p>
               </div>
@@ -183,22 +206,24 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
             {/* 选项 2: 仅导出备份 */}
             <div
               onClick={() => setSelectedAction("backup_only")}
-              className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-start space-x-3 ${
-                selectedAction === "backup_only"
-                  ? "border-sky-600 bg-sky-50/50 shadow-xs"
-                  : "border-slate-200 hover:border-slate-300 bg-white"
-              }`}
+              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3"
+              style={{
+                backgroundColor: selectedAction === "backup_only" ? "#f0f9ff" : "#ffffff",
+                borderColor: selectedAction === "backup_only" ? "#0284c7" : "#cbd5e1",
+              }}
             >
               <input
                 type="radio"
                 name="archiveAction"
                 checked={selectedAction === "backup_only"}
                 onChange={() => setSelectedAction("backup_only")}
-                className="mt-0.5 accent-sky-600 cursor-pointer"
+                className="mt-1 accent-sky-600 cursor-pointer"
               />
               <div className="flex-1 space-y-1">
-                <span className="font-extrabold text-slate-900">📦 仅导出完整备份 ZIP 包（不清空数据）</span>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
+                <span className="font-extrabold text-sm block" style={{ color: "#0f172a" }}>
+                  📦 仅导出完整备份 ZIP 包（不清空数据）
+                </span>
+                <p className="text-[11px] leading-relaxed" style={{ color: "#475569" }}>
                   仅生成并下载全量发票 ZIP 备份文件，当前软件内的发票保持原样，不作任何删除。
                 </p>
               </div>
@@ -207,23 +232,25 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
             {/* 选项 3: 直接清空 */}
             <div
               onClick={() => setSelectedAction("clear_only")}
-              className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-start space-x-3 ${
-                selectedAction === "clear_only"
-                  ? "border-red-600 bg-red-50/50 shadow-xs"
-                  : "border-slate-200 hover:border-slate-300 bg-white"
-              }`}
+              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3"
+              style={{
+                backgroundColor: selectedAction === "clear_only" ? "#fef2f2" : "#ffffff",
+                borderColor: selectedAction === "clear_only" ? "#dc2626" : "#cbd5e1",
+              }}
             >
               <input
                 type="radio"
                 name="archiveAction"
                 checked={selectedAction === "clear_only"}
                 onChange={() => setSelectedAction("clear_only")}
-                className="mt-0.5 accent-red-600 cursor-pointer"
+                className="mt-1 accent-red-600 cursor-pointer"
               />
               <div className="flex-1 space-y-1">
-                <span className="font-extrabold text-red-900">🗑️ 直接清空已归档数据（不备份）</span>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                  已保存在外部 Excel 台账中，直接从助手数据库释放空间。（不可撤销）
+                <span className="font-extrabold text-sm block" style={{ color: "#991b1b" }}>
+                  🗑️ 直接清空已归档数据（不备份）
+                </span>
+                <p className="text-[11px] leading-relaxed" style={{ color: "#64748b" }}>
+                  数据已保存在外部 Excel 台账中，直接从助手数据库释放空间。（此操作不可撤销）
                 </p>
               </div>
             </div>
@@ -231,15 +258,18 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
 
           {/* 安全密码/口令验证区（仅在涉及清空时显示） */}
           {selectedAction !== "backup_only" && (
-            <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-300 space-y-2.5">
-              <div className="flex items-center space-x-1.5 text-amber-900 font-bold">
-                <Lock className="w-4 h-4 text-amber-700" />
+            <div
+              className="p-4 rounded-2xl border space-y-2.5 shadow-2xs"
+              style={{ backgroundColor: "#fffbeb", borderColor: "#fcd34d" }}
+            >
+              <div className="flex items-center space-x-1.5 font-black text-xs" style={{ color: "#78350f" }}>
+                <Lock className="w-4 h-4" style={{ color: "#b45309" }} />
                 <span>安全授权验证（防止误操作）</span>
               </div>
 
               {hasPassword ? (
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-amber-900">
+                  <label className="block text-[11px] font-bold" style={{ color: "#78350f" }}>
                     请输入系统管理密码：
                   </label>
                   <input
@@ -247,51 +277,63 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                     placeholder="输入系统设置中的管理密码"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    style={{ backgroundColor: "#ffffff", color: "#0f172a", borderColor: "#f59e0b" }}
+                    className="w-full p-2.5 bg-white border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                   />
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-amber-900">
-                    为防止手滑误删，请输入口令 <strong className="text-red-700">"确认清空"</strong>：
+                  <label className="block text-[11px] font-bold" style={{ color: "#78350f" }}>
+                    为防止手滑误删，请输入口令 <strong style={{ color: "#b91c1c" }}>"确认清空"</strong>：
                   </label>
                   <input
                     type="text"
                     placeholder="请输入 确认清空"
                     value={phraseInput}
                     onChange={(e) => setPhraseInput(e.target.value)}
-                    className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    style={{ backgroundColor: "#ffffff", color: "#0f172a", borderColor: "#f59e0b" }}
+                    className="w-full p-2.5 bg-white border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                   />
                 </div>
               )}
 
-              <p className="text-[10px] text-amber-800">
-                🛡️ 隔离保护：仅清理【已归档】历史发票，未导出的【✨ 新导入发票】100% 受到隔离保护。
+              <p className="text-[10px] font-medium leading-relaxed" style={{ color: "#92400e" }}>
+                🛡️ 隔离保护说明：仅清理【已归档】历史发票，未导出的【✨ 新导入发票】受到物理保护，绝对不会被删除。
               </p>
             </div>
           )}
 
           {/* 错误与成功提示 */}
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-red-100 text-red-900 text-xs font-bold flex items-center space-x-2 border border-red-300">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+            <div
+              className="p-3 rounded-xl text-xs font-bold flex items-center space-x-2 border"
+              style={{ backgroundColor: "#fee2e2", color: "#991b1b", borderColor: "#fca5a5" }}
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: "#dc2626" }} />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="p-3 rounded-lg bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center space-x-2 border border-emerald-300">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <div
+              className="p-3 rounded-xl text-xs font-bold flex items-center space-x-2 border"
+              style={{ backgroundColor: "#d1fae5", color: "#065f46", borderColor: "#6ee7b7" }}
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "#059669" }} />
               <span>{successMessage}</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-3">
+        <div
+          className="px-6 py-4 border-t flex items-center justify-end space-x-3"
+          style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}
+        >
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+            style={{ backgroundColor: "#ffffff", color: "#334155", borderColor: "#cbd5e1" }}
+            className="px-4 py-2 border rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors cursor-pointer"
           >
             取消
           </button>
@@ -299,13 +341,19 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
           <button
             onClick={handleExecute}
             disabled={isProcessing || (selectedAction !== "backup_only" && !isAuthorized())}
-            className={`px-5 py-2 rounded-xl text-xs font-extrabold shadow-sm transition-all cursor-pointer flex items-center space-x-1.5 ${
-              isProcessing || (selectedAction !== "backup_only" && !isAuthorized())
-                ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                : selectedAction === "clear_only"
-                ? "bg-red-600 hover:bg-red-700 text-white"
-                : "bg-emerald-600 hover:bg-emerald-700 text-white"
-            }`}
+            style={{
+              backgroundColor:
+                isProcessing || (selectedAction !== "backup_only" && !isAuthorized())
+                  ? "#cbd5e1"
+                  : selectedAction === "clear_only"
+                  ? "#dc2626"
+                  : "#059669",
+              color:
+                isProcessing || (selectedAction !== "backup_only" && !isAuthorized())
+                  ? "#64748b"
+                  : "#ffffff",
+            }}
+            className="px-5 py-2 rounded-xl text-xs font-black shadow-sm transition-all cursor-pointer flex items-center space-x-1.5"
           >
             {isProcessing ? (
               <span>正在处理中...</span>
