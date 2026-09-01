@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Archive,
   Download,
@@ -17,16 +17,22 @@ import { createInvoiceArchiveZip, triggerDownloadBlob } from "../utils/backupZip
 interface ArchiveCleanupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  archivedInvoices: InvoiceData[];
+  invoices?: InvoiceData[];
+  archivedInvoices?: InvoiceData[];
+  systemSettings?: SystemSettings;
   settings?: SystemSettings;
-  onConfirmCleanup: (deletedIds: string[]) => void;
+  onCleanupSuccess?: (deletedIds: string[]) => void;
+  onConfirmCleanup?: (deletedIds: string[]) => void;
 }
 
 export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
   isOpen,
   onClose,
+  invoices,
   archivedInvoices,
+  systemSettings,
   settings,
+  onCleanupSuccess,
   onConfirmCleanup,
 }) => {
   const [selectedAction, setSelectedAction] = useState<"backup_and_clear" | "backup_only" | "clear_only">("backup_and_clear");
@@ -37,16 +43,29 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  const actualSettings = systemSettings || settings;
+
+  const actualArchived = useMemo(() => {
+    if (archivedInvoices && Array.isArray(archivedInvoices)) {
+      return archivedInvoices;
+    }
+    if (invoices && Array.isArray(invoices)) {
+      return invoices.filter((i) => !!i.exported);
+    }
+    return [];
+  }, [archivedInvoices, invoices]);
+
   if (!isOpen) return null;
 
-  const hasPassword = Boolean(settings?.exportPassword && settings.exportPassword.trim());
-  const totalAmount = archivedInvoices.reduce((sum, inv) => sum + inv.totalAmountWithTax, 0);
+  const hasPassword = Boolean(actualSettings?.exportPassword && actualSettings.exportPassword.trim());
+  const totalAmount = actualArchived.reduce((sum, inv) => sum + (inv.totalAmountWithTax || 0), 0);
+  const totalCount = actualArchived.length;
 
   // 校验密码或防呆口令是否合法
   const isAuthorized = (): boolean => {
     if (selectedAction === "backup_only") return true;
     if (hasPassword) {
-      return passwordInput.trim() === (settings?.exportPassword || "").trim();
+      return passwordInput.trim() === (actualSettings?.exportPassword || "").trim();
     }
     return phraseInput.trim() === "确认清空";
   };
@@ -55,129 +74,146 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
     setErrorMessage("");
     setSuccessMessage("");
 
+    if (totalCount === 0) {
+      setErrorMessage("当前没有已归档的发票数据可供操作。");
+      return;
+    }
+
     // 1. 仅备份模式
     if (selectedAction === "backup_only") {
       try {
         setIsProcessing(true);
         const { zipBlob, fileName } = await createInvoiceArchiveZip(
-          archivedInvoices,
-          settings,
-          "发票台账历史归档备份"
+          actualArchived,
+          actualSettings,
+          "历史已归档发票备份包"
         );
         triggerDownloadBlob(zipBlob, fileName);
-        setSuccessMessage(`已成功生成并下载备份包：${fileName}`);
+        setSuccessMessage(`🎉 成功导出 ${totalCount} 张历史发票完整备份包！`);
+        setTimeout(() => {
+          onClose();
+        }, 1500);
       } catch (err: any) {
-        setErrorMessage(`生成备份包失败: ${err?.message || "未知错误"}`);
+        setErrorMessage(`导出备份失败: ${err?.message || "未知错误"}`);
       } finally {
         setIsProcessing(false);
       }
       return;
     }
 
-    // 2. 校验安全权限
-    if (!isAuthorized()) {
-      if (hasPassword) {
-        setErrorMessage("管理密码错误，无法执行清空操作！");
-      } else {
-        setErrorMessage("请输入正确的确认口令「确认清空」以继续！");
+    // 2. 备份并清空已归档模式
+    if (selectedAction === "backup_and_clear") {
+      try {
+        setIsProcessing(true);
+        const { zipBlob, fileName } = await createInvoiceArchiveZip(
+          actualArchived,
+          actualSettings,
+          "历史已归档发票安全清空前备份包"
+        );
+        triggerDownloadBlob(zipBlob, fileName);
+
+        const deletedIds = actualArchived.map((inv) => inv.id);
+        if (onCleanupSuccess) onCleanupSuccess(deletedIds);
+        if (onConfirmCleanup) onConfirmCleanup(deletedIds);
+
+        setSuccessMessage(`🎉 备份包已成功下载，且已安全清空 ${totalCount} 条已归档数据！`);
+        setTimeout(() => {
+          onClose();
+        }, 1800);
+      } catch (err: any) {
+        setErrorMessage(`处理失败: ${err?.message || "未知错误"}`);
+      } finally {
+        setIsProcessing(false);
       }
       return;
     }
 
-    try {
-      setIsProcessing(true);
+    // 3. 直接清空模式 (不备份)
+    if (selectedAction === "clear_only") {
+      try {
+        setIsProcessing(true);
+        const deletedIds = actualArchived.map((inv) => inv.id);
+        if (onCleanupSuccess) onCleanupSuccess(deletedIds);
+        if (onConfirmCleanup) onConfirmCleanup(deletedIds);
 
-      // 如果包含备份，先导出 ZIP
-      if (selectedAction === "backup_and_clear") {
-        const { zipBlob, fileName } = await createInvoiceArchiveZip(
-          archivedInvoices,
-          settings,
-          "发票台账历史归档备份"
-        );
-        triggerDownloadBlob(zipBlob, fileName);
+        setSuccessMessage(`🗑️ 已成功清空 ${totalCount} 条已归档发票数据！`);
+        setTimeout(() => {
+          onClose();
+        }, 1200);
+      } catch (err: any) {
+        setErrorMessage(`清空失败: ${err?.message || "未知错误"}`);
+      } finally {
+        setIsProcessing(false);
       }
-
-      // 执行清空已归档发票
-      const deletedIds = archivedInvoices.map((i) => i.id);
-      onConfirmCleanup(deletedIds);
-
-      alert(`已成功清空 ${deletedIds.length} 张已归档历史发票！\n新导入待报销的发票已 100% 完整保留。`);
-      onClose();
-    } catch (err: any) {
-      setErrorMessage(`执行操作失败: ${err?.message || "未知错误"}`);
-    } finally {
-      setIsProcessing(false);
+      return;
     }
   };
 
   return (
-    <div className="no-print print:hidden fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto font-sans">
+    <div className="no-print print:hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
       <div
-        className="rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 flex flex-col"
-        style={{ backgroundColor: "#ffffff", color: "#0f172a" }}
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200"
+        style={{ backgroundColor: "#ffffff" }}
       >
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-6 py-4 text-white border-b border-slate-800"
-          style={{ backgroundColor: "#0E172B", color: "#ffffff" }}
-        >
-          <div className="flex items-center space-x-2">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+          <div className="flex items-center space-x-2.5">
             <Archive className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-extrabold text-base tracking-wide" style={{ color: "#ffffff" }}>
+            <h3 className="font-black text-sm text-white">
               历史归档发票管理与安全封存
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-5 text-xs" style={{ backgroundColor: "#ffffff", color: "#0f172a" }}>
-          {/* 归档发票状态横幅 */}
+        <div className="p-6 overflow-y-auto space-y-4 font-sans text-xs bg-white" style={{ color: "#0f172a" }}>
+          {/* 状态统计卡 */}
           <div
             className="p-4 rounded-2xl border flex items-center justify-between"
             style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}
           >
-            <div className="space-y-1">
-              <span className="text-[11px] font-bold block" style={{ color: "#64748b" }}>
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-bold" style={{ color: "#64748b" }}>
                 当前已归档发票状态
               </span>
               <div className="flex items-baseline space-x-2">
-                <span className="text-2xl font-black" style={{ color: "#0f172a" }}>
-                  {archivedInvoices.length}
+                <span className="text-xl font-black" style={{ color: "#0f172a" }}>
+                  {totalCount}
                 </span>
-                <span className="text-xs font-bold" style={{ color: "#334155" }}>
+                <span className="font-bold" style={{ color: "#475569" }}>
                   张发票
                 </span>
-                <span className="text-xs font-mono font-black" style={{ color: "#059669" }}>
+                <span className="text-xs font-mono font-bold" style={{ color: "#059669" }}>
                   (合计: ¥{totalAmount.toFixed(2)})
                 </span>
               </div>
             </div>
             <span
-              className="px-3 py-1 text-[11px] font-extrabold rounded-lg border shadow-2xs"
-              style={{ backgroundColor: "#d1fae5", color: "#065f46", borderColor: "#a7f3d0" }}
+              className="px-2.5 py-1 text-xs font-black rounded-lg border"
+              style={{ backgroundColor: "#ecfdf5", color: "#065f46", borderColor: "#a7f3d0" }}
             >
-              已导出入账
+              已导出入库
             </span>
           </div>
 
-          {/* 三种操作方式卡片 */}
-          <div className="space-y-3">
-            <label className="block font-black text-sm" style={{ color: "#0f172a" }}>
+          {/* 操作模式选择 */}
+          <div className="space-y-2.5">
+            <label className="block text-xs font-black" style={{ color: "#0f172a" }}>
               请选择操作方式：
             </label>
 
-            {/* 选项 1: 备份并清空 */}
+            {/* 选项 1: 备份并清空 (强烈推荐) */}
             <div
               onClick={() => setSelectedAction("backup_and_clear")}
-              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 shadow-xs"
+              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 relative"
               style={{
-                backgroundColor: selectedAction === "backup_and_clear" ? "#f0fdf4" : "#ffffff",
+                backgroundColor: selectedAction === "backup_and_clear" ? "#ecfdf5" : "#ffffff",
                 borderColor: selectedAction === "backup_and_clear" ? "#059669" : "#cbd5e1",
               }}
             >
@@ -190,17 +226,14 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
               />
               <div className="flex-1 space-y-1">
                 <div className="flex items-center space-x-2">
-                  <span className="font-extrabold text-sm" style={{ color: "#0f172a" }}>
+                  <span className="font-black text-sm" style={{ color: "#064e3b" }}>
                     🛡️ 导出完整备份 ZIP 并清空已归档
                   </span>
-                  <span
-                    className="px-2 py-0.5 text-[10px] font-black rounded-md border"
-                    style={{ backgroundColor: "#bbf7d0", color: "#14532d", borderColor: "#86efac" }}
-                  >
+                  <span className="px-1.5 py-0.5 text-[9px] font-black bg-emerald-600 text-white rounded">
                     强烈推荐
                   </span>
                 </div>
-                <p className="text-[11px] leading-relaxed" style={{ color: "#334155" }}>
+                <p className="text-[11px] leading-relaxed" style={{ color: "#047857" }}>
                   将所有已归档发票（含高清原图 + Excel 台账 + 还原快照）打包为 ZIP 保存至电脑。确认保存成功后，安全清空已归档数据，让台账轻装上阵。
                 </p>
               </div>
