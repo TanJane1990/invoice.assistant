@@ -631,7 +631,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     show: false, // 防白屏：初始隐藏
-    backgroundColor: "#f8fafc", // 设置默认优雅背景色
+    backgroundColor: "#0A0F1D", // 与启动动画深蓝背景无缝融合，杜绝白屏闪烁
     title: "智能发票管理助手",
     icon: appIconInfo.nativeImg || appIconInfo.iconPath,
     webPreferences: {
