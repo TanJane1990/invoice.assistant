@@ -38,7 +38,7 @@ export const App: React.FC = () => {
   // 1. 所有 useState Hooks 统一在最顶层声明（避免 React Hook 顺序错乱异常）
   const [activeTab, setActiveTab] = useState<"layout" | "ledger" | "cover">("layout");
   const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [zoom, setZoom] = useState<number>(0.9);
+  const [zoom, setZoom] = useState<number>(1.0);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<InvoiceData | null>(null);
