@@ -169,9 +169,17 @@ export const App: React.FC = () => {
     setTheme(nextTheme);
   };
 
-  // 批量导入与台账操作：新导入的发票自动选中以方便直接排版，并标记为未导出
+  // 批量导入与台账操作：新导入的发票自动选中以方便直接排版，并标记为未导出和生成精准导入批次时间戳
   const handleAddInvoices = (newInvs: InvoiceData[]) => {
-    const markedInvs = newInvs.map((inv) => ({ ...inv, selectedForPrint: true, exported: false }));
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const batchTimestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const markedInvs = newInvs.map((inv) => ({
+      ...inv,
+      selectedForPrint: true,
+      exported: false,
+      importTime: inv.importTime && inv.importTime.includes("-") ? inv.importTime : batchTimestamp,
+    }));
     setInvoices((prev) => [...markedInvs, ...prev]);
   };
 

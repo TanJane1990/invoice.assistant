@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -12,8 +12,11 @@ import {
   ShieldAlert,
   Sparkles,
   Archive,
-  Layers,
-  Clock,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
 import { exportInvoicesToExcel, getLastExportInfoAsync, LastExportInfo } from "../utils/exportExcel";
@@ -38,12 +41,18 @@ const DUPLICATE_PALETTES = [
   { rowBg: "bg-yellow-100/90 hover:bg-yellow-100", badgeBg: "bg-yellow-200 text-yellow-900 border-yellow-400" },
 ];
 
+interface InvoiceBatchGroup {
+  batchKey: string;
+  batchTime: string;
+  isUnexported: boolean;
+  invoices: InvoiceData[];
+  totalAmount: number;
+}
+
 export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   invoices,
   onDeleteInvoice,
   onEditInvoice,
-  onManualCreate,
-  onAddCustomInvoice,
   onToggleSelectForPrint,
   onToggleSelectAll,
   onExportSuccess,
@@ -51,21 +60,24 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   const [filterDuplicateOnly, setFilterDuplicateOnly] = useState(false);
   const [batchFilter, setBatchFilter] = useState<"all" | "unexported" | "exported">("all");
+  const [pageSize, setPageSize] = useState<number | "all">(50);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [collapsedBatches, setCollapsedBatches] = useState<Record<string, boolean>>({});
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [lastExportInfo, setLastExportInfo] = useState<LastExportInfo | null>(null);
 
   const unexportedCount = invoices.filter((i) => !i.exported).length;
   const exportedCount = invoices.filter((i) => !!i.exported).length;
 
-  // 1. 发票重复计算引擎（纯粹精准匹配【相同发票号码】，相同号码同色标出）
-  const duplicateMap = React.useMemo(() => {
+  // 1. 发票重复计算引擎（严格按发票号码查重，相同号码同色标出）
+  const duplicateMap = useMemo(() => {
     const counts: Record<string, InvoiceData[]> = {};
     invoices.forEach((inv) => {
       if (inv.invoiceNumber && inv.invoiceNumber.trim() && inv.invoiceNumber.trim() !== "-") {
         const num = inv.invoiceNumber.trim();
-        // 核心：严格按发票号码查重（发票号码相同即视为重号发票）
         const key = num;
         if (!counts[key]) counts[key] = [];
         counts[key].push(inv);
@@ -92,48 +104,146 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
   const duplicateGroupCount = new Set(Object.values(duplicateMap).map((d) => (d as { groupIndex: number }).groupIndex)).size;
 
-  // 2. 筛选过滤逻辑
-  const filteredInvoices = invoices.filter((inv) => {
-    const matchesSearch =
-      inv.invoiceNumber.includes(searchTerm) ||
-      (inv.invoiceCode && inv.invoiceCode.includes(searchTerm)) ||
-      inv.sellerName.includes(searchTerm) ||
-      inv.buyerName.includes(searchTerm) ||
-      (inv.remarks && inv.remarks.includes(searchTerm));
+  // 2. 动态分析台账中所有的开票年份与月份，生成周期快捷筛选选项
+  const availablePeriods = useMemo(() => {
+    const yearsSet = new Set<string>();
+    const monthsSet = new Set<string>();
+    invoices.forEach((inv) => {
+      if (inv.issueDate && inv.issueDate.length >= 7) {
+        const year = inv.issueDate.substring(0, 4);
+        const month = inv.issueDate.substring(0, 7);
+        if (/^\d{4}$/.test(year)) yearsSet.add(year);
+        if (/^\d{4}-\d{2}$/.test(month)) monthsSet.add(month);
+      }
+    });
+    const years = Array.from(yearsSet).sort().reverse();
+    const months = Array.from(monthsSet).sort().reverse();
+    return { years, months };
+  }, [invoices]);
 
-    const matchesCategory =
-      selectedCategory === "all" || inv.category === selectedCategory;
+  // 3. 多维度复合筛选过滤逻辑 (搜索 + 票种分类 + 批次状态 + 查重预警 + 年月周期)
+  const filteredInvoices = useMemo(() => {
+    const now = new Date();
+    const cutoff1Month = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const cutoff3Months = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    const isDuplicate = !!duplicateMap[inv.id] || inv.duplicateWarning;
-    const matchesDuplicate = !filterDuplicateOnly || isDuplicate;
+    return invoices.filter((inv) => {
+      const matchesSearch =
+        !searchTerm ||
+        inv.invoiceNumber.includes(searchTerm) ||
+        (inv.invoiceCode && inv.invoiceCode.includes(searchTerm)) ||
+        inv.sellerName.includes(searchTerm) ||
+        inv.buyerName.includes(searchTerm) ||
+        (inv.remarks && inv.remarks.includes(searchTerm));
 
-    const matchesBatch =
-      batchFilter === "all" ||
-      (batchFilter === "unexported" && !inv.exported) ||
-      (batchFilter === "exported" && !!inv.exported);
+      const matchesCategory =
+        selectedCategory === "all" || inv.category === selectedCategory;
 
-    return matchesSearch && matchesCategory && matchesDuplicate && matchesBatch;
-  });
+      const isDuplicate = !!duplicateMap[inv.id] || inv.duplicateWarning;
+      const matchesDuplicate = !filterDuplicateOnly || isDuplicate;
 
-  const unexportedInvoices = filteredInvoices.filter((i) => !i.exported);
-  const exportedInvoices = filteredInvoices.filter((i) => !!i.exported);
+      const matchesBatch =
+        batchFilter === "all" ||
+        (batchFilter === "unexported" && !inv.exported) ||
+        (batchFilter === "exported" && !!inv.exported);
+
+      let matchesPeriod = true;
+      if (selectedPeriod === "last_1_month") {
+        matchesPeriod = (inv.issueDate || "") >= cutoff1Month;
+      } else if (selectedPeriod === "last_3_months") {
+        matchesPeriod = (inv.issueDate || "") >= cutoff3Months;
+      } else if (selectedPeriod.startsWith("year_")) {
+        const yr = selectedPeriod.replace("year_", "");
+        matchesPeriod = (inv.issueDate || "").startsWith(yr);
+      } else if (selectedPeriod.startsWith("month_")) {
+        const mo = selectedPeriod.replace("month_", "");
+        matchesPeriod = (inv.issueDate || "").startsWith(mo);
+      }
+
+      return matchesSearch && matchesCategory && matchesDuplicate && matchesBatch && matchesPeriod;
+    });
+  }, [invoices, searchTerm, selectedCategory, duplicateMap, filterDuplicateOnly, batchFilter, selectedPeriod]);
+
+  // 4. 分页控制计算
+  const totalFilteredCount = filteredInvoices.length;
+  const totalPages = pageSize === "all" ? 1 : Math.ceil(totalFilteredCount / pageSize) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  // 当搜索、分类、周期改变时，自动将页码重置为第 1 页
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, selectedPeriod, filterDuplicateOnly, batchFilter, pageSize]);
+
+  // 当前分页呈现的发票切片
+  const paginatedInvoices = useMemo(() => {
+    if (pageSize === "all") return filteredInvoices;
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredInvoices.slice(start, start + pageSize);
+  }, [filteredInvoices, safeCurrentPage, pageSize]);
+
+  // 5. 按导入批次时间线自动聚合（生成批次分割横幅）
+  const batchGroups = useMemo(() => {
+    const groups: InvoiceBatchGroup[] = [];
+    let currentGroup: InvoiceBatchGroup | null = null;
+
+    paginatedInvoices.forEach((inv) => {
+      const rawTime = inv.importTime ? inv.importTime.trim() : "";
+      // 聚合至分钟级别或完整导入时间
+      const batchTime = rawTime.length >= 16 ? rawTime.substring(0, 16) : rawTime || (inv.exported ? "历史归档批次" : "本次新导入批次");
+      const isUnexp = !inv.exported;
+      const batchKey = `${batchTime}_${isUnexp ? "unexp" : "exp"}`;
+
+      if (!currentGroup || currentGroup.batchKey !== batchKey) {
+        if (currentGroup) groups.push(currentGroup);
+        currentGroup = {
+          batchKey,
+          batchTime,
+          isUnexported: isUnexp,
+          invoices: [inv],
+          totalAmount: inv.totalAmountWithTax,
+        };
+      } else {
+        currentGroup.invoices.push(inv);
+        currentGroup.totalAmount += inv.totalAmountWithTax;
+      }
+    });
+
+    if (currentGroup) groups.push(currentGroup);
+    return groups;
+  }, [paginatedInvoices]);
 
   const allSelected =
     invoices.length > 0 && invoices.every((i) => i.selectedForPrint);
   const selectedForPrintCount = invoices.filter((i) => i.selectedForPrint).length;
   const duplicateCount = Object.keys(duplicateMap).length;
 
-  // 触发导出 Excel：智能判定首次导出 vs 再次导出（包含 Mac 磁盘物理文件存在性检测）
+  // 触发导出 Excel：智能判定首次导出 vs 再次追加导出
   const handleExportButtonClick = async () => {
     const historicalInfo = await getLastExportInfoAsync();
     if (!historicalInfo) {
-      // 首次导出或磁盘文件已删除，直接弹出保存对话框另存
       exportInvoicesToExcel(invoices, systemSettings, "default", undefined, onExportSuccess);
     } else {
-      // 发现此前导出过文件且磁盘上该文件真实存在，弹出智能对话框
       setLastExportInfo(historicalInfo);
       setIsExportDialogOpen(true);
     }
+  };
+
+  // 切换指定批次的折叠状态
+  const toggleBatchCollapse = (batchKey: string) => {
+    setCollapsedBatches((prev) => ({
+      ...prev,
+      [batchKey]: !prev[batchKey],
+    }));
+  };
+
+  // 一键全选/取消指定批次的发票排版
+  const toggleBatchSelect = (group: InvoiceBatchGroup) => {
+    const allBatchSelected = group.invoices.every((i) => i.selectedForPrint);
+    group.invoices.forEach((inv) => {
+      if (inv.selectedForPrint === allBatchSelected) {
+        onToggleSelectForPrint(inv.id);
+      }
+    });
   };
 
   const renderInvoiceRow = (inv: InvoiceData) => {
@@ -393,16 +503,16 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         </div>
       </div>
 
-      {/* 2. 中间控制栏：搜索、分类、批次胶囊与操作按钮 */}
+      {/* 2. 中间控制栏：搜索、分类、周期、批次胶囊与导出操作 */}
       <div className="p-4 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-wrap items-center justify-between gap-3" style={{ backgroundColor: "#ffffff" }}>
-        {/* 左侧: 搜索框 & 分类 & 批次筛选胶囊 */}
+        {/* 左侧: 搜索框 & 分类 & 周期 & 批次筛选胶囊 */}
         <div className="flex flex-wrap items-center space-x-3 gap-y-2">
           {/* 搜索框 */}
-          <div className="relative w-52">
+          <div className="relative w-48">
             <Search className="w-4 h-4 absolute left-3 top-2.5" style={{ color: "#64748b" }} />
             <input
               type="text"
-              placeholder="搜索发票号、商户..."
+              placeholder="搜索号码、商户..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ color: "#0f172a", backgroundColor: "#F8FAFC" }}
@@ -410,7 +520,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
             />
           </div>
 
-          {/* 批次筛选切换胶囊 (高对比度清晰色彩) */}
+          {/* 批次筛选切换胶囊 */}
           <div className="flex items-center p-1 rounded-xl border space-x-1" style={{ backgroundColor: "#f1f5f9", borderColor: "#cbd5e1" }}>
             <button
               type="button"
@@ -447,6 +557,39 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
               <Archive className="w-3.5 h-3.5" style={{ color: batchFilter === "exported" ? "#ffffff" : "#475569" }} />
               <span>已归档 ({exportedCount})</span>
             </button>
+          </div>
+
+          {/* 周期/年份/月份快捷筛选 */}
+          <div className="flex items-center space-x-1">
+            <Calendar className="w-3.5 h-3.5" style={{ color: "#64748b" }} />
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
+              style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+              className="border border-slate-300 text-xs rounded-xl px-2.5 py-1.5 font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="all">📅 全部时间</option>
+              <option value="last_1_month">⚡ 近 1 个月</option>
+              <option value="last_3_months">⏳ 近 3 个月</option>
+              {availablePeriods.years.length > 0 && (
+                <optgroup label="── 按年份 ──">
+                  {availablePeriods.years.map((yr) => (
+                    <option key={`yr-${yr}`} value={`year_${yr}`}>
+                      {yr} 年全年度
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {availablePeriods.months.length > 0 && (
+                <optgroup label="── 按月份 ──">
+                  {availablePeriods.months.map((mo) => (
+                    <option key={`mo-${mo}`} value={`month_${mo}`}>
+                      {mo}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
           </div>
 
           {/* 分类下拉列表 */}
@@ -497,7 +640,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         </div>
       </div>
 
-      {/* 3. 底部发票台账表格 (支持分批次分割横幅) */}
+      {/* 3. 底部发票台账表格 (支持导入批次时间线自动分割与折叠) */}
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden" style={{ backgroundColor: "#ffffff" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
@@ -534,100 +677,207 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                   </td>
                 </tr>
               ) : (
-                <>
-                  {/* 分组 1: 新导入批次横幅与行 */}
-                  {(batchFilter === "all" || batchFilter === "unexported") && unexportedInvoices.length > 0 && (
-                    <>
-                      <tr className="bg-emerald-50 border-y border-emerald-200 text-emerald-950 font-sans" style={{ backgroundColor: "#ecfdf5" }}>
-                        <td colSpan={9} className="px-4 py-2.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-black">
-                                ✨
-                              </span>
-                              <span className="font-extrabold text-xs text-emerald-900" style={{ color: "#064e3b" }}>
-                                本次新导入批次（待追加至 Excel 归档）
-                              </span>
-                              <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-emerald-200 text-emerald-900 border border-emerald-300" style={{ color: "#064e3b" }}>
-                                共 {unexportedInvoices.length} 张
-                              </span>
-                              <span className="text-xs font-mono font-black text-emerald-800" style={{ color: "#065f46" }}>
-                                合计: ¥{unexportedInvoices.reduce((s, i) => s + i.totalAmountWithTax, 0).toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2 text-[11px]">
-                              <button
-                                onClick={() => {
-                                  const allUnexpSelected = unexportedInvoices.every((i) => i.selectedForPrint);
-                                  unexportedInvoices.forEach((i) => {
-                                    if (i.selectedForPrint === allUnexpSelected) {
-                                      onToggleSelectForPrint(i.id);
-                                    }
-                                  });
-                                }}
-                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold transition cursor-pointer shadow-2xs"
-                                style={{ color: "#065f46" }}
-                              >
-                                {unexportedInvoices.every((i) => i.selectedForPrint) ? "取消选中新导入" : "一键选中新导入发票排版"}
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                      {unexportedInvoices.map((inv) => renderInvoiceRow(inv))}
-                    </>
-                  )}
+                batchGroups.map((group) => {
+                  const isCollapsed = !!collapsedBatches[group.batchKey];
+                  const allBatchSelected = group.invoices.every((i) => i.selectedForPrint);
 
-                  {/* 分组 2: 历史归档批次横幅与行 */}
-                  {(batchFilter === "all" || batchFilter === "exported") && exportedInvoices.length > 0 && (
-                    <>
-                      <tr className="bg-slate-100 border-y border-slate-300 text-slate-800 font-sans" style={{ backgroundColor: "#f1f5f9" }}>
+                  return (
+                    <React.Fragment key={group.batchKey}>
+                      {/* 批次专属时间线分割横幅 */}
+                      <tr
+                        className={`border-y font-sans transition-colors ${
+                          group.isUnexported
+                            ? "bg-emerald-50/90 text-emerald-950 border-emerald-200"
+                            : "bg-slate-100/90 text-slate-800 border-slate-300"
+                        }`}
+                        style={{
+                          backgroundColor: group.isUnexported ? "#ecfdf5" : "#f1f5f9",
+                        }}
+                      >
                         <td colSpan={9} className="px-4 py-2.5">
                           <div className="flex items-center justify-between">
+                            {/* 左侧：批次图标、时间、数量与合计 */}
                             <div className="flex items-center space-x-2">
-                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-700 text-white text-[10px] font-black">
-                                📁
+                              <span
+                                className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black shadow-2xs ${
+                                  group.isUnexported ? "bg-emerald-600 text-white" : "bg-slate-700 text-white"
+                                }`}
+                              >
+                                {group.isUnexported ? "✨" : "📁"}
                               </span>
-                              <span className="font-extrabold text-xs text-slate-800" style={{ color: "#1e293b" }}>
-                                历史归档批次（已导出至 Excel 发票台账）
+                              <span
+                                className={`font-black text-xs ${
+                                  group.isUnexported ? "text-emerald-950" : "text-slate-900"
+                                }`}
+                                style={{ color: group.isUnexported ? "#064e3b" : "#0f172a" }}
+                              >
+                                {group.isUnexported ? "【新导入批次】" : "【已归档批次】"} {group.batchTime}
                               </span>
-                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-200 text-slate-700 border border-slate-300" style={{ color: "#334155" }}>
-                                共 {exportedInvoices.length} 张
+                              <span
+                                className={`px-2 py-0.5 text-[10px] font-black rounded-md border ${
+                                  group.isUnexported
+                                    ? "bg-emerald-200 text-emerald-900 border-emerald-300"
+                                    : "bg-slate-200 text-slate-700 border-slate-300"
+                                }`}
+                                style={{ color: group.isUnexported ? "#064e3b" : "#334155" }}
+                              >
+                                共 {group.invoices.length} 张
                               </span>
-                              <span className="text-xs font-mono font-black text-slate-700" style={{ color: "#334155" }}>
-                                合计: ¥{exportedInvoices.reduce((s, i) => s + i.totalAmountWithTax, 0).toFixed(2)}
+                              <span
+                                className={`text-xs font-mono font-black ${
+                                  group.isUnexported ? "text-emerald-800" : "text-slate-700"
+                                }`}
+                                style={{ color: group.isUnexported ? "#065f46" : "#334155" }}
+                              >
+                                批次合计: ¥{group.totalAmount.toFixed(2)}
                               </span>
                             </div>
+
+                            {/* 右侧：批次一键选中 & 批次折叠切换 */}
                             <div className="flex items-center space-x-2 text-[11px]">
                               <button
-                                onClick={() => {
-                                  const allExpSelected = exportedInvoices.every((i) => i.selectedForPrint);
-                                  exportedInvoices.forEach((i) => {
-                                    if (i.selectedForPrint === allExpSelected) {
-                                      onToggleSelectForPrint(i.id);
-                                    }
-                                  });
-                                }}
-                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold transition cursor-pointer shadow-2xs"
+                                onClick={() => toggleBatchSelect(group)}
+                                className={`px-2.5 py-1 rounded-lg border font-bold transition cursor-pointer shadow-2xs ${
+                                  group.isUnexported
+                                    ? "bg-white hover:bg-emerald-100 border-emerald-300 text-emerald-800"
+                                    : "bg-white hover:bg-slate-200 border-slate-300 text-slate-700"
+                                }`}
+                                style={{ color: group.isUnexported ? "#065f46" : "#334155" }}
+                              >
+                                {allBatchSelected ? "取消选中此批次" : "一键选中此批次排版"}
+                              </button>
+
+                              <button
+                                onClick={() => toggleBatchCollapse(group.batchKey)}
+                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold transition cursor-pointer flex items-center space-x-1 shadow-2xs"
                                 style={{ color: "#334155" }}
                               >
-                                {exportedInvoices.every((i) => i.selectedForPrint) ? "取消选中已归档" : "一键选中已归档发票排版"}
+                                {isCollapsed ? (
+                                  <>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    <span>展开 ({group.invoices.length}张)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                    <span>折叠收起</span>
+                                  </>
+                                )}
                               </button>
                             </div>
                           </div>
                         </td>
                       </tr>
-                      {exportedInvoices.map((inv) => renderInvoiceRow(inv))}
-                    </>
-                  )}
-                </>
+
+                      {/* 批次内发票行（非折叠时渲染） */}
+                      {!isCollapsed && group.invoices.map((inv) => renderInvoiceRow(inv))}
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+
+        {/* 4. 标准多功能分页控制栏 */}
+        {totalFilteredCount > 0 && (
+          <div className="px-4 py-3 border-t border-slate-200 bg-[#F8FAFC] flex flex-wrap items-center justify-between gap-3 text-xs font-sans" style={{ backgroundColor: "#F8FAFC", color: "#475569" }}>
+            {/* 左侧：数据范围与全表统计 */}
+            <div className="flex items-center space-x-2 font-medium">
+              <span>
+                显示第 <strong className="font-bold text-slate-900" style={{ color: "#0f172a" }}>{pageSize === "all" ? 1 : (safeCurrentPage - 1) * pageSize + 1}</strong> 至{" "}
+                <strong className="font-bold text-slate-900" style={{ color: "#0f172a" }}>{pageSize === "all" ? totalFilteredCount : Math.min(safeCurrentPage * pageSize, totalFilteredCount)}</strong> 条，共{" "}
+                <strong className="font-black text-slate-900" style={{ color: "#0f172a" }}>{totalFilteredCount}</strong> 条发票
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="font-bold text-[#E8000A]" style={{ color: "#E8000A" }}>
+                已勾选 {selectedForPrintCount} 张就绪排版
+              </span>
+            </div>
+
+            {/* 右侧：每页条数切换 & 翻页导航器 */}
+            <div className="flex items-center space-x-3">
+              {/* 每页条数下拉 */}
+              <div className="flex items-center space-x-1.5">
+                <span className="text-slate-500">每页显示:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value === "all" ? "all" : parseInt(e.target.value, 10);
+                    setPageSize(val);
+                  }}
+                  className="border border-slate-300 rounded-lg px-2 py-1 bg-white font-bold text-slate-800 text-xs focus:outline-none cursor-pointer"
+                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                >
+                  <option value={20}>20 条/页</option>
+                  <option value={50}>50 条/页 (推荐)</option>
+                  <option value={100}>100 条/页</option>
+                  <option value="all">显示全部</option>
+                </select>
+              </div>
+
+              {/* 翻页按钮组 */}
+              {pageSize !== "all" && totalPages > 1 && (
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safeCurrentPage <= 1}
+                    className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
+                      safeCurrentPage <= 1
+                        ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                        : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300 cursor-pointer shadow-2xs"
+                    }`}
+                    title="上一页"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* 智能页码按钮胶囊 */}
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, idx) => {
+                    let pageNum = idx + 1;
+                    if (totalPages > 7 && safeCurrentPage > 4) {
+                      pageNum = safeCurrentPage - 3 + idx;
+                      if (pageNum > totalPages) pageNum = totalPages - (6 - idx);
+                    }
+                    return (
+                      <button
+                        key={`page-btn-${pageNum}`}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`min-w-7 h-7 px-2 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                          safeCurrentPage === pageNum
+                            ? "bg-[#0f172a] text-white shadow-xs"
+                            : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                        }`}
+                        style={{
+                          backgroundColor: safeCurrentPage === pageNum ? "#0f172a" : "#ffffff",
+                          color: safeCurrentPage === pageNum ? "#ffffff" : "#334155",
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safeCurrentPage >= totalPages}
+                    className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
+                      safeCurrentPage >= totalPages
+                        ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                        : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300 cursor-pointer shadow-2xs"
+                    }`}
+                    title="下一页"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 4. 智能 Excel 导出与追加确认弹窗 */}
+      {/* 5. 智能 Excel 导出与追加确认弹窗 */}
       <ExcelExportDialog
         isOpen={isExportDialogOpen}
         onClose={() => setIsExportDialogOpen(false)}
