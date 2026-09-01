@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { InvoiceData, GridMode } from "../types";
 import { Trash2 } from "lucide-react";
-import { convertPdfToImageDataUrl, cropWhitespaceFromCanvas } from "../utils/pdfToImage";
+import { convertPdfToImageDataUrl } from "../utils/pdfToImage";
 
 interface InvoiceCardProps {
   invoice: InvoiceData;
@@ -41,34 +41,8 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
             console.warn("Failed to render PDF to image:", err);
             if (isMounted) setRenderedImgUrl(invoice.fileUrl);
           });
-      } else if (
-        invoice.fileUrl.startsWith("data:image/") ||
-        invoice.fileUrl.startsWith("blob:") ||
-        invoice.fileUrl.startsWith("http")
-      ) {
-        // 对图片发票进行智能检测并裁切四周多余空白边
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          try {
-            const canvas = document.createElement("canvas");
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-              const cropped = cropWhitespaceFromCanvas(canvas);
-              if (isMounted) setRenderedImgUrl(cropped);
-              return;
-            }
-          } catch {}
-          if (isMounted) setRenderedImgUrl(invoice.fileUrl);
-        };
-        img.onerror = () => {
-          if (isMounted) setRenderedImgUrl(invoice.fileUrl);
-        };
-        img.src = invoice.fileUrl;
       } else {
+        // 直接复用导入阶段生成的高清/已裁切图像 URL，避免 50+ 张发票并发执行 CPU 像素扫描
         setRenderedImgUrl(invoice.fileUrl);
       }
     } else {
@@ -114,6 +88,8 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
           <img
             src={renderedImgUrl}
             alt={invoice.fileName || "发票原票件"}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-contain pointer-events-none"
             style={{
               maxHeight: gridMode === "4" ? "calc(100% - 4px)" : "calc(100% - 8px)",

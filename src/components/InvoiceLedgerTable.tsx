@@ -7,7 +7,6 @@ import {
   Edit3,
   AlertTriangle,
   CheckCircle2,
-  Plus,
   CheckSquare,
   Square,
   ShieldAlert,
@@ -24,8 +23,6 @@ interface InvoiceLedgerTableProps {
   invoices: InvoiceData[];
   onDeleteInvoice: (id: string) => void;
   onEditInvoice: (invoice: InvoiceData) => void;
-  onManualCreate?: () => void;
-  onAddCustomInvoice?: () => void;
   onToggleSelectForPrint: (id: string) => void;
   onToggleSelectAll: (selected: boolean) => void;
   onExportSuccess?: (exportedIds: string[]) => void;
@@ -485,17 +482,8 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           </label>
         </div>
 
-        {/* 右侧: 新建与导出 Excel 按钮 */}
+        {/* 右侧: 导出 Excel 按钮 */}
         <div className="flex items-center space-x-3">
-          <button
-            onClick={onManualCreate || onAddCustomInvoice}
-            style={{ color: "#1e293b", backgroundColor: "#F1F5F9" }}
-            className="px-3.5 py-2 hover:bg-slate-200 rounded-xl text-xs font-bold border border-slate-200 transition-colors cursor-pointer flex items-center space-x-1"
-          >
-            <Plus className="w-4 h-4" style={{ color: "#475569" }} />
-            <span style={{ color: "#1e293b" }}>手动新建</span>
-          </button>
-
           <button
             onClick={handleExportButtonClick}
             style={{ color: "#ffffff", backgroundColor: "#009966" }}

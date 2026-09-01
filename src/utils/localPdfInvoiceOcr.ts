@@ -131,7 +131,35 @@ function normalizeTextStream(rawText: string): string {
   // 3. 规整标准中文日期 (如 "2026 年 03 月 19 日" -> "2026年03月19日")
   cleanText = cleanText.replace(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*(?:日|\b)/g, "$1年$2月$3日");
 
-  // 4. 拼接铁路客票断开的发票号码
+  // 4. 规整发票常见中文字段标签（消除字段词语内部的散落空格，使后续规则与模板100%精准命中）
+  cleanText = cleanText
+    .replace(/统\s*一\s*社\s*会\s*信\s*用\s*代\s*码(?:\s*[/／]\s*纳\s*税\s*人\s*识\s*别\s*号)?/g, "统一社会信用代码")
+    .replace(/纳\s*税\s*人\s*识\s*别\s*号/g, "纳税人识别号")
+    .replace(/信\s*用\s*代\s*码/g, "信用代码")
+    .replace(/购\s*买\s*方\s*(?:名\s*称|信\s*息)?/g, "购买方名称")
+    .replace(/销\s*售\s*方\s*(?:名\s*称|信\s*息)?/g, "销售方名称")
+    .replace(/名\s*称/g, "名称")
+    .replace(/发\s*票\s*代\s*码/g, "发票代码")
+    .replace(/发\s*票\s*号\s*码/g, "发票号码")
+    .replace(/票\s*据\s*号\s*码/g, "票据号码")
+    .replace(/校\s*验\s*码/g, "校验码")
+    .replace(/开\s*票\s*日\s*期/g, "开票日期")
+    .replace(/价\s*税\s*合\s*计/g, "价税合计")
+    .replace(/金\s*额\s*合\s*计/g, "金额合计")
+    .replace(/合\s*计/g, "合计")
+    .replace(/（\s*小\s*写\s*）/g, "（小写）")
+    .replace(/（\s*大\s*写\s*）/g, "（大写）")
+    .replace(/地\s*址(?:\s*、?\s*电\s*话)?/g, "地址、电话")
+    .replace(/开\s*户\s*行(?:\s*及?\s*账\s*号)?/g, "开户行及账号")
+    .replace(/开\s*票\s*人/g, "开票人")
+    .replace(/收\s*款\s*人/g, "收款人")
+    .replace(/复\s*核\s*人?/g, "复核人")
+    .replace(/备\s*注/g, "备注")
+    .replace(/交\s*款\s*人/g, "交款人")
+    .replace(/项\s*目\s*名\s*称/g, "项目名称")
+    .replace(/规\s*格\s*型\s*号/g, "规格型号");
+
+  // 5. 拼接铁路客票断开的发票号码
   if (!cleanText.match(/发票号码[:：\s]*\d{18,20}/)) {
     const mTrainInvSplit = cleanText.match(/(26\d{9})[\s\n\r]+(\d{7,10})/);
     if (mTrainInvSplit) {
@@ -143,21 +171,38 @@ function normalizeTextStream(rawText: string): string {
 }
 
 /**
- * 实体名称专用深度清洗器（剔除左右边框散落的杂字、税号及地址后缀）
+ * 实体名称专用深度清洗器（消除字间小空格、剥离左右边框杂字、截断尾部统一社会信用代码/税号及地址等后缀）
  */
-function cleanPartyEntityName(rawVal: string): string {
+export function cleanPartyEntityName(rawVal: string): string {
   if (!rawVal) return "";
-  let val = rawVal.trim();
-  val = val.replace(/(?:统一社会信用|统一信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "").trim();
-  val = val.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
-  
-  // 清洗开头处散落的数电发票边框字 (如 "买 售 北京xxx科技...")
-  val = val.replace(/^(?:[购买销售方信息\s|/\\-])+/, "").trim();
-  // 清洗结尾处散落的数电发票边框字 (如 "北京xxx科技有限公司 售", "广州xxx有限公司 方")
+  let val = rawVal.replace(/[\x00-\x1F\x7F-\x9F]/g, "").replace(/_x[0-9a-fA-F]{4}_/g, "").trim();
+
+  // 1. 消除中文字符与中文标点之间的散落空格 (如 "北 京 大 千 食 府 餐 饮 有 限 公 司" -> "北京大千食府餐饮有限公司")
+  val = val.replace(/([\u4e00-\u9fa5\uff08\uff09（）《》【】“”‘’、，。；：！？])\s+(?=[\u4e00-\u9fa5\uff08\uff09（）《》【】“”‘’、，。；：！？])/g, "$1");
+
+  // 2. 剥离前缀标签与噪点（如 "名称:", "购买方:", "销售方:", "交款人:", "出票单位:", "(销)", "(购)" 等）
+  val = val.replace(/^(?:名\s*称|购\s*买\s*方(?:\s*名\s*称|\s*信\s*息)?|销\s*售\s*方(?:\s*名\s*称|\s*信\s*息)?|客\s*户(?:\s*名\s*称)?|抬\s*头|交\s*款\s*人|交\s*款\s*单\s*位|出\s*票\s*单\s*位|收\s*款\s*单\s*位|开\s*票\s*单\s*位|出\s*票\s*机\s*构|受\s*票\s*方|销\s*售\s*单\s*位)[:：\s|/\\-]*/, "").trim();
+  val = val.replace(/^[（(\[【]\s*(?:销|购|买|售|出票|收款|开票|受票|销售方|购买方)\s*[）)\]】][:：\s]*/, "").trim();
+  val = val.replace(/^(?:[购买销售方信息\s|/\\:\-—_])+(?=[\u4e00-\u9fa5]{2,})/, "").trim();
+
+  // 3. 截断尾部的税号、代码、地址、电话、开户行等元数据标签及其后续内容
+  val = val.replace(/(?:统\s*一\s*社\s*会\s*信\s*用(?:\s*代\s*码)?|统\s*一\s*信\s*用(?:\s*代\s*码)?|纳\s*税\s*人\s*识\s*别(?:\s*号)?|纳\s*税\s*人\s*代\s*码|信\s*用\s*代\s*码|纳\s*税\s*人|税\s*号|识\s*别\s*号|地\s*址(?:\s*、?\s*电\s*话)?|电\s*话|开\s*户\s*(?:行|银\s*行)(?:\s*及?\s*账\s*号)?|账\s*号|银\s*行\s*账\s*号|密\s*码(?:\s*区)?|身\s*份\s*证(?:\s*号\s*码|\s*号)?|开\s*票\s*日\s*期|开\s*票\s*人|收\s*款\s*人|复\s*核\s*人?|经\s*手\s*人|销\s*售\s*方|购\s*买\s*方|项\s*目\s*名\s*称|规\s*格\s*型\s*号|价\s*税\s*合\s*计|金\s*额\s*合\s*计|发\s*票\s*代\s*码|发\s*票\s*号\s*码|票\s*据\s*号\s*码|校\s*验\s*码).*/, "").trim();
+
+  // 4. 再次剔除尾部可能残留的独立标签词（如末尾残留的 "统一社会信用", "统一信用", "纳税人识别号", "税号", "开票人" 等）
+  val = val.replace(/(?:统一社会信用代码|统一社会信用|统一信用代码|统一信用|纳税人识别号|纳税人识别|信用代码|纳税人代码|纳税人|税号|识别号|开票人|收款人|复核人|经手人|地址|电话|开户行|开户银行|账号|银行账号|密码|备注|销售方|购买方)$/, "").trim();
+
+  // 5. 剔除尾部可能残留的纯税号/数字/英文字符串 (如 "xxx有限公司 91110108MA01XXXX")
+  val = val.replace(/[\s:：|/\\-]+[A-Za-z0-9]{15,20}$/, "").trim();
+  val = val.replace(/[\s:：|/\\;\-—_，。、]+$/, "").trim();
+
+  // 6. 清洗结尾处散落的数电发票边框字 (如 "北京xxx科技有限公司 售", "广州xxx有限公司 方")
   val = val.replace(/[\s\n\r]+(?:购|买|销|售|方|信|息)+$/, "").trim();
-  val = val.replace(/(?:公司|分公司|厂|院|店|社|所|部|局|行|中心|委员会|大学|小学|中学|企业|集团|组织|协会|学会|联合会|商会|基金会|办事处|联络处)(?:[购买销售方信息\s]+)$/, (m) => {
+  val = val.replace(/(?:公司|分公司|厂|院|店|社|所|部|局|行|中心|委员会|大学|小学|中学|企业|集团|组织|协会|学会|联合会|商会|基金会|办事处|联络处|局|馆|厅)(?:[购买销售方信息\s]+)$/, (m) => {
     return m.replace(/[购买销售方信息\s]+$/, "");
   }).trim();
+
+  // 7. 再次确保中文字符间无冗余空格
+  val = val.replace(/([\u4e00-\u9fa5\uff08\uff09（）《》【】“”‘’、，。；：！？])\s+(?=[\u4e00-\u9fa5\uff08\uff09（）《》【】“”‘’、，。；：！？])/g, "$1").trim();
 
   return val;
 }
@@ -188,8 +233,7 @@ function parseRailwayTicketTemplate(cleanText: string, fileName: string): Parsed
   let buyerTaxId = "";
   const mBuyer = cleanText.match(/(?:购买方名称|购买方|抬头|客户)[:：\s]*([^\n\r\t]+)/);
   if (mBuyer) {
-    let b = mBuyer[1].replace(/(?:统一社会信用|纳税人识别|信用代码|税号|开票日期).*/, "").trim();
-    b = b.replace(/^[（(][^）)]+[）)][:：\s]*/, "").trim();
+    let b = cleanPartyEntityName(mBuyer[1]);
     if (b && b.length >= 2 && !/^(?:统一社会|纳税人|信用代码)/.test(b)) {
       buyerName = b;
     }
@@ -520,7 +564,7 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
   const nameEntries: string[] = [];
   let mNameMatch: RegExpExecArray | null;
   while ((mNameMatch = nameRegex.exec(headerSection)) !== null) {
-    const parts = mNameMatch[1].split(/(?:(?<!项目|服务|劳务|货物)名\s*称[:：\s]*|销\s*售\s*方|购\s*买\s*方)/);
+    const parts = mNameMatch[1].split(/(?:(?<!项目|服务|劳务|货物)名\s*称[:：\s]*|销\s*售\s*方|购\s*买\s*方|统\s*一\s*社\s*会\s*信\s*用|纳\s*税\s*人\s*识\s*别)/);
     for (const p of parts) {
       const val = cleanPartyEntityName(p);
       if (
@@ -535,18 +579,16 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
 
   // 备用：从 购买方/销售方 关键词直接提取
   if (nameEntries.length < 2) {
-    const mDirectBuyer = headerSection.match(/(?:购\s*买\s*方|客\s*户|抬\s*头|交\s*款\s*人)(?:信息)?[:：\s]*([^\n\r\t]{2,50})/);
+    const mDirectBuyer = headerSection.match(/(?:购\s*买\s*方|客\s*户|抬\s*头|交\s*款\s*人)(?:信息)?[:：\s]*([^\n\r\t]{2,60})/);
     if (mDirectBuyer) {
-      let val = mDirectBuyer[1].replace(/^(?:名称|名\s*称)[:：\s]*/, "").replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|销\s*售\s*方).*/, "").trim();
-      val = cleanPartyEntityName(val);
+      let val = cleanPartyEntityName(mDirectBuyer[1]);
       if (val.length >= 2 && !nameEntries.includes(val) && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) {
         nameEntries.unshift(val);
       }
     }
-    const mDirectSeller = headerSection.match(/(?:销\s*售\s*方|出\s*票\s*单\s*位|出\s*票\s*机\s*构|收\s*款\s*单\s*位|开\s*票\s*单\s*位)(?:信息)?[:：\s]*([^\n\r\t]{2,50})/);
+    const mDirectSeller = headerSection.match(/(?:销\s*售\s*方|出\s*票\s*单\s*位|出\s*票\s*机\s*构|收\s*款\s*单\s*位|开\s*票\s*单\s*位)(?:信息)?[:：\s]*([^\n\r\t]{2,60})/);
     if (mDirectSeller) {
-      let val = mDirectSeller[1].replace(/^(?:名称|名\s*称)[:：\s]*/, "").replace(/(?:统一社会信用|纳税人识别|信用代码|税号|地\s*址|电\s*话|备\s*注).*/, "").trim();
-      val = cleanPartyEntityName(val);
+      let val = cleanPartyEntityName(mDirectSeller[1]);
       if (val.length >= 2 && !nameEntries.includes(val) && !/^(?:统一社会|纳税人|信用代码|地址|电话)/.test(val)) {
         nameEntries.push(val);
       }
@@ -575,6 +617,17 @@ function parseDigitalVatInvoiceTemplate(cleanText: string, fileName: string): Pa
       sellerName = cleanPartyEntityName(nameEntries[0]);
     } else {
       buyerName = cleanPartyEntityName(nameEntries[0]);
+    }
+  }
+
+  // 兜底扫描：若销售方仍为默认占位，从表头扫描公司主体
+  if (sellerName === "出票服务单位") {
+    const candidateCompanies = Array.from(
+      headerSection.matchAll(/([\u4e00-\u9fa5\s]{4,60}(?:有限责任公司|股份有限公司|有限公司|分公司|公司|超市|酒店|饭店|商行|中心|学校|局|院|所|部|社))/g)
+    ).map(m => cleanPartyEntityName(m[1])).filter(e => e.length >= 4 && !/^(?:非税收入|统一票据|电子票据|财政部|财政局|社会团体|交款人|收款单位|购买方|销售方)/.test(e));
+
+    if (candidateCompanies.length > 0) {
+      sellerName = candidateCompanies[candidateCompanies.length - 1];
     }
   }
 
@@ -753,16 +806,15 @@ function parseCommercialReceiptTemplate(cleanText: string, fileName: string): Pa
 
   // 3. 销售方名称 (出票公司 / 收款方，兼容 OCR 字符间空格)
   let sellerName = "出票服务单位";
-  const mCompany = cleanText.match(/([^\n\r\t]{2,30}(?:有\s*限\s*责\s*任\s*公\s*司|股\s*份\s*有\s*限\s*公\s*司|有\s*限\s*公\s*司|分\s*公\s*司|公\s*司|超\s*市|酒\s*店|饭\s*店|商\s*行|中\s*心))/);
+  const mCompany = cleanText.match(/([^\n\r\t]{2,50}(?:有\s*限\s*责\s*任\s*公\s*司|股\s*份\s*有\s*限\s*公\s*司|有\s*限\s*公\s*司|分\s*公\s*司|公\s*司|超\s*市|酒\s*店|饭\s*店|商\s*行|中\s*心))/);
   if (mCompany) {
-    let s = mCompany[1].replace(/\s+/g, "").replace(/^[^\u4e00-\u9fa5]+/, "").trim();
+    let s = cleanPartyEntityName(mCompany[1]);
     if (s.length >= 4 && !/^(?:电子收据|收据|开户行|客户)/.test(s)) sellerName = s;
   }
   if (sellerName === "出票服务单位") {
     const mPayeeBlock = cleanText.match(/(?:收款方|收款单位|出票单位)[\s\S]*?(?:名\s*称)[:：\s]*([^\n\r\t]+)/);
     if (mPayeeBlock) {
-      let s = mPayeeBlock[1].replace(/(?:开户行|账号|收款方|开票人|备注).*/, "").trim();
-      s = cleanPartyEntityName(s);
+      let s = cleanPartyEntityName(mPayeeBlock[1]);
       if (s && s.length >= 2) sellerName = s;
     }
   }
@@ -771,9 +823,7 @@ function parseCommercialReceiptTemplate(cleanText: string, fileName: string): Pa
   let buyerName = "个人";
   const mPayer = cleanText.match(/(?:客户\s*[（(][^）)]+[）)]|交\s*款\s*人\s*[（(][^）)]+[）)]|客户|交\s*款\s*人|付\s*款\s*人|交\s*款\s*单\s*位)[:：\s|]*([^\n\r\t]+)/);
   if (mPayer) {
-    let b = mPayer[1].replace(/^(?:[交款人单位（(）)]|\/|\\|\||:)+/, "").trim();
-    b = b.replace(/(?:序号|项目名称|金额|合计|日期|开票日期|规格型号|单价).*/, "").trim();
-    b = cleanPartyEntityName(b);
+    let b = cleanPartyEntityName(mPayer[1]);
     if (b && b.length >= 2 && b !== sellerName) buyerName = b;
   }
 

@@ -119,6 +119,7 @@ export const getLastExportInfoAsync = async (): Promise<LastExportInfo | null> =
 };
 
 import { numberToRMB } from "./numberToRMB";
+import { isGarbledCipher, cleanPartyEntityName } from "./localPdfInvoiceOcr";
 
 const cleanStr = (val?: string): string => {
   if (!val || val.trim() === "") return "-";
@@ -129,17 +130,12 @@ const cleanStr = (val?: string): string => {
 
 const cleanBuyerSellerName = (val?: string): string => {
   if (!val || val.trim() === "") return "-";
-  let cleaned = val.replace(/[\x00-\x1F\x7F-\x9F]/g, "").replace(/_x[0-9a-fA-F]{4}_/g, "").trim();
+  let cleaned = cleanPartyEntityName(val);
   // Strip leading noise string (like "8496 11010125 0102244139 6214f3 110100 9.52 北京市自来水集团" -> "北京市自来水集团")
   cleaned = cleaned.replace(/^[\s0-9a-zA-Z._\-\/]{6,}\s*(?=[\u4e00-\u9fa5]{2,})/, "").trim();
-  cleaned = cleaned
-    .replace(/^(?:信息|名称|名\s*称|购买方|销售方|出票机构|开票单位|收款单位|付款人|交款人|抬头|客户)[:：\s|/\\-]*/, "")
-    .replace(/^[（(][^）)]+[）)][:：\s]*/, "")
-    .replace(/^(?:有限责任公司代收|代收)\s*/, "")
-    .replace(/(?:纳税人识别号|统一社会信用代码|纳税人|信用代码|地\s*址|电\s*话|开\s*户\s*行|账\s*号|密\s*码).*/, "")
-    .trim();
+  cleaned = cleanPartyEntityName(cleaned);
 
-  if (/^(?:地\s*址|电\s*话|纳税人|统一社会信用|信用代码|税号|开户行|账\s*号|密\s*码|开票人|收款人|复核)/.test(cleaned)) {
+  if (!cleaned || /^(?:地\s*址|电\s*话|纳税人|统一社会信用|信用代码|税号|开户行|账\s*号|密\s*码|开票人|收款人|复核)/.test(cleaned)) {
     return "-";
   }
   if (cleaned.includes("监制章") || cleaned.includes("税务总局") || cleaned.includes("发票监制章")) {
@@ -148,8 +144,6 @@ const cleanBuyerSellerName = (val?: string): string => {
   return cleaned || "-";
 };
 
-import { isGarbledCipher } from "./localPdfInvoiceOcr";
-
 const cleanItemsDetail = (items?: any[], remarks?: string, category?: string, sellerName?: string): string => {
   if (!items || items.length === 0) {
     return cleanStr(remarks);
@@ -157,11 +151,13 @@ const cleanItemsDetail = (items?: any[], remarks?: string, category?: string, se
   const validNames = Array.from(new Set(items.map((it) => cleanStr(it.name))))
     .map((n) => {
       let cleaned = cleanStr(n);
+      // 消除中文字符之间的散落空格
+      cleaned = cleaned.replace(/([\u4e00-\u9fa5\uff08\uff09（）《》【】“”‘’、，。；：！？])\s+(?=[\u4e00-\u9fa5\uff08\uff09（）《》【】“”‘’、，。；：！？])/g, "$1");
       // 深度清洗：剔除数量、单价、年月、金额、大写、备注等
       cleaned = cleaned
         .replace(/\s+(?:20\d{4}|\d{4}-\d{2}|\d{6})[月期\s].*/, "")
         .replace(/\s+\d+(\.\d+)?\s+\d+(\.\d+)?(?:\s+\d+(\.\d+)?)?.*/, "")
-        .replace(/(?:合\s*计|价税合计|（大写）|\(大写\)|大写|小写|备\s*注|开票人|纳税人|统一社会信用|购买方|销售方|税率|税额).*/, "")
+        .replace(/(?:合\s*计|价\s*税\s*合\s*计|（\s*大\s*写\s*）|\(\s*大\s*写\s*\)|大\s*写|小\s*写|备\s*注|开\s*票\s*人|收\s*款\s*人|复\s*核\s*人|经\s*手\s*人|纳\s*税\s*人|统\s*一\s*社\s*会\s*信\s*用|购\s*买\s*方|销\s*售\s*方|税\s*率|税\s*额).*/, "")
         .replace(/[;；¥￥]+.*/, "")
         .trim();
       return cleaned;

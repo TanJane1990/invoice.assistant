@@ -1,5 +1,5 @@
 import { InvoiceData, SystemSettings } from "../types";
-import { parseInvoiceTextWithRules, ParsedInvoiceResult } from "./localPdfInvoiceOcr";
+import { parseInvoiceTextWithRules, ParsedInvoiceResult, cleanPartyEntityName } from "./localPdfInvoiceOcr";
 import { convertPdfToImageDataUrl, extractTextFromPdf } from "./pdfToImage";
 import { scanInvoiceQrCodeFromBase64, QrInvoiceResult } from "./qrInvoiceOcr";
 import { numberToRMB } from "./numberToRMB";
@@ -208,7 +208,7 @@ export async function processInvoiceFileUnified(
 
   const resolvedSellerName = isTrainTicket
     ? "中国国家铁路集团有限公司"
-    : rawData.sellerName || "出票服务单位";
+    : cleanPartyEntityName(rawData.sellerName || "出票服务单位") || "出票服务单位";
 
   const resolvedCategory = isTrainTicket
     ? "交通费"
@@ -239,10 +239,10 @@ export async function processInvoiceFileUnified(
 
   const resolvedBuyerName =
     rawData.buyerName && rawData.buyerName !== "个人"
-      ? rawData.buyerName
+      ? cleanPartyEntityName(rawData.buyerName)
       : settings?.defaultCompany && settings.defaultCompany.trim() !== ""
-      ? settings.defaultCompany.trim()
-      : rawData.buyerName || "个人";
+      ? cleanPartyEntityName(settings.defaultCompany.trim())
+      : cleanPartyEntityName(rawData.buyerName || "个人") || "个人";
 
   const finalInvoice: InvoiceData = {
     id: `inv-uploaded-${Date.now()}-${index}`,
@@ -325,9 +325,9 @@ export async function processInvoiceFileUnified(
       invoiceNumber: fallbackParsed.invoiceNumber || String(Math.floor(Math.random() * 89999999 + 10000000)),
       issueDate: fallbackParsed.issueDate || today,
       checkCode: fallbackParsed.checkCode || "",
-      buyerName: fallbackParsed.buyerName || settings?.defaultCompany || "个人",
+      buyerName: cleanPartyEntityName(fallbackParsed.buyerName || settings?.defaultCompany || "个人") || "个人",
       buyerTaxId: fallbackParsed.buyerTaxId || "",
-      sellerName: fallbackParsed.sellerName || "出票服务单位",
+      sellerName: cleanPartyEntityName(fallbackParsed.sellerName || "出票服务单位") || "出票服务单位",
       sellerTaxId: fallbackParsed.sellerTaxId || "",
       totalAmountWithoutTax: 0,
       totalTaxAmount: 0,
