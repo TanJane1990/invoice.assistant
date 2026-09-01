@@ -13,9 +13,13 @@ import {
   Upload,
   Lock,
   ShieldCheck,
+  Package,
+  FileArchive,
+  Download,
 } from "lucide-react";
 import { SystemSettings, InvoiceData } from "../types";
 import { exportInvoicesToExcel } from "../utils/exportExcel";
+import { parseInvoiceArchiveZip, createInvoiceArchiveZip, triggerDownloadBlob } from "../utils/backupZip";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -81,9 +85,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }, 600);
   };
 
-  const handleImportLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExportFullZip = async () => {
+    if (invoices.length === 0) {
+      alert("当前台账暂无发票数据可导出备份。");
+      return;
+    }
+    try {
+      const { zipBlob, fileName } = await createInvoiceArchiveZip(
+        invoices,
+        settings,
+        "发票台账全量备份包"
+      );
+      triggerDownloadBlob(zipBlob, fileName);
+    } catch (err: any) {
+      alert(`导出 ZIP 备份失败: ${err?.message || "未知错误"}`);
+    }
+  };
+
+  const handleImportLocalFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.name.toLowerCase().endsWith(".zip")) {
+      try {
+        const parsedInvoices = await parseInvoiceArchiveZip(file);
+        onImportInvoicesJson(parsedInvoices);
+        alert(`🎉 成功从 ZIP 备份包中恢复 ${parsedInvoices.length} 张发票及高清原图！`);
+      } catch (err: any) {
+        alert(`解析 ZIP 备份包失败: ${err?.message || "请确保选择有效的发票备份 ZIP 文件"}`);
+      }
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -97,7 +129,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           alert("导入的 JSON 文件格式有误，需为发票列表数组！");
         }
       } catch (err) {
-        alert("解析文件失败，请确保选择有效的 JSON / Excel 备份文件。");
+        alert("解析文件失败，请确保选择有效的 JSON / ZIP 备份文件。");
       }
     };
     reader.readAsText(file);
@@ -334,21 +366,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span style={{ color: "#1e293b" }}>自动实时保存发票台账至本地</span>
               </label>
 
-              <div className="flex items-center space-x-3 pt-1">
+              <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   onClick={() => exportInvoicesToExcel(invoices, settings)}
-                  className="flex items-center space-x-1.5 px-4 py-2 bg-[#009966] hover:bg-[#007A52] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#009966] hover:bg-[#007A52] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-white" />
-                  <span className="text-white font-bold">导出 Excel 发票台账表格</span>
+                  <span className="text-white font-bold">导出 Excel 台账表格</span>
                 </button>
 
-                <label className="flex items-center space-x-1.5 px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 shadow-2xs transition-all cursor-pointer">
+                <button
+                  onClick={handleExportFullZip}
+                  className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#0284C7] hover:bg-[#0369A1] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                  title="将当前全部发票高清原图 + Excel + 数据快照打包导出为标准 ZIP 压缩包"
+                >
+                  <Package className="w-4 h-4 text-white" />
+                  <span className="text-white font-bold">📦 导出全量 ZIP 备份包</span>
+                </button>
+
+                <label className="flex items-center space-x-1.5 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 shadow-2xs transition-all cursor-pointer">
                   <Upload className="w-4 h-4 text-slate-600" />
-                  <span className="text-slate-800 font-bold" style={{ color: "#1e293b" }}>从本地电脑选择文件导入 (.xlsx / .json)</span>
+                  <span className="text-slate-800 font-bold" style={{ color: "#1e293b" }}>导入还原备份 (.zip / .json)</span>
                   <input
                     type="file"
-                    accept=".json,.xlsx"
+                    accept=".zip,.json"
                     onChange={handleImportLocalFile}
                     className="hidden"
                   />

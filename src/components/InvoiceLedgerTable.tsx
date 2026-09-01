@@ -21,6 +21,7 @@ import {
 import { InvoiceData, SystemSettings } from "../types";
 import { exportInvoicesToExcel, getLastExportInfoAsync, LastExportInfo } from "../utils/exportExcel";
 import { ExcelExportDialog } from "./ExcelExportDialog";
+import { ArchiveCleanupModal } from "./ArchiveCleanupModal";
 
 interface InvoiceLedgerTableProps {
   invoices: InvoiceData[];
@@ -29,6 +30,7 @@ interface InvoiceLedgerTableProps {
   onToggleSelectForPrint: (id: string) => void;
   onToggleSelectAll: (selected: boolean) => void;
   onExportSuccess?: (exportedIds: string[]) => void;
+  onCleanupArchived?: (deletedIds: string[]) => void;
   systemSettings?: SystemSettings;
   theme?: "light" | "dark";
 }
@@ -56,6 +58,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   onToggleSelectForPrint,
   onToggleSelectAll,
   onExportSuccess,
+  onCleanupArchived,
   systemSettings,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,6 +70,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [collapsedBatches, setCollapsedBatches] = useState<Record<string, boolean>>({});
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [lastExportInfo, setLastExportInfo] = useState<LastExportInfo | null>(null);
 
   const unexportedCount = invoices.filter((i) => !i.exported).length;
@@ -559,6 +563,20 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
             </button>
           </div>
 
+          {/* 归档管理与封存快捷按钮 */}
+          {exportedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsArchiveModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-colors cursor-pointer flex items-center space-x-1 shadow-2xs"
+              style={{ color: "#334155", backgroundColor: "#f8fafc" }}
+              title="导出历史已归档发票 ZIP 完整备份包或安全清空已归档数据"
+            >
+              <Archive className="w-3.5 h-3.5 text-slate-600" />
+              <span>🗄️ 归档封存管理</span>
+            </button>
+          )}
+
           {/* 周期/年份/月份快捷筛选 */}
           <div className="flex items-center space-x-1">
             <Calendar className="w-3.5 h-3.5" style={{ color: "#64748b" }} />
@@ -886,6 +904,19 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         unexportedCount={unexportedCount}
         onAppendToExisting={() => exportInvoicesToExcel(invoices, systemSettings, "append", undefined, onExportSuccess)}
         onSaveNewFile={() => exportInvoicesToExcel(invoices, systemSettings, "new", undefined, onExportSuccess)}
+      />
+
+      {/* 6. 历史已归档发票安全封存与清空弹窗（带密码与防呆校验） */}
+      <ArchiveCleanupModal
+        isOpen={isArchiveModalOpen}
+        onClose={() => setIsArchiveModalOpen(false)}
+        archivedInvoices={invoices.filter((i) => i.exported)}
+        settings={systemSettings}
+        onConfirmCleanup={(deletedIds) => {
+          if (onCleanupArchived) {
+            onCleanupArchived(deletedIds);
+          }
+        }}
       />
     </div>
   );

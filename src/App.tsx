@@ -356,6 +356,9 @@ export const App: React.FC = () => {
             onDeleteInvoice={handleDeleteInvoice}
             onEditInvoice={(inv) => setEditingInvoice(inv)}
             onExportSuccess={handleExportSuccess}
+            onCleanupArchived={(deletedIds) => {
+              setInvoices((prev) => prev.filter((i) => !deletedIds.includes(i.id)));
+            }}
           />
         </main>
       )}
