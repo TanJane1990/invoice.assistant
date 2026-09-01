@@ -10,6 +10,7 @@ import {
   X,
   FileArchive,
   AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { InvoiceData, SystemSettings } from "../types";
 import { createInvoiceArchiveZip, triggerDownloadBlob } from "../utils/backupZip";
@@ -150,32 +151,41 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
   };
 
   return (
-    <div className="no-print print:hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="no-print print:hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto font-sans"
+    >
       <div
-        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col my-auto max-h-[88vh] animate-in fade-in zoom-in-95 duration-200"
         style={{ backgroundColor: "#ffffff" }}
       >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+        {/* Header - 固定置顶 */}
+        <div
+          className="modal-dark-header shrink-0 flex items-center justify-between px-6 py-4 bg-[#0E172B] text-white border-b border-slate-800"
+          style={{ backgroundColor: "#0E172B" }}
+        >
           <div className="flex items-center space-x-2.5">
             <Archive className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-black text-sm text-white">
+            <h3 className="font-extrabold text-base tracking-wide text-white" style={{ color: "#ffffff !important" }}>
               历史归档发票管理与安全封存
             </h3>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+            title="关闭窗口"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-4 font-sans text-xs bg-white" style={{ color: "#0f172a" }}>
+        {/* Body - 内部弹性平滑滚动 */}
+        <div className="flex-1 min-h-0 p-5 overflow-y-auto space-y-3.5 font-sans text-xs bg-white" style={{ color: "#0f172a" }}>
           {/* 状态统计卡 */}
           <div
-            className="p-4 rounded-2xl border flex items-center justify-between"
+            className="p-3.5 rounded-2xl border flex items-center justify-between"
             style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}
           >
             <div className="space-y-0.5">
@@ -203,7 +213,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
           </div>
 
           {/* 操作模式选择 */}
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <label className="block text-xs font-black" style={{ color: "#0f172a" }}>
               请选择操作方式：
             </label>
@@ -211,7 +221,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
             {/* 选项 1: 备份并清空 (强烈推荐) */}
             <div
               onClick={() => setSelectedAction("backup_and_clear")}
-              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 relative"
+              className="p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3 relative"
               style={{
                 backgroundColor: selectedAction === "backup_and_clear" ? "#ecfdf5" : "#ffffff",
                 borderColor: selectedAction === "backup_and_clear" ? "#059669" : "#cbd5e1",
@@ -226,10 +236,10 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
               />
               <div className="flex-1 space-y-1">
                 <div className="flex items-center space-x-2">
-                  <span className="font-black text-sm" style={{ color: "#064e3b" }}>
+                  <span className="font-black text-xs" style={{ color: "#064e3b" }}>
                     🛡️ 导出完整备份 ZIP 并清空已归档
                   </span>
-                  <span className="px-1.5 py-0.5 text-[9px] font-black bg-emerald-600 text-white rounded">
+                  <span className="px-2 py-0.5 text-[10px] font-black bg-emerald-600 text-white rounded-md shadow-2xs">
                     强烈推荐
                   </span>
                 </div>
@@ -242,7 +252,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
             {/* 选项 2: 仅导出备份 */}
             <div
               onClick={() => setSelectedAction("backup_only")}
-              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3"
+              className="p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3"
               style={{
                 backgroundColor: selectedAction === "backup_only" ? "#f0f9ff" : "#ffffff",
                 borderColor: selectedAction === "backup_only" ? "#0284c7" : "#cbd5e1",
@@ -256,7 +266,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                 className="mt-1 accent-sky-600 cursor-pointer"
               />
               <div className="flex-1 space-y-1">
-                <span className="font-extrabold text-sm block" style={{ color: "#0f172a" }}>
+                <span className="font-extrabold text-xs block" style={{ color: "#0f172a" }}>
                   📦 仅导出完整备份 ZIP 包（不清空数据）
                 </span>
                 <p className="text-[11px] leading-relaxed" style={{ color: "#475569" }}>
@@ -268,7 +278,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
             {/* 选项 3: 直接清空 */}
             <div
               onClick={() => setSelectedAction("clear_only")}
-              className="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3"
+              className="p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-start space-x-3"
               style={{
                 backgroundColor: selectedAction === "clear_only" ? "#fef2f2" : "#ffffff",
                 borderColor: selectedAction === "clear_only" ? "#dc2626" : "#cbd5e1",
@@ -282,7 +292,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                 className="mt-1 accent-red-600 cursor-pointer"
               />
               <div className="flex-1 space-y-1">
-                <span className="font-extrabold text-sm block" style={{ color: "#991b1b" }}>
+                <span className="font-extrabold text-xs block" style={{ color: "#991b1b" }}>
                   🗑️ 直接清空已归档数据（不备份）
                 </span>
                 <p className="text-[11px] leading-relaxed" style={{ color: "#64748b" }}>
@@ -295,7 +305,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
           {/* 安全密码/口令验证区（仅在涉及清空时显示） */}
           {selectedAction !== "backup_only" && (
             <div
-              className="p-4 rounded-2xl border space-y-2.5 shadow-2xs"
+              className="p-3.5 rounded-2xl border space-y-2 shadow-2xs"
               style={{ backgroundColor: "#fffbeb", borderColor: "#fcd34d" }}
             >
               <div className="flex items-center space-x-1.5 font-black text-xs" style={{ color: "#78350f" }}>
@@ -338,9 +348,18 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold" style={{ color: "#78350f" }}>
-                    为防止手滑误删，请输入口令 <strong style={{ color: "#b91c1c" }}>"确认清空"</strong>：
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold" style={{ color: "#78350f" }}>
+                      为防止手滑误删，请输入口令 <strong style={{ color: "#b91c1c" }}>"确认清空"</strong>：
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setPhraseInput("确认清空")}
+                      className="text-[10px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded transition cursor-pointer"
+                    >
+                      一键填入口令
+                    </button>
+                  </div>
                   <input
                     type="text"
                     placeholder="请输入 确认清空"
@@ -352,7 +371,7 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                       backgroundColor: "#ffffff",
                       color: "#0f172a",
                       caretColor: "#0f172a",
-                      borderColor: "#f59e0b",
+                      borderColor: phraseInput.trim() === "确认清空" ? "#10b981" : "#f59e0b",
                       userSelect: "text",
                       WebkitUserSelect: "text",
                     }}
@@ -389,9 +408,9 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer - 固定底部 */}
         <div
-          className="px-6 py-4 border-t flex items-center justify-end space-x-3"
+          className="shrink-0 px-6 py-4 border-t flex items-center justify-end space-x-3 bg-slate-50"
           style={{ backgroundColor: "#f8fafc", borderColor: "#e2e8f0" }}
         >
           <button
@@ -417,7 +436,11 @@ export const ArchiveCleanupModal: React.FC<ArchiveCleanupModalProps> = ({
                   ? "#64748b"
                   : "#ffffff",
             }}
-            className="px-5 py-2 rounded-xl text-xs font-black shadow-sm transition-all cursor-pointer flex items-center space-x-1.5"
+            className={`px-5 py-2 rounded-xl text-xs font-black shadow-sm transition-all flex items-center space-x-1.5 ${
+              !isProcessing && (selectedAction === "backup_only" || isAuthorized())
+                ? "hover:opacity-90 cursor-pointer shadow-md"
+                : "cursor-not-allowed opacity-60"
+            }`}
           >
             {isProcessing ? (
               <span>正在处理中...</span>
