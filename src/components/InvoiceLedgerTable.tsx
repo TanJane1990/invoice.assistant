@@ -66,7 +66,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   const [filterDuplicateOnly, setFilterDuplicateOnly] = useState(false);
   const [batchFilter, setBatchFilter] = useState<"all" | "unexported" | "exported">("all");
-  const [pageSize, setPageSize] = useState<number | "all">(50);
+  const [pageSize, setPageSize] = useState<number | "all">("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [collapsedBatches, setCollapsedBatches] = useState<Record<string, boolean>>({});
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -185,10 +185,9 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
     return filteredInvoices.slice(start, start + pageSize);
   }, [filteredInvoices, safeCurrentPage, pageSize]);
 
-  // 5. 按导入批次时间线自动聚合（生成批次分割横幅）
+  // 5. 按导入批次时间线稳定聚合（生成批次分割横幅）
   const batchGroups = useMemo(() => {
-    const groups: InvoiceBatchGroup[] = [];
-    let currentGroup: InvoiceBatchGroup | null = null;
+    const groupMap = new Map<string, InvoiceBatchGroup>();
 
     paginatedInvoices.forEach((inv) => {
       const rawTime = inv.importTime ? inv.importTime.trim() : "";
@@ -197,23 +196,22 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       const isUnexp = !inv.exported;
       const batchKey = `${batchTime}_${isUnexp ? "unexp" : "exp"}`;
 
-      if (!currentGroup || currentGroup.batchKey !== batchKey) {
-        if (currentGroup) groups.push(currentGroup);
-        currentGroup = {
+      let group = groupMap.get(batchKey);
+      if (!group) {
+        group = {
           batchKey,
           batchTime,
           isUnexported: isUnexp,
-          invoices: [inv],
-          totalAmount: inv.totalAmountWithTax,
+          invoices: [],
+          totalAmount: 0,
         };
-      } else {
-        currentGroup.invoices.push(inv);
-        currentGroup.totalAmount += inv.totalAmountWithTax;
+        groupMap.set(batchKey, group);
       }
+      group.invoices.push(inv);
+      group.totalAmount += inv.totalAmountWithTax;
     });
 
-    if (currentGroup) groups.push(currentGroup);
-    return groups;
+    return Array.from(groupMap.values());
   }, [paginatedInvoices]);
 
   const allSelected =
@@ -232,17 +230,29 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
     }
   };
 
+  // 核心折叠状态判定逻辑：
+  // 规则：只要是没有做归档（新导入，isUnexported===true）才默认展开；已做归档的批次（isUnexported===false）默认全部折叠收起。
+  // 若用户手动点击过展开/折叠，以用户的设置为主。
+  const isGroupCollapsed = (group: InvoiceBatchGroup) => {
+    if (collapsedBatches[group.batchKey] !== undefined) {
+      return collapsedBatches[group.batchKey];
+    }
+    return !group.isUnexported;
+  };
+
   // 切换指定批次的折叠状态
-  const toggleBatchCollapse = (batchKey: string) => {
+  const toggleBatchCollapse = (batchKey: string, currentCollapsed: boolean) => {
     setCollapsedBatches((prev) => ({
       ...prev,
-      [batchKey]: !prev[batchKey],
+      [batchKey]: !currentCollapsed,
     }));
   };
 
+
+
   // 一键全选/取消指定批次的发票排版
   const toggleBatchSelect = (group: InvoiceBatchGroup) => {
-    const allBatchSelected = group.invoices.every((i) => i.selectedForPrint);
+    const allBatchSelected = group.invoices.length > 0 && group.invoices.every((i) => i.selectedForPrint);
     group.invoices.forEach((inv) => {
       if (inv.selectedForPrint === allBatchSelected) {
         onToggleSelectForPrint(inv.id);
@@ -273,8 +283,9 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         {/* Checkbox */}
         <td className="p-3.5 text-center">
           <button
+            type="button"
             onClick={() => onToggleSelectForPrint(inv.id)}
-            className="cursor-pointer"
+            className="cursor-pointer inline-flex items-center justify-center"
           >
             {inv.selectedForPrint ? (
               <CheckSquare className="w-4 h-4 text-[#E8000A]" style={{ color: "#E8000A" }} />
@@ -295,7 +306,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           {/* 批次状态与时间胶囊 */}
           <div className="flex items-center space-x-1.5 mt-1">
             {!inv.exported ? (
-              <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-black rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+              <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-black rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
                 <Sparkles className="w-2.5 h-2.5 mr-0.5" />
                 新导入
               </span>
@@ -369,6 +380,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         {/* Actions */}
         <td className="p-3.5 text-right font-sans space-x-1.5 whitespace-nowrap">
           <button
+            type="button"
             onClick={() => onEditInvoice(inv)}
             style={{ color: "#0284C7", backgroundColor: "#E0F2FE" }}
             className="px-2.5 py-1 hover:bg-sky-100 rounded-lg text-xs font-bold inline-flex items-center space-x-1 transition-colors cursor-pointer"
@@ -378,6 +390,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={() => {
               if (
                 window.confirm(
@@ -645,6 +658,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
           )}
 
           <button
+            type="button"
             onClick={handleExportButtonClick}
             style={{ color: "#ffffff", backgroundColor: "#009966" }}
             className="px-3.5 py-2 hover:bg-[#008055] rounded-xl text-xs font-extrabold shadow-sm transition-colors cursor-pointer flex items-center space-x-1.5 shrink-0"
@@ -657,7 +671,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         </div>
       </div>
 
-      {/* 3. 底部发票台账表格 (支持导入批次时间线自动分割与折叠) */}
+      {/* 3. 底部发票台账表格 (支持导入批次时间线自动分割与智能折叠) */}
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden" style={{ backgroundColor: "#ffffff" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
@@ -665,8 +679,9 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
               <tr className="border-b border-slate-200 bg-[#F8FAFC] font-extrabold text-xs whitespace-nowrap" style={{ backgroundColor: "#F8FAFC", color: "#1e293b" }}>
                 <th className="p-3.5 w-10 text-center">
                   <button
+                    type="button"
                     onClick={() => onToggleSelectAll(!allSelected)}
-                    className="cursor-pointer"
+                    className="cursor-pointer inline-flex items-center justify-center"
                     title={allSelected ? "取消全选" : "全选包含在拼版排版中"}
                   >
                     {allSelected ? (
@@ -695,17 +710,19 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                 </tr>
               ) : (
                 batchGroups.map((group) => {
-                  const isCollapsed = !!collapsedBatches[group.batchKey];
-                  const allBatchSelected = group.invoices.every((i) => i.selectedForPrint);
+                  // 智能判定折叠状态：未归档默认展开，已归档默认收起；若用户手动点击过以用户为准
+                  const isCollapsed = isGroupCollapsed(group);
+                  const allBatchSelected = group.invoices.length > 0 && group.invoices.every((i) => i.selectedForPrint);
 
                   return (
                     <React.Fragment key={group.batchKey}>
                       {/* 批次专属时间线分割横幅 */}
                       <tr
-                        className={`border-y font-sans transition-colors ${
+                        onClick={() => toggleBatchCollapse(group.batchKey, isCollapsed)}
+                        className={`border-y font-sans transition-colors cursor-pointer select-none ${
                           group.isUnexported
-                            ? "bg-emerald-50/90 text-emerald-950 border-emerald-200"
-                            : "bg-slate-100/90 text-slate-800 border-slate-300"
+                            ? "bg-emerald-50/90 hover:bg-emerald-100/80 text-emerald-950 border-emerald-200"
+                            : "bg-slate-100/90 hover:bg-slate-200/80 text-slate-800 border-slate-300"
                         }`}
                         style={{
                           backgroundColor: group.isUnexported ? "#ecfdf5" : "#f1f5f9",
@@ -751,21 +768,23 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                             </div>
 
                             {/* 右侧：批次一键选中 & 批次折叠切换 */}
-                            <div className="flex items-center space-x-2 text-[11px]">
+                            <div className="flex items-center space-x-2 text-[11px]" onClick={(e) => e.stopPropagation()}>
                               <button
+                                type="button"
                                 onClick={() => toggleBatchSelect(group)}
                                 className={`px-2.5 py-1 rounded-lg border font-bold transition cursor-pointer shadow-2xs ${
                                   group.isUnexported
                                     ? "bg-white hover:bg-emerald-100 border-emerald-300 text-emerald-800"
                                     : "bg-white hover:bg-slate-200 border-slate-300 text-slate-700"
                                 }`}
-                                style={{ color: group.isUnexported ? "#065f46" : "#334155" }}
+                                style={{ color: group.isUnexported ? "#064e3b" : "#334155" }}
                               >
                                 {allBatchSelected ? "取消选中此批次" : "一键选中此批次排版"}
                               </button>
 
                               <button
-                                onClick={() => toggleBatchCollapse(group.batchKey)}
+                                type="button"
+                                onClick={() => toggleBatchCollapse(group.batchKey, isCollapsed)}
                                 className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold transition cursor-pointer flex items-center space-x-1 shadow-2xs"
                                 style={{ color: "#334155" }}
                               >
@@ -827,7 +846,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                   style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
                 >
                   <option value={20}>20 条/页</option>
-                  <option value={50}>50 条/页 (推荐)</option>
+                  <option value={50}>50 条/页</option>
                   <option value={100}>100 条/页</option>
                   <option value="all">显示全部</option>
                 </select>
@@ -837,6 +856,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
               {pageSize !== "all" && totalPages > 1 && (
                 <div className="flex items-center space-x-1">
                   <button
+                    type="button"
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={safeCurrentPage <= 1}
                     className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
@@ -858,11 +878,12 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                     }
                     return (
                       <button
+                        type="button"
                         key={`page-btn-${pageNum}`}
                         onClick={() => setCurrentPage(pageNum)}
                         className={`min-w-7 h-7 px-2 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
                           safeCurrentPage === pageNum
-                            ? "bg-[#0f172a] text-white shadow-xs"
+                            ? "bg-[#0f172a] text-white shadow-2xs"
                             : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
                         }`}
                         style={{
@@ -876,6 +897,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
                   })}
 
                   <button
+                    type="button"
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={safeCurrentPage >= totalPages}
                     className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
@@ -894,29 +916,31 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         )}
       </div>
 
-      {/* 5. 智能 Excel 导出与追加确认弹窗 */}
-      <ExcelExportDialog
-        isOpen={isExportDialogOpen}
-        onClose={() => setIsExportDialogOpen(false)}
-        lastExportInfo={lastExportInfo}
-        currentCount={invoices.length}
-        unexportedCount={unexportedCount}
-        onAppendToExisting={() => exportInvoicesToExcel(invoices, systemSettings, "append", undefined, onExportSuccess)}
-        onSaveNewFile={() => exportInvoicesToExcel(invoices, systemSettings, "new", undefined, onExportSuccess)}
-      />
+      {/* 5. 导出 Excel 对话框 */}
+      {isExportDialogOpen && lastExportInfo && (
+        <ExcelExportDialog
+          isOpen={isExportDialogOpen}
+          onClose={() => setIsExportDialogOpen(false)}
+          invoices={invoices}
+          lastExportInfo={lastExportInfo}
+          systemSettings={systemSettings}
+          onExportSuccess={onExportSuccess}
+        />
+      )}
 
-      {/* 6. 历史已归档发票安全封存与清空弹窗（带密码与防呆校验） */}
-      <ArchiveCleanupModal
-        isOpen={isArchiveModalOpen}
-        onClose={() => setIsArchiveModalOpen(false)}
-        archivedInvoices={invoices.filter((i) => i.exported)}
-        settings={systemSettings}
-        onConfirmCleanup={(deletedIds) => {
-          if (onCleanupArchived) {
-            onCleanupArchived(deletedIds);
-          }
-        }}
-      />
+      {/* 6. 归档发票安全封存与清理弹窗 */}
+      {isArchiveModalOpen && (
+        <ArchiveCleanupModal
+          isOpen={isArchiveModalOpen}
+          onClose={() => setIsArchiveModalOpen(false)}
+          invoices={invoices}
+          onCleanupSuccess={(deletedIds) => {
+            if (onCleanupArchived) {
+              onCleanupArchived(deletedIds);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
