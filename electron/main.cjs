@@ -170,6 +170,14 @@ ipcMain.handle("open-file-folder", async (event, payload) => {
       child_process.execFile("open", ["-R", diskCheck.filePath]);
     } else if (process.platform === "win32") {
       child_process.exec(`explorer.exe /select,"${diskCheck.filePath}"`);
+    } else {
+      // Linux / 统信 UOS / 麒麟系统
+      const { shell } = require("electron");
+      if (shell && shell.showItemInFolder) {
+        shell.showItemInFolder(diskCheck.filePath);
+      } else {
+        child_process.spawn("xdg-open", [path.dirname(diskCheck.filePath)], { detached: true });
+      }
     }
     return { success: true, filePath: diskCheck.filePath };
   }

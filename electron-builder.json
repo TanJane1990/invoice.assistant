@@ -48,5 +48,30 @@
     "icon": "assets/icon.png",
     "identity": null,
     "artifactName": "${productName}-${version}-${arch}.${ext}"
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "deb",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "category": "Office",
+    "icon": "assets/icon.png",
+    "maintainer": "TanJane",
+    "synopsis": "智能发票管理助手及报销排版打印工具",
+    "description": "专为企业财务与个人报销设计的智能发票管理助手，支持增值税发票全票面OCR识别、PDF发票排版打印、A4一键拼页与发票台账Excel导出。",
+    "desktop": {
+      "StartupNotify": "true",
+      "Encoding": "UTF-8",
+      "MimeType": "application/pdf;image/png;image/jpeg;",
+      "Categories": "Office;Finance;Utility;"
+    },
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
+  },
+  "deb": {
+    "priority": "optional",
+    "packageCategory": "utils",
+    "compression": "xz"
   }
 }

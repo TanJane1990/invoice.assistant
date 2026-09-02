@@ -12,6 +12,11 @@
     "start": "node dist/server.cjs",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron electron/main.cjs\"",
     "electron:build": "npm run build && electron-builder --config electron-builder.json",
+    "electron:build:win": "npm run build && electron-builder --config electron-builder.json --win",
+    "electron:build:mac": "npm run build && electron-builder --config electron-builder.json --mac",
+    "electron:build:linux": "npm run build && electron-builder --config electron-builder.json --linux deb",
+    "electron:build:deb:x64": "npm run build && electron-builder --config electron-builder.json --linux deb --x64",
+    "electron:build:deb:arm64": "npm run build && electron-builder --config electron-builder.json --linux deb --arm64",
     "preview": "vite preview",
     "clean": "npx rimraf dist server.js dist_electron",
     "lint": "tsc --noEmit"
