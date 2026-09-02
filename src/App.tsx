@@ -45,16 +45,27 @@ export const App: React.FC = () => {
   const [isTopNavExportDialogOpen, setIsTopNavExportDialogOpen] = useState(false);
   const [topNavLastExportInfo, setTopNavLastExportInfo] = useState<LastExportInfo | null>(null);
 
-  const [printConfig, setPrintConfig] = useState<PrintConfig>({
-    gridMode: "4",
-    paperType: "A4",
-    orientation: "landscape", // 4张/页 (2×2 横向) 默认锁定为横向 (Landscape)
-    showCropLines: true,
-    showCategoryBadge: true,
-    marginSize: "normal",
-    sortBy: "date_asc", // 默认排序：按开票时间 (升序)
-    includeCoverPage: false,
-    grayscale: false,
+  const [printConfig, setPrintConfig] = useState<PrintConfig>(() => {
+    const defaultConfig: PrintConfig = {
+      gridMode: "4",
+      paperType: "A4",
+      orientation: "landscape", // 4张/页 (2×2 横向) 默认锁定为横向 (Landscape)
+      showCropLines: true,
+      showCategoryBadge: true,
+      marginSize: "normal",
+      sortBy: "date_asc", // 默认排序：按开票时间 (升序)
+      includeCoverPage: false,
+      grayscale: false,
+    };
+    try {
+      const saved = localStorage.getItem("print_config_v1");
+      if (saved) {
+        return { ...defaultConfig, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.warn("Failed to load print_config_v1", e);
+    }
+    return defaultConfig;
   });
 
   // 2. 核心状态：系统设置 & 发票台账列表
@@ -150,7 +161,7 @@ export const App: React.FC = () => {
     }
   }, [theme]);
 
-  // 更新排版参数 (4张/页 自动绑定横向 Landscape，1/2张/页 自动绑定纵向 Portrait)
+  // 更新排版参数 (4张/页 自动绑定横向 Landscape，1/2张/页 自动绑定纵向 Portrait，并持久化保存如灰度打印等设置)
   const handleUpdateConfig = (newCfg: Partial<PrintConfig>) => {
     setPrintConfig((prev) => {
       const next = { ...prev, ...newCfg };
@@ -158,6 +169,11 @@ export const App: React.FC = () => {
         next.orientation = "landscape";
       } else if (newCfg.gridMode === "2" || newCfg.gridMode === "1") {
         next.orientation = "portrait";
+      }
+      try {
+        localStorage.setItem("print_config_v1", JSON.stringify(next));
+      } catch (e) {
+        console.warn("Failed to save print_config_v1", e);
       }
       return next;
     });
@@ -283,7 +299,7 @@ export const App: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen flex flex-col font-sans transition-colors ${
+      className={`h-screen flex flex-col overflow-hidden font-sans transition-colors ${
         theme === "dark" ? "dark bg-[#0E172B] text-slate-100" : "bg-[#F3F5F9] text-slate-900"
       }`}
     >

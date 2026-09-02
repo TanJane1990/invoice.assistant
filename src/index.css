@@ -1,13 +1,55 @@
 @import "tailwindcss";
 
-/* 全局跨平台高清中文字体栈与抗锯齿优化（彻底解决 Win 7 字体发虚、中英混杂、回退到老宋体的问题） */
+/* 注册软件内置跨平台矢量字库：思源黑体（Source Han Sans SC） */
+@font-face {
+  font-family: "AppUIFont";
+  src: url("/standard_fonts/SourceHanSansSC-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AppUIFont";
+  src: url("/standard_fonts/SourceHanSansSC-Regular.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AppUIFont";
+  src: url("/standard_fonts/SourceHanSansSC-Bold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AppUIFont";
+  src: url("/standard_fonts/SourceHanSansSC-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AppUIFont";
+  src: url("/standard_fonts/SourceHanSansSC-Bold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 全局跨平台高清中文字体栈与抗锯齿优化（Win & Mac 统一步调、杜绝发虚） */
 html,
 body,
 button,
 input,
 select,
-textarea {
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "微软雅黑", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+textarea,
+.font-sans {
+  font-family: "AppUIFont", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "微软雅黑", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -183,7 +225,7 @@ textarea::placeholder {
     break-after: auto !important;
   }
 
-  /* 报销封面外层包装：若后面有发票页，则强制换页 */
+  /* 报销封面外层包装：支持多页封面自动分页，并在封面结束后与发票页之间强制换页 */
   .a4-print-cover-wrapper {
     page: cover_page !important;
     display: block !important;
@@ -191,8 +233,6 @@ textarea::placeholder {
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
     page-break-after: always !important;
     break-after: page !important;
   }
