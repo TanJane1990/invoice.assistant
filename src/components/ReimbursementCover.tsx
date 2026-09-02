@@ -30,17 +30,74 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
     : [];
   const activeSettings = settings || defaultSettings || ({} as SystemSettings);
 
-  const [formData, setFormData] = useState({
-    companyName: activeSettings?.defaultCompany || "示例单位名称",
-    department: activeSettings?.defaultDepartment || "猫粮研发部",
-    applicant: activeSettings?.defaultApplicant || "张喵喵",
-    reimbursementNo: `BX-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-001`,
-    date: new Date().toISOString().split("T")[0],
-    approver: activeSettings?.defaultApprover || "李喵喵",
-    financeAuditor: activeSettings?.defaultFinanceAuditor || "陈喵喵",
-    cashier: activeSettings?.defaultCashier || "王喵喵",
-    reason: "三季度客户拜访与办公用品出差报销",
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cover_form_data_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.companyName === "示例单位名称") parsed.companyName = "";
+        if (parsed.department === "猫粮研发部" || parsed.department === "财务部") parsed.department = "";
+        if (parsed.applicant === "张喵喵" || parsed.applicant === "张三") parsed.applicant = "";
+        if (parsed.approver === "李喵喵" || parsed.approver === "李四") parsed.approver = "";
+        if (parsed.financeAuditor === "陈喵喵" || parsed.financeAuditor === "王五") parsed.financeAuditor = "";
+        if (parsed.cashier === "王喵喵" || parsed.cashier === "赵六") parsed.cashier = "";
+        if (parsed.reason === "三季度客户拜访与办公用品出差报销") parsed.reason = "";
+
+        return {
+          companyName: parsed.companyName || activeSettings?.defaultCompany || "",
+          department: parsed.department || activeSettings?.defaultDepartment || "",
+          applicant: parsed.applicant || activeSettings?.defaultApplicant || "",
+          reimbursementNo:
+            parsed.reimbursementNo ||
+            `BX-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-001`,
+          date: parsed.date || new Date().toISOString().split("T")[0],
+          approver: parsed.approver || activeSettings?.defaultApprover || "",
+          financeAuditor: parsed.financeAuditor || activeSettings?.defaultFinanceAuditor || "",
+          cashier: parsed.cashier || activeSettings?.defaultCashier || "",
+          reason: parsed.reason || "",
+        };
+      }
+    } catch {}
+
+    return {
+      companyName: activeSettings?.defaultCompany || "",
+      department: activeSettings?.defaultDepartment || "",
+      applicant: activeSettings?.defaultApplicant || "",
+      reimbursementNo: `BX-${new Date().toISOString().split("T")[0].replace(/-/g, "")}-001`,
+      date: new Date().toISOString().split("T")[0],
+      approver: activeSettings?.defaultApprover || "",
+      financeAuditor: activeSettings?.defaultFinanceAuditor || "",
+      cashier: activeSettings?.defaultCashier || "",
+      reason: "",
+    };
   });
+
+  // 当系统设置中的预设抬头与审批人员更新并保存时，自动同步至报销封面
+  React.useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      companyName: activeSettings?.defaultCompany !== undefined && activeSettings.defaultCompany !== "" ? activeSettings.defaultCompany : prev.companyName,
+      department: activeSettings?.defaultDepartment !== undefined && activeSettings.defaultDepartment !== "" ? activeSettings.defaultDepartment : prev.department,
+      applicant: activeSettings?.defaultApplicant !== undefined && activeSettings.defaultApplicant !== "" ? activeSettings.defaultApplicant : prev.applicant,
+      approver: activeSettings?.defaultApprover !== undefined && activeSettings.defaultApprover !== "" ? activeSettings.defaultApprover : prev.approver,
+      financeAuditor: activeSettings?.defaultFinanceAuditor !== undefined && activeSettings.defaultFinanceAuditor !== "" ? activeSettings.defaultFinanceAuditor : prev.financeAuditor,
+      cashier: activeSettings?.defaultCashier !== undefined && activeSettings.defaultCashier !== "" ? activeSettings.defaultCashier : prev.cashier,
+    }));
+  }, [
+    activeSettings?.defaultCompany,
+    activeSettings?.defaultDepartment,
+    activeSettings?.defaultApplicant,
+    activeSettings?.defaultApprover,
+    activeSettings?.defaultFinanceAuditor,
+    activeSettings?.defaultCashier,
+  ]);
+
+  // 实时持久化报销封面数据
+  React.useEffect(() => {
+    try {
+      localStorage.setItem("cover_form_data_v1", JSON.stringify(formData));
+    } catch {}
+  }, [formData]);
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -219,7 +276,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">单位名称</label>
               <input
                 type="text"
-                value={formData.companyName}
+                placeholder="请填写单位名称"
+                value={formData.companyName || ""}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
@@ -229,7 +287,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">报销部门</label>
               <input
                 type="text"
-                value={formData.department}
+                placeholder="请填写报销部门"
+                value={formData.department || ""}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
@@ -239,7 +298,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">报销申请人</label>
               <input
                 type="text"
-                value={formData.applicant}
+                placeholder="请填写报销申请人"
+                value={formData.applicant || ""}
                 onChange={(e) => setFormData({ ...formData, applicant: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
@@ -249,7 +309,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">报销单号</label>
               <input
                 type="text"
-                value={formData.reimbursementNo}
+                placeholder="BX-2026xxxx-001"
+                value={formData.reimbursementNo || ""}
                 onChange={(e) => setFormData({ ...formData, reimbursementNo: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold font-mono"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
@@ -269,7 +330,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">主管审批人</label>
               <input
                 type="text"
-                value={formData.approver}
+                placeholder="请填写主管审批人"
+                value={formData.approver || ""}
                 onChange={(e) => setFormData({ ...formData, approver: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
@@ -279,7 +341,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">财务复核人</label>
               <input
                 type="text"
-                value={formData.financeAuditor}
+                placeholder="请填写财务复核人"
+                value={formData.financeAuditor || ""}
                 onChange={(e) => setFormData({ ...formData, financeAuditor: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
@@ -289,7 +352,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">出纳或经办人</label>
               <input
                 type="text"
-                value={formData.cashier}
+                placeholder="请填写出纳或经办人"
+                value={formData.cashier || ""}
                 onChange={(e) => setFormData({ ...formData, cashier: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
@@ -299,7 +363,8 @@ export const ReimbursementCover: React.FC<ReimbursementCoverProps> = ({
               <label className="block mb-1 font-bold">报销事由</label>
               <input
                 type="text"
-                value={formData.reason}
+                placeholder="请填写报销事由（选填）"
+                value={formData.reason || ""}
                 onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                 className="w-full p-2 border border-slate-300 rounded-xl bg-white text-slate-900 font-bold"
                 style={{ color: "#0f172a", backgroundColor: "#ffffff" }}

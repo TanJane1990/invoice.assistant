@@ -296,7 +296,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block mb-1 font-bold text-slate-800" style={{ color: "#1e293b" }}>默认单位名称</label>
                 <input
                   type="text"
-                  value={formData.defaultCompany}
+                  placeholder="选填，例如：XX有限公司"
+                  value={formData.defaultCompany || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, defaultCompany: e.target.value })
                   }
@@ -309,7 +310,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block mb-1 font-bold text-slate-800" style={{ color: "#1e293b" }}>默认报销部门</label>
                 <input
                   type="text"
-                  value={formData.defaultDepartment}
+                  placeholder="选填，例如：技术部 / 市场部"
+                  value={formData.defaultDepartment || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, defaultDepartment: e.target.value })
                   }
@@ -322,7 +324,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block mb-1 font-bold text-slate-800" style={{ color: "#1e293b" }}>默认报销人</label>
                 <input
                   type="text"
-                  value={formData.defaultApplicant}
+                  placeholder="选填，报销申请人姓名"
+                  value={formData.defaultApplicant || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, defaultApplicant: e.target.value })
                   }
@@ -335,7 +338,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block mb-1 font-bold text-slate-800" style={{ color: "#1e293b" }}>主管审批人</label>
                 <input
                   type="text"
-                  value={formData.defaultApprover}
+                  placeholder="选填，审批主管姓名"
+                  value={formData.defaultApprover || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, defaultApprover: e.target.value })
                   }
@@ -348,7 +352,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block mb-1 font-bold text-slate-800" style={{ color: "#1e293b" }}>财务复核人</label>
                 <input
                   type="text"
-                  value={formData.defaultFinanceAuditor}
+                  placeholder="选填，财务审核人姓名"
+                  value={formData.defaultFinanceAuditor || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -364,7 +369,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <label className="block mb-1 font-bold text-slate-800" style={{ color: "#1e293b" }}>出纳或经办人</label>
                 <input
                   type="text"
-                  value={formData.defaultCashier}
+                  placeholder="选填，出纳经办人姓名"
+                  value={formData.defaultCashier || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, defaultCashier: e.target.value })
                   }

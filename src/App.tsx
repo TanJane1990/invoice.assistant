@@ -24,11 +24,11 @@ const DEFAULT_SETTINGS: SystemSettings = {
   baiduApiKey: "",
   baiduSecretKey: "",
   defaultCompany: "",
-  defaultDepartment: "财务部",
-  defaultApplicant: "张三",
-  defaultApprover: "李四",
-  defaultFinanceAuditor: "王五",
-  defaultCashier: "赵六",
+  defaultDepartment: "",
+  defaultApplicant: "",
+  defaultApprover: "",
+  defaultFinanceAuditor: "",
+  defaultCashier: "",
   autoSaveInvoices: true,
   protectExportedExcel: false,
   exportPassword: "",
@@ -74,11 +74,41 @@ export const App: React.FC = () => {
       const saved = localStorage.getItem("system_settings_v1");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.defaultCompany && (parsed.defaultCompany.includes("云启智创") || parsed.defaultCompany.includes("北京"))) {
+        let updated = false;
+        // 清理旧版本可能残存的预设示例假数据
+        if (
+          parsed.defaultCompany &&
+          (parsed.defaultCompany.includes("云启智创") ||
+            parsed.defaultCompany.includes("北京") ||
+            parsed.defaultCompany === "示例单位名称")
+        ) {
           parsed.defaultCompany = "";
+          updated = true;
+        }
+        if (parsed.defaultDepartment === "财务部" || parsed.defaultDepartment === "猫粮研发部") {
+          parsed.defaultDepartment = "";
+          updated = true;
+        }
+        if (parsed.defaultApplicant === "张三" || parsed.defaultApplicant === "张喵喵") {
+          parsed.defaultApplicant = "";
+          updated = true;
+        }
+        if (parsed.defaultApprover === "李四" || parsed.defaultApprover === "李喵喵") {
+          parsed.defaultApprover = "";
+          updated = true;
+        }
+        if (parsed.defaultFinanceAuditor === "王五" || parsed.defaultFinanceAuditor === "陈喵喵") {
+          parsed.defaultFinanceAuditor = "";
+          updated = true;
+        }
+        if (parsed.defaultCashier === "赵六" || parsed.defaultCashier === "王喵喵") {
+          parsed.defaultCashier = "";
+          updated = true;
+        }
+        if (updated) {
           localStorage.setItem("system_settings_v1", JSON.stringify(parsed));
         }
-        return parsed;
+        return { ...DEFAULT_SETTINGS, ...parsed };
       }
       return DEFAULT_SETTINGS;
     } catch {
