@@ -82,6 +82,43 @@ function findInvoiceFileOnDisk(preferredFileName, preferredFilePath) {
   searchDirs.push(path.join(homeDir, "Desktop"));
   searchDirs.push(path.join(homeDir, "Downloads"));
   searchDirs.push(path.join(homeDir, "Documents"));
+  // Linux / 统信 UOS 中文常用主目录支持：
+  searchDirs.push(path.join(homeDir, "桌面"));
+  searchDirs.push(path.join(homeDir, "下载"));
+  searchDirs.push(path.join(homeDir, "文档"));
+
+  // Linux / 统信 UOS 特有支持：外接U盘/移动硬盘挂载目录 (/media, /mnt)
+  if (process.platform === "linux") {
+    const linuxMountRoots = ["/media", "/mnt"];
+    let username = "";
+    try {
+      username = os.userInfo().username || path.basename(homeDir);
+    } catch (e) {
+      username = path.basename(homeDir);
+    }
+    linuxMountRoots.forEach((mRoot) => {
+      if (fs.existsSync(mRoot)) {
+        searchDirs.push(mRoot);
+        if (username) {
+          const userMedia = path.join(mRoot, username);
+          if (fs.existsSync(userMedia)) {
+            searchDirs.push(userMedia);
+            try {
+              const usbs = fs.readdirSync(userMedia);
+              usbs.forEach((u) => {
+                const usbPath = path.join(userMedia, u);
+                searchDirs.push(usbPath);
+                const sub1 = path.join(usbPath, "发票");
+                const sub2 = path.join(usbPath, "财务");
+                if (fs.existsSync(sub1)) searchDirs.push(sub1);
+                if (fs.existsSync(sub2)) searchDirs.push(sub2);
+              });
+            } catch (e) {}
+          }
+        }
+      }
+    });
+  }
 
   // Windows 系统特有支持：OneDrive 桌面、D盘/E盘/U盘根目录及常用发票目录
   if (process.platform === "win32") {
@@ -366,6 +403,10 @@ ipcMain.handle("save-excel-direct", async (event, payload) => {
       }
       if (fs.existsSync(desktopPath)) {
         targetPath = path.join(desktopPath, fileName || "发票台账明细表.xlsx");
+      } else if (fs.existsSync(path.join(os.homedir(), "桌面"))) {
+        targetPath = path.join(os.homedir(), "桌面", fileName || "发票台账明细表.xlsx");
+      } else if (fs.existsSync(path.join(os.homedir(), "下载"))) {
+        targetPath = path.join(os.homedir(), "下载", fileName || "发票台账明细表.xlsx");
       } else {
         targetPath = path.join(os.homedir(), "Downloads", fileName || "发票台账明细表.xlsx");
       }

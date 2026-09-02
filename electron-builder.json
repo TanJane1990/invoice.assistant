@@ -15,6 +15,10 @@
     "package.json"
   ],
   "asar": true,
+  "asarUnpack": [
+    "dist/tessdata/**/*",
+    "public/tessdata/**/*"
+  ],
   "compression": "maximum",
   "electronVersion": "22.3.27",
   "win": {
@@ -53,7 +57,7 @@
     "target": [
       {
         "target": "deb",
-        "arch": ["x64"]
+        "arch": ["x64", "arm64"]
       }
     ],
     "category": "Office",
