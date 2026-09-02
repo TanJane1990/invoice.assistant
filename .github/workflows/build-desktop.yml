@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release Tag 版本号 (只支持英文/数字/点/破折号，如: v1.1.8)'
+        description: 'Release Tag 版本号 (只支持英文/数字/点/破折号，如: v1.2.0)'
         required: true
-        default: 'v1.1.8'
+        default: 'v1.2.0'
       release_title:
-        description: 'Release 发布标题 (可含中文，如: 智能发票管理助手 v1.1.8 正式版)'
+        description: 'Release 发布标题 (可含中文，如: 智能发票管理助手 v1.2.0 正式版)'
         required: false
-        default: '智能发票管理助手 v1.1.8 正式版'
+        default: '智能发票管理助手 v1.2.0 正式版'
       is_draft:
         description: '是否发布为草稿 (Draft)?'
         type: boolean
@@ -67,7 +67,7 @@ jobs:
           # 提取并清理标签名：只保留英文字母、数字、点、横杠、下划线 (去除中文字符与空格)
           CLEAN_TAG=$(echo "$RAW_TAG" | sed 's/[^a-zA-Z0-9._-]//g')
           if [ -z "$CLEAN_TAG" ]; then
-            CLEAN_TAG="v1.1.8"
+            CLEAN_TAG="v1.2.0"
           fi
           echo "tag=$CLEAN_TAG" >> $GITHUB_OUTPUT
 
@@ -77,7 +77,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_step.outputs.tag }}
-          name: ${{ inputs.release_title || inputs.release_tag || '智能发票管理助手 v1.1.8 正式版' }}
+          name: ${{ inputs.release_title || inputs.release_tag || '智能发票管理助手 v1.2.0 正式版' }}
           files: |
             dist_electron/*.exe
             dist_electron/*.dmg
