@@ -127,7 +127,7 @@ function findInvoiceFileOnDisk(preferredFileName, preferredFilePath) {
     if (fs.existsSync(oneDriveDesktop)) searchDirs.push(oneDriveDesktop);
     if (fs.existsSync(oneDriveDocs)) searchDirs.push(oneDriveDocs);
 
-    const winDrives = ["D:\\", "E:\\", "F:\\", "G:\\"];
+    const winDrives = ["D:\\", "E:\\", "F:\\", "G:\\", "H:\\", "I:\\", "U:\\"];
     winDrives.forEach((drv) => {
       if (fs.existsSync(drv)) {
         searchDirs.push(drv);
