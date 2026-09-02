@@ -43,6 +43,18 @@ const DUPLICATE_PALETTES = [
   { rowBg: "bg-yellow-100/90 hover:bg-yellow-100", badgeBg: "bg-yellow-200 text-yellow-900 border-yellow-400" },
 ];
 
+const normalizeTimeString = (t?: string): string => {
+  if (!t || typeof t !== "string") return "";
+  const cleaned = t.trim().replace(/\//g, "-");
+  const parts = cleaned.split(/[\sT]+/);
+  if (parts.length > 0 && parts[0].includes("-")) {
+    const dateParts = parts[0].split("-").map((p) => p.padStart(2, "0"));
+    const timePart = parts[1] ? parts[1].split(":").map((p) => p.padStart(2, "0")).join(":") : "00:00:00";
+    return `${dateParts.join("-")} ${timePart}`;
+  }
+  return cleaned;
+};
+
 interface InvoiceBatchGroup {
   batchKey: string;
   batchTime: string;
@@ -131,7 +143,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
     const cutoff1Month = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const cutoff3Months = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    return invoices.filter((inv) => {
+    const result = invoices.filter((inv) => {
       const matchesSearch =
         !searchTerm ||
         inv.invoiceNumber.includes(searchTerm) ||
@@ -166,6 +178,26 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
 
       return matchesSearch && matchesCategory && matchesDuplicate && matchesBatch && matchesPeriod;
     });
+
+    // 默认台账按导入批次时间从新到旧倒序排列（最新导入的批次如 2026-09-02 17:34 永远排在最上面）
+    return result.slice().sort((a, b) => {
+      // 1. 未归档新导入发票优先置顶
+      const aUnexp = !a.exported;
+      const bUnexp = !b.exported;
+      if (aUnexp !== bUnexp) return aUnexp ? -1 : 1;
+
+      // 2. 导入时间倒序
+      const normA = normalizeTimeString(a.importTime);
+      const normB = normalizeTimeString(b.importTime);
+      if (normA && normB && normA !== normB) {
+        return normB.localeCompare(normA);
+      }
+      if (normA && !normB) return -1;
+      if (!normA && normB) return 1;
+
+      // 3. 次级排序按 ID 倒序
+      return (b.id || "").localeCompare(a.id || "");
+    });
   }, [invoices, searchTerm, selectedCategory, duplicateMap, filterDuplicateOnly, batchFilter, selectedPeriod]);
 
   // 4. 分页控制计算
@@ -185,7 +217,7 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
     return filteredInvoices.slice(start, start + pageSize);
   }, [filteredInvoices, safeCurrentPage, pageSize]);
 
-  // 5. 按导入批次时间线稳定聚合（生成批次分割横幅）
+  // 5. 按导入批次时间线稳定聚合（生成批次分割横幅，最新批次置顶）
   const batchGroups = useMemo(() => {
     const groupMap = new Map<string, InvoiceBatchGroup>();
 
@@ -211,7 +243,23 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
       group.totalAmount += inv.totalAmountWithTax;
     });
 
-    return Array.from(groupMap.values());
+    const groups = Array.from(groupMap.values());
+    // 确保批次横幅按最新时间置顶倒序排列（2026-09-02 17:34 放在最上面）
+    groups.sort((a, b) => {
+      // 1. 未归档新导入批次优先置顶
+      if (a.isUnexported !== b.isUnexported) {
+        return a.isUnexported ? -1 : 1;
+      }
+      // 2. 批次时间倒序（最新时间在最上面）
+      const normA = normalizeTimeString(a.batchTime);
+      const normB = normalizeTimeString(b.batchTime);
+      if (normA && normB && normA !== normB) {
+        return normB.localeCompare(normA);
+      }
+      return b.batchTime.localeCompare(a.batchTime);
+    });
+
+    return groups;
   }, [paginatedInvoices]);
 
   const allSelected =
@@ -921,10 +969,11 @@ export const InvoiceLedgerTable: React.FC<InvoiceLedgerTableProps> = ({
         <ExcelExportDialog
           isOpen={isExportDialogOpen}
           onClose={() => setIsExportDialogOpen(false)}
-          invoices={invoices}
           lastExportInfo={lastExportInfo}
-          systemSettings={systemSettings}
-          onExportSuccess={onExportSuccess}
+          currentCount={invoices.length}
+          unexportedCount={unexportedCount}
+          onAppendToExisting={() => exportInvoicesToExcel(invoices, systemSettings, "append", undefined, onExportSuccess)}
+          onSaveNewFile={() => exportInvoicesToExcel(invoices, systemSettings, "new", undefined, onExportSuccess)}
         />
       )}
 

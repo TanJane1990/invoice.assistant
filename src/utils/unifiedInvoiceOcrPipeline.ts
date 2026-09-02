@@ -5,6 +5,12 @@ import { scanInvoiceQrCodeFromBase64, QrInvoiceResult } from "./qrInvoiceOcr";
 import { numberToRMB } from "./numberToRMB";
 import { recognizeImageTextWithTesseract } from "./imageOcr";
 
+export const formatCurrentTimestamp = (): string => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+};
+
 export interface UnifiedOcrResult {
   invoice: InvoiceData;
   engineUsed: string;
@@ -303,7 +309,7 @@ export async function processInvoiceFileUnified(
     fileUrl: previewFileUrl,
     fileName,
     selectedForPrint: true,
-    importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
+    importTime: formatCurrentTimestamp(),
   };
 
     const confidence: UnifiedOcrResult["confidence"] = qrScanned || (isPdf && totalAmt > 0) ? "high" : totalAmt > 0 ? "medium" : "low";
@@ -350,7 +356,7 @@ export async function processInvoiceFileUnified(
       fileUrl: fileBase64,
       fileName,
       selectedForPrint: true,
-      importTime: new Date().toLocaleString("zh-CN", { hour12: false }),
+      importTime: formatCurrentTimestamp(),
     };
 
     return {

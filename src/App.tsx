@@ -116,17 +116,36 @@ export const App: React.FC = () => {
     }
   });
 
-  // 3. 发票列表状态：开机优先从轻量元数据快速初始化，随后异步从 IndexedDB 完整加载
+  // 3. 发票列表状态：开机优先从轻量元数据快速初始化，随后异步从 IndexedDB 完整加载（默认最新批次置顶倒序排列）
+  const sortInvoicesDesc = (list: InvoiceData[]): InvoiceData[] => {
+    return [...list].sort((a, b) => {
+      const aUnexp = !a.exported;
+      const bUnexp = !b.exported;
+      if (aUnexp !== bUnexp) return aUnexp ? -1 : 1;
+
+      const timeA = (a.importTime || "").trim().replace(/\//g, "-");
+      const timeB = (b.importTime || "").trim().replace(/\//g, "-");
+      if (timeA && timeB && timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      if (timeA && !timeB) return -1;
+      if (!timeA && timeB) return 1;
+
+      return (b.id || "").localeCompare(a.id || "");
+    });
+  };
+
   const [invoices, setInvoices] = useState<InvoiceData[]>(() => {
     try {
       const saved = localStorage.getItem("saved_invoices_metadata_v1") || localStorage.getItem("saved_invoices_v1");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.map((inv) => ({
+          const mapped = parsed.map((inv) => ({
             ...inv,
             selectedForPrint: false, // 每次重新打开软件时，默认不勾选任何旧发票，保持排版区干净
           }));
+          return sortInvoicesDesc(mapped);
         }
       }
       return [];
@@ -141,7 +160,8 @@ export const App: React.FC = () => {
     loadInvoicesFromDb()
       .then((dbInvoices) => {
         if (isMounted && dbInvoices && dbInvoices.length > 0) {
-          setInvoices(dbInvoices.map((inv) => ({ ...inv, selectedForPrint: false })));
+          const mapped = dbInvoices.map((inv) => ({ ...inv, selectedForPrint: false }));
+          setInvoices(sortInvoicesDesc(mapped));
         }
       })
       .catch((err) => {
