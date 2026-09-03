@@ -84,6 +84,7 @@ jobs:
             dist_electron/*.dmg
             dist_electron/*.deb
             dist_electron/*.AppImage
+            scripts/uos-install-bypass.sh
           draft: ${{ inputs.is_draft || false }}
           prerelease: ${{ inputs.is_prerelease || false }}
           generate_release_notes: true
