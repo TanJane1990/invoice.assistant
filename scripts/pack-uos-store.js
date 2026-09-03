@@ -16,6 +16,7 @@ const archArg = process.argv[2] || "amd64"; // amd64 or arm64
 
 console.log(`[UOS Store Packager] Starting packaging for ${appId} v${version} (${archArg})...`);
 
+const unpackedDir = path.join(rootDir, "dist_electron", archArg === "arm64" ? "linux-arm64-unpacked" : "linux-unpacked");
 let sourceDir = unpackedDir;
 if (!fs.existsSync(sourceDir)) {
   const debCandidate = path.join(rootDir, "dist_electron", `smart-invoice-assistant_${version}_${archArg}.deb`);
