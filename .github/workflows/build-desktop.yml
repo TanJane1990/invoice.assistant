@@ -49,11 +49,12 @@ jobs:
       - name: Build Electron Package
         run: npx electron-builder --config electron-builder.json --publish never
 
-      - name: Pack UOS Official Store Compliant DEB
+      - name: Pack UOS Official Store Compliant DEB (amd64 & arm64)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           node scripts/pack-uos-store.js amd64
+          node scripts/pack-uos-store.js arm64
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4

@@ -16,10 +16,28 @@ const archArg = process.argv[2] || "amd64"; // amd64 or arm64
 
 console.log(`[UOS Store Packager] Starting packaging for ${appId} v${version} (${archArg})...`);
 
-const unpackedDir = path.join(rootDir, "dist_electron", archArg === "arm64" ? "linux-arm64-unpacked" : "linux-unpacked");
-if (!fs.existsSync(unpackedDir)) {
-  console.error(`[UOS Store Packager] Error: Unpacked directory not found at ${unpackedDir}`);
-  console.error(`Please run electron-builder with --dir target first.`);
+let sourceDir = unpackedDir;
+if (!fs.existsSync(sourceDir)) {
+  const debCandidate = path.join(rootDir, "dist_electron", `smart-invoice-assistant_${version}_${archArg}.deb`);
+  if (fs.existsSync(debCandidate)) {
+    console.log(`[UOS Store Packager] Unpacked dir ${unpackedDir} not found. Extracting from ${debCandidate}...`);
+    const tempExtract = path.join(rootDir, "dist_electron", `temp_deb_extract_${archArg}`);
+    if (fs.existsSync(tempExtract)) fs.rmSync(tempExtract, { recursive: true, force: true });
+    fs.mkdirSync(tempExtract, { recursive: true });
+    execSync(`dpkg -x "${debCandidate}" "${tempExtract}"`, { stdio: "inherit" });
+    const optPath = path.join(tempExtract, "opt");
+    if (fs.existsSync(optPath)) {
+      const subDirs = fs.readdirSync(optPath);
+      if (subDirs.length > 0) {
+        sourceDir = path.join(optPath, subDirs[0]);
+      }
+    }
+  }
+}
+
+if (!fs.existsSync(sourceDir)) {
+  console.error(`[UOS Store Packager] Error: Source directory or deb not found for ${archArg}`);
+  console.error(`Please run electron-builder first.`);
   process.exit(1);
 }
 
@@ -48,7 +66,7 @@ fs.mkdirSync(iconsDir, { recursive: true });
 fs.mkdirSync(debianDir, { recursive: true });
 
 console.log(`[UOS Store Packager] Copying application files to /opt/apps/${appId}/files/ ...`);
-execSync(`cp -rf "${unpackedDir}"/* "${filesDir}/"`, { stdio: "inherit" });
+execSync(`cp -rf "${sourceDir}"/* "${filesDir}/"`, { stdio: "inherit" });
 
 // 复制高清图标
 const iconSrc = path.join(rootDir, "assets", "icon.png");
@@ -132,4 +150,8 @@ try {
   console.log(`[UOS Store Packager] SUCCESS: Built official UOS Store compliant package at ${outDebPath}`);
 } catch (err) {
   console.warn(`[UOS Store Packager] dpkg-deb not available or failed. Directory prepared at ${buildRoot}`);
+} finally {
+  const tempExtract = path.join(rootDir, "dist_electron", `temp_deb_extract_${archArg}`);
+  if (fs.existsSync(tempExtract)) fs.rmSync(tempExtract, { recursive: true, force: true });
+  if (fs.existsSync(buildRoot)) fs.rmSync(buildRoot, { recursive: true, force: true });
 }
