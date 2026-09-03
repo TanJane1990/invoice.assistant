@@ -58,6 +58,10 @@
       {
         "target": "deb",
         "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "AppImage",
+        "arch": ["x64", "arm64"]
       }
     ],
     "category": "Office",
@@ -71,7 +75,7 @@
       "MimeType": "application/pdf;image/png;image/jpeg;",
       "Categories": "Office;Finance;Utility;"
     },
-    "artifactName": "${productName}-${version}-${arch}.${ext}"
+    "artifactName": "${name}_${version}_${arch}.${ext}"
   },
   "deb": {
     "priority": "optional",

@@ -57,6 +57,7 @@ jobs:
             dist_electron/*.exe
             dist_electron/*.dmg
             dist_electron/*.deb
+            dist_electron/*.AppImage
           if-no-files-found: ignore
 
       - name: Normalize Tag Name
@@ -82,6 +83,7 @@ jobs:
             dist_electron/*.exe
             dist_electron/*.dmg
             dist_electron/*.deb
+            dist_electron/*.AppImage
           draft: ${{ inputs.is_draft || false }}
           prerelease: ${{ inputs.is_prerelease || false }}
           generate_release_notes: true
