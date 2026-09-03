@@ -87,15 +87,29 @@ function findInvoiceFileOnDisk(preferredFileName, preferredFilePath) {
   searchDirs.push(path.join(homeDir, "下载"));
   searchDirs.push(path.join(homeDir, "文档"));
 
-  // Linux / 统信 UOS 特有支持：外接U盘/移动硬盘挂载目录 (/media, /mnt)
+  // Linux / 统信 UOS 特有支持：外接U盘/移动硬盘/本地多分区(C/D/E盘映射)/数据盘挂载目录 (/media, /run/media, /mnt, /data)
   if (process.platform === "linux") {
-    const linuxMountRoots = ["/media", "/mnt"];
+    const linuxMountRoots = ["/media", "/run/media", "/mnt", "/data"];
     let username = "";
     try {
       username = os.userInfo().username || path.basename(homeDir);
     } catch (e) {
       username = path.basename(homeDir);
     }
+
+    // 统信 UOS 独有架构：独立 /data 数据盘支持
+    if (fs.existsSync("/data")) {
+      searchDirs.push("/data");
+      const dataInvoice = path.join("/data", "发票");
+      const dataFinance = path.join("/data", "财务");
+      if (fs.existsSync(dataInvoice)) searchDirs.push(dataInvoice);
+      if (fs.existsSync(dataFinance)) searchDirs.push(dataFinance);
+      if (username) {
+        const dataUser = path.join("/data", "home", username);
+        if (fs.existsSync(dataUser)) searchDirs.push(dataUser);
+      }
+    }
+
     linuxMountRoots.forEach((mRoot) => {
       if (fs.existsSync(mRoot)) {
         searchDirs.push(mRoot);
