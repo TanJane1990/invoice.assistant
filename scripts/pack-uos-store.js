@@ -128,26 +128,36 @@ function getDirSize(dir) {
   return size;
 }
 
-// 生成标准的 DEBIAN/control 文件
+// 生成标准的 DEBIAN/control 文件 (必须严格符合 RFC822 规范，包含邮箱，换行必须为LF)
 const controlContent = `Package: ${appId}
 Version: ${version}
 Section: utils
 Priority: optional
 Architecture: ${archArg}
-Maintainer: ${pkg.author || "TanJane"}
+Maintainer: ${pkg.author || "TanJane"} <janebin1990@gmail.com>
 Installed-Size: ${Math.round(getDirSize(filesDir) / 1024)}
 Description: ${pkg.description || appName}
  专为企业财务与个人报销设计的智能发票管理助手，支持增值税发票全票面OCR识别、PDF发票排版打印、A4一键拼页与发票台账Excel导出。
-`;
+`.replace(/\r\n/g, "\n");
 fs.writeFileSync(path.join(debianDir, "control"), controlContent, "utf8");
 
+// 设置统信官方规范要求的严格文件权限
+try {
+  fs.chmodSync(debianDir, 0o755);
+  fs.chmodSync(path.join(debianDir, "control"), 0o644);
+  fs.chmodSync(path.join(optAppDir, "info"), 0o644);
+  fs.chmodSync(path.join(appsDesktopDir, `${appId}.desktop`), 0o644);
+} catch (e) {}
+
 // 使用 dpkg-deb 打包
+// 关键重点：Ubuntu 22.04+ 默认采用 zstd 压缩，而统信应用商店后台只支持 xz/gzip！
+// 若未指定 -Zxz，生成的 control.tar.zst 会导致统信商店报错：“包格式不正确,没有解析到control文件”
 const outDebName = `${appId}_${version}_${archArg}_uos_store.deb`;
 const outDebPath = path.join(rootDir, "dist_electron", outDebName);
 
-console.log(`[UOS Store Packager] Building Debian package: ${outDebPath} ...`);
+console.log(`[UOS Store Packager] Building Debian package with -Zxz: ${outDebPath} ...`);
 try {
-  execSync(`dpkg-deb -b --root-owner-group "${buildRoot}" "${outDebPath}"`, { stdio: "inherit" });
+  execSync(`dpkg-deb -Zxz --root-owner-group -b "${buildRoot}" "${outDebPath}"`, { stdio: "inherit" });
   console.log(`[UOS Store Packager] SUCCESS: Built official UOS Store compliant package at ${outDebPath}`);
 } catch (err) {
   console.warn(`[UOS Store Packager] dpkg-deb not available or failed. Directory prepared at ${buildRoot}`);
