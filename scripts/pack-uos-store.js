@@ -134,7 +134,7 @@ Version: ${version}
 Section: utils
 Priority: optional
 Architecture: ${archArg}
-Maintainer: ${pkg.author || "TanJane"} <janebin1990@gmail.com>
+Maintainer: ${pkg.author || "谭彬"} <cjtanbin@163.com>
 Installed-Size: ${Math.round(getDirSize(filesDir) / 1024)}
 Description: ${pkg.description || appName}
  专为企业财务与个人报销设计的智能发票管理助手，支持增值税发票全票面OCR识别、PDF发票排版打印、A4一键拼页与发票台账Excel导出。
